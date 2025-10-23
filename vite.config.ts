@@ -8,7 +8,6 @@
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
-        'react-hook-form@7.55.0': 'react-hook-form',
         '@': path.resolve(__dirname, './src'),
       },
     },

@@ -1,4 +1,4 @@
-import { Menu, X, Sun, Moon, RefreshCw } from "lucide-react";
+import { Sun, Moon, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { CacheService } from "../services/cache";
 import { toast } from "sonner";

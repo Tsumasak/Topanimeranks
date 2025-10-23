@@ -1,5 +1,4 @@
 import React from 'react';
-import BaseAnimeCard from './BaseAnimeCard';
 
 interface AnticipatedAnimeCardProps {
   rank: number;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { AnticipatedCardSkeleton } from './AnimeCardSkeleton';
-import { SEASONS_DATA, SeasonData as SeasonConfig } from '../config/seasons';
+import { SEASONS_DATA } from '../config/seasons';
 import { JikanService } from '../services/jikan';
 import { AnticipatedAnime } from '../types/anime';
 

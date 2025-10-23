@@ -103,7 +103,7 @@ export class JikanService {
   }
 
   // Get episodes for an anime with pagination support
-  static async getAnimeEpisodes(animeId: number, totalEpisodes?: number): Promise<JikanEpisode[]> {
+  static async getAnimeEpisodes(animeId: number): Promise<JikanEpisode[]> {
     const cacheKey = `jikan_episodes_${animeId}_all`;
     const cached = CacheService.get<JikanEpisode[]>(cacheKey);
     if (cached) return cached;
@@ -274,8 +274,6 @@ export class JikanService {
     
     // Process all popular animes (no hard limit, just the member filter)
     console.log(`[WeekData] Processing ${popularAnimes.length} animes with 20k+ members`);
-    
-    const now = new Date();
     
     for (const anime of popularAnimes) {
       console.log(`[WeekData] Checking anime: ${anime.title} (${anime.members.toLocaleString()} members)`);

@@ -1,0 +1,713 @@
+@import "tailwindcss";
+
+:root {
+  /* Light Theme Colors */
+  --background: #ffffff;
+  --background-rgb: 255, 255, 255;
+  --foreground: #0f0f0f;
+  --card-background: #f8f9fa;
+  --card-border: #e2e8f0;
+  --card-hover: #f1f5f9;
+  --header-background: #ffffff;
+  --header-border: #e2e8f0;
+  --nav-hover: #3b82f6;
+  --rating-background: #f1f5f9;
+  --rating-text: #475569;
+  --rating-yellow: #3b82f6;
+  --rank-background: #3b82f6;
+  --rank-text: #ffffff;
+  --tag-tv-background: #1d4ed8;
+  --tag-ona-background: #059669;
+  --tag-default-background: #4b5563;
+  --rank-4plus-background: #6b7280;
+  --tag-seinen-background: #7c3aed;
+  --tag-shounen-background: #1d4ed8;
+  --tag-shoujo-background: #ec4899;
+  --tag-josei-background: #059669;
+  --tag-demo-default-background: #6b7280;
+  --bg-opacity: 0.4;
+  --shadow: rgba(0, 0, 0, 0.1);
+  --shadow-hover: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] {
+  /* Dark Theme Colors */
+  --background: #0f172a;
+  --background-rgb: 15, 23, 42;
+  --foreground: #f1f5f9;
+  --card-background: #1e293b;
+  --card-border: #334155;
+  --card-hover: #293548;
+  --header-background: #1e293b;
+  --header-border: #334155;
+  --nav-hover: #60a5fa;
+  --rating-background: #334155;
+  --rating-text: #cbd5e1;
+  --rating-yellow: #fbbf24;
+  --rank-background: #3b82f6;
+  --rank-text: #ffffff;
+  --tag-tv-background: #2563eb;
+  --tag-ona-background: #059669;
+  --tag-default-background: #374151;
+  --rank-4plus-background: #4b5563;
+  --tag-seinen-background: #7c3aed;
+  --tag-shounen-background: #1d4ed8;
+  --tag-shoujo-background: #ec4899;
+  --tag-josei-background: #059669;
+  --tag-demo-default-background: #4b5563;
+  --bg-opacity: 0.2;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-hover: rgba(0, 0, 0, 0.4);
+}
+
+/* Default to dark theme if no data-theme attribute is set */
+:root:not([data-theme]) {
+  --background: #0f172a;
+  --background-rgb: 15, 23, 42;
+  --foreground: #f1f5f9;
+  --card-background: #1e293b;
+  --card-border: #334155;
+  --card-hover: #293548;
+  --header-background: #1e293b;
+  --header-border: #334155;
+  --nav-hover: #60a5fa;
+  --rating-background: #334155;
+  --rating-text: #cbd5e1;
+  --rating-yellow: #fbbf24;
+  --rank-background: #3b82f6;
+  --rank-text: #ffffff;
+  --tag-tv-background: #2563eb;
+  --tag-ona-background: #059669;
+  --tag-default-background: #374151;
+  --rank-4plus-background: #4b5563;
+  --tag-seinen-background: #7c3aed;
+  --tag-shounen-background: #1d4ed8;
+  --tag-shoujo-background: #ec4899;
+  --tag-josei-background: #059669;
+  --tag-demo-default-background: #4b5563;
+  --bg-opacity: 0.2;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-hover: rgba(0, 0, 0, 0.4);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom theme classes for components */
+.theme-card {
+  background: var(--card-background);
+  border-color: var(--card-border);
+  box-shadow: 0 4px 6px -1px var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.theme-card:hover {
+  background: var(--card-hover);
+  box-shadow: 0 10px 15px -3px var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.theme-header {
+  background: var(--header-background);
+  border-color: var(--header-border);
+  box-shadow: 0 1px 3px 0 var(--shadow);
+}
+
+.theme-nav-link {
+  transition: color 0.3s ease;
+}
+
+.theme-nav-link:hover {
+  color: var(--nav-hover);
+}
+
+.theme-rating {
+  background: var(--rating-background);
+  color: var(--rating-text);
+}
+
+.theme-rank {
+  background: var(--rank-background);
+  color: var(--rank-text);
+}
+
+/* Tag styling using CSS variables */
+.tag-tv {
+  background: var(--tag-tv-background);
+  color: #ffffff;
+}
+
+.tag-ona {
+  background: var(--tag-ona-background);
+  color: #ffffff;
+}
+
+.tag-default {
+  background: var(--tag-default-background);
+  color: #ffffff;
+}
+
+.rank-4plus {
+  background: var(--rank-4plus-background);
+  color: #ffffff;
+}
+
+/* Demographics tag styling */
+.tag-seinen {
+  background: var(--tag-seinen-background);
+  color: #ffffff;
+}
+
+.tag-shounen {
+  background: var(--tag-shounen-background);
+  color: #ffffff;
+}
+
+.tag-shoujo {
+  background: var(--tag-shoujo-background);
+  color: #ffffff;
+}
+
+.tag-josei {
+  background: var(--tag-josei-background);
+  color: #ffffff;
+}
+
+.tag-demo-default {
+  background: var(--tag-demo-default-background);
+  color: #ffffff;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.theme-toggle:hover {
+  opacity: 0.7;
+}
+
+.theme-toggle:focus,
+.theme-toggle:active {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.theme-card-hover:hover {
+  background: var(--card-hover);
+}
+
+/* Improve readability for form elements */
+button, input, select, textarea {
+  color: var(--foreground);
+}
+
+/* Ensure text contrast in all scenarios */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--foreground);
+}
+
+p, span, div {
+  color: inherit;
+}
+
+/* Mobile Menu Styles */
+.hamburger-button {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  padding: 8px;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.hamburger-button:hover {
+  opacity: 0.7;
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.mobile-menu-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 280px;
+  max-width: 90vw;
+  background: var(--header-background);
+  border-left: 1px solid var(--header-border);
+  box-shadow: -4px 0 20px var(--shadow);
+  z-index: 9999;
+  animation: slideInRight 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--header-border);
+}
+
+.mobile-menu-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.mobile-menu-close {
+  background: transparent;
+  border: none;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  padding: 8px;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-menu-close:hover {
+  opacity: 0.7;
+}
+
+.mobile-menu-nav {
+  flex: 1;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-menu-item {
+  display: block;
+  padding: 1rem 1.5rem;
+  color: var(--foreground);
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.mobile-menu-item:hover,
+.mobile-menu-item:focus {
+  background: var(--card-hover);
+  border-left-color: var(--nav-hover);
+}
+
+.mobile-menu-item:active {
+  background: var(--card-background);
+}
+
+.mobile-menu-theme {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--header-border);
+  margin-top: auto;
+}
+
+.mobile-menu-theme-label {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Show hamburger button on mobile */
+@media (max-width: 767px) {
+  .hamburger-button {
+    display: block;
+  }
+  
+  .desktop-nav {
+    display: none;
+  }
+}
+
+/* Hide hamburger button on desktop */
+@media (min-width: 768px) {
+  .hamburger-button {
+    display: none;
+  }
+  
+  .desktop-nav {
+    display: flex;
+  }
+}
+
+/* Accessibility improvements */
+.theme-nav-link:focus,
+button:focus {
+  outline: 2px solid var(--nav-hover);
+  outline-offset: 2px;
+}
+
+/* Mobile hamburger icon styling */
+.hamburger-icon {
+  display: block;
+  line-height: 1;
+}
+
+/* Mobile theme toggle adjustments */
+@media (max-width: 640px) {
+  .theme-toggle {
+    padding: 6px 10px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Image hover animation - ensure smooth pan effect */
+.group img {
+  transition: object-position 1.5s ease-out !important;
+}
+
+.group:hover img {
+  object-position: center top !important;
+}
+
+/* Dynamic background styles */
+.dynamic-background {
+  position: relative;
+  min-height: 100vh;
+}
+
+.dynamic-background::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-opacity);
+  filter: blur(5px);
+  z-index: -2;
+  transition: background-image 0.5s ease-in-out;
+}
+
+.dynamic-background::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    rgba(var(--background-rgb), 0.75) 15%,
+    rgba(var(--background-rgb), 0.75) 85%,
+    var(--background) 100%
+  );
+  z-index: -1;
+}
+
+.dynamic-background-content {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Subtitle styling for period information */
+.period-subtitle {
+  color: var(--rating-yellow);
+}
+
+/* Override any default browser styles that might interfere */
+html {
+  color-scheme: light dark;
+}
+
+[data-theme="dark"] html {
+  color-scheme: dark;
+}
+
+[data-theme="light"] html {
+  color-scheme: light;
+}
+
+/* Smooth transitions for tab changes */
+.content-transition {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.content-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.content-transition-exit {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.content-grid {
+  transition: opacity 0.4s ease-in-out;
+}
+
+.content-grid.loading {
+  opacity: 0.6;
+}
+
+.period-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Mobile Menu Styles */
+.hamburger-icon {
+  width: 20px;
+  height: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.hamburger-line {
+  width: 100%;
+  height: 2px;
+  background-color: var(--foreground);
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.hamburger-line.open:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger-line.open:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-line.open:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.mobile-menu-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Mobile Menu */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 280px;
+  background: var(--card-background);
+  border-left: 1px solid var(--card-border);
+  z-index: 999;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-menu.open {
+  transform: translateX(0);
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--foreground);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: var(--card-hover);
+}
+
+.mobile-menu-nav {
+  padding: 1rem 0;
+  flex: 1;
+}
+
+.mobile-menu-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--card-border);
+  padding: 1rem 0;
+}
+
+.mobile-menu-link {
+  display: block;
+  padding: 1rem 1.5rem;
+  color: var(--foreground);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.mobile-menu-link:hover {
+  background: var(--card-hover);
+  border-left-color: var(--nav-hover);
+}
+
+.mobile-menu-button {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  color: var(--foreground);
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.mobile-menu-button:hover {
+  background: var(--card-hover);
+  border-left-color: var(--nav-hover);
+}
+
+.mobile-menu-button.theme-toggle {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 1.5rem;
+  padding-right: 2rem;
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--card-border);
+  margin: 0.5rem 1.5rem;
+}
+
+/* Responsive - Hide mobile menu on larger screens */
+@media (min-width: 768px) {
+  .mobile-menu,
+  .mobile-menu-overlay {
+    display: none;
+  }
+}
+
+/* Hover border effects for cards by rank */
+.rank-hover-1:hover {
+  border-color: #fbbf24 !important;
+}
+
+.rank-hover-2:hover {
+  border-color: #d1d5db !important;
+}
+
+.rank-hover-3:hover {
+  border-color: #fb923c !important;
+}
+
+.rank-hover-4plus:hover {
+  border-color: #60a5fa !important;
+}
+
+/* Floating Buttons */
+.scroll-to-top-button {
+  background: var(--rating-yellow);
+}
+
+.scroll-to-top-button:hover {
+  opacity: 0.9;
+}
+
+.instagram-button {
+  background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);
+}
+
+.instagram-button:hover {
+  opacity: 0.9;
+}
+
+.clear-cache-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.clear-cache-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.clear-cache-button:disabled {
+  cursor: not-allowed;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

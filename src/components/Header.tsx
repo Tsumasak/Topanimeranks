@@ -1,7 +1,5 @@
-import { Sun, Moon, RefreshCw } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useState, useEffect } from "react";
-import { CacheService } from "../services/cache";
-import { toast } from "sonner";
 
 interface HeaderProps {
   onThemeToggle?: () => void;
@@ -19,12 +17,6 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
-  };
-
-  const handleClearCache = () => {
-    CacheService.clear();
-    toast.success('Cache cleared successfully! Refresh the page to load fresh data.');
-    closeMobileMenu();
   };
 
   const getTooltip = () => {
@@ -53,7 +45,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
 
   return (
     <>
-      <header className="theme-header">
+      <header className="theme-header fixed top-0 left-0 right-0 z-50">
         <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
           <button 
             onClick={() => onPageChange?.('ranks')}
@@ -142,18 +134,6 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             className={`mobile-menu-link ${currentPage === 'anticipated' ? 'font-bold' : ''}`}
           >
             ⭐ Most Anticipated
-          </button>
-          
-          <div className="mobile-menu-divider"></div>
-          
-          <button 
-            onClick={handleClearCache}
-            className="mobile-menu-link"
-          >
-            <span className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Clear Cache
-            </span>
           </button>
         </nav>
         

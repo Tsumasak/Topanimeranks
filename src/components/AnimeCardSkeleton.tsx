@@ -2,9 +2,9 @@ import { Skeleton } from "./ui/skeleton";
 
 export function AnimeCardSkeleton() {
   return (
-    <div className="theme-card rounded-lg overflow-hidden border-2" style={{ borderColor: 'var(--card-border)' }}>
+    <div className="theme-card rounded-lg overflow-hidden border" style={{ borderColor: 'var(--card-border)' }}>
       <div className="relative">
-        <Skeleton className="w-full aspect-[3/4]" />
+        <Skeleton className="w-full h-48" />
         <div className="absolute top-2 left-2">
           <Skeleton className="w-12 h-12 rounded-full" />
         </div>
@@ -28,9 +28,9 @@ export function AnimeCardSkeleton() {
 
 export function AnticipatedCardSkeleton() {
   return (
-    <div className="theme-card rounded-lg overflow-hidden border-2" style={{ borderColor: 'var(--card-border)' }}>
+    <div className="theme-card rounded-lg overflow-hidden border" style={{ borderColor: 'var(--card-border)' }}>
       <div className="relative">
-        <Skeleton className="w-full aspect-[3/4]" />
+        <Skeleton className="w-full h-48" />
       </div>
       <div className="p-4 space-y-3">
         <Skeleton className="h-6 w-3/4" />

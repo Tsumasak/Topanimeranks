@@ -16,6 +16,28 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", savedTheme);
   }, []);
 
+  useEffect(() => {
+    // Update dynamic background based on first anime card image
+    const updateBackground = () => {
+      const firstAnimeCard = document.querySelector('.anime-card-image img') as HTMLImageElement;
+      if (firstAnimeCard && firstAnimeCard.src) {
+        document.documentElement.style.setProperty('--bg-image', `url(${firstAnimeCard.src})`);
+      }
+    };
+
+    // Initial update
+    const timer = setTimeout(updateBackground, 500);
+
+    // Update when images load
+    const observer = new MutationObserver(updateBackground);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [currentPage]);
+
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
@@ -148,7 +170,7 @@ export default function App() {
   ]; */
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+    <div className="dynamic-background min-h-screen">
       <Header 
         onThemeToggle={toggleTheme} 
         theme={theme} 
@@ -156,76 +178,12 @@ export default function App() {
         onPageChange={handlePageChange}
       />
 
-      {currentPage === 'ranks' ? <WeekControl /> : <SeasonControl />}
+      <div className="dynamic-background-content pt-20">
+        {currentPage === 'ranks' ? <WeekControl /> : <SeasonControl />}
+      </div>
 
       <FloatingButtons />
       <Toaster theme={theme as "light" | "dark"} />
-
-      {/* Footer */}
-      <footer className="theme-card border-t mt-16" style={{ borderColor: 'var(--card-border)' }}>
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <h3 className="text-xl mb-4">Top Anime Ranks</h3>
-              <p className="opacity-70">
-                Your ultimate destination for discovering and ranking the best
-                anime series of all time.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl mb-4">Quick Links</h3>
-              <ul className="space-y-2 opacity-70">
-                <li>
-                  <a href="#" className="theme-nav-link">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="theme-nav-link">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="theme-nav-link">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="theme-nav-link">
-                    Terms of Service
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-xl mb-4">Follow Us</h3>
-              <div className="flex gap-4">
-                <a
-                  href="#"
-                  className="w-10 h-10 theme-rating rounded-full flex items-center justify-center hover:theme-card-hover transition-colors"
-                >
-                  <span className="text-xl">𝕏</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 theme-rating rounded-full flex items-center justify-center hover:theme-card-hover transition-colors"
-                >
-                  <span className="text-xl">📘</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 theme-rating rounded-full flex items-center justify-center hover:theme-card-hover transition-colors"
-                >
-                  <span className="text-xl">📷</span>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t pt-8 text-center opacity-70" style={{ borderColor: 'var(--card-border)' }}>
-            <p>© 2025 Top Anime Ranks. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

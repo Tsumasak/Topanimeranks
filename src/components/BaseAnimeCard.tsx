@@ -143,7 +143,7 @@ export default function BaseAnimeCard({
 
   return (
     <a href={linkUrl} target="_blank" rel="noopener noreferrer" className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300`}>
-      <div className="relative flex-shrink-0 overflow-hidden">
+      <div className="relative flex-shrink-0 overflow-hidden anime-card-image">
         <ImageWithFallback 
           src={imageUrl} 
           alt={title} 

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimeCard } from './AnimeCard';
 import { AnimeCardSkeleton } from './AnimeCardSkeleton';
-import { DebugPanel } from './DebugPanel';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
 import { JikanService } from '../services/jikan';
 import { Episode } from '../types/anime';
@@ -116,7 +115,10 @@ const WeekControl = () => {
   // Load episodes when activeWeek changes
   useEffect(() => {
     const loadWeekEpisodes = async () => {
-      setLoading(true);
+      // Only show full loading skeleton on initial load, not on tab changes
+      if (!userSwitchedTab.current) {
+        setLoading(true);
+      }
       setError(null);
       
       try {
@@ -164,6 +166,7 @@ const WeekControl = () => {
         setDisplayedCount(12); // Reset to 12 on new load
         setTimeout(() => {
           setIsTransitioning(false);
+          userSwitchedTab.current = false; // Reset the flag
         }, 150);
       }
     };
@@ -349,22 +352,8 @@ const WeekControl = () => {
               )}
             </div>
           )}
-          
-          {/* Total episodes info */}
-          <div className="text-center mt-6">
-            <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.6}}>
-              Showing {Math.min(displayedCount, episodes.length)} of {episodes.length} episodes
-            </p>
-          </div>
         </>
       )}
-
-      {/* Debug Panel */}
-      <DebugPanel 
-        currentWeek={parseInt(activeWeek.replace('week', ''))}
-        currentEpisodes={episodes}
-        previousEpisodes={previousWeekEpisodes}
-      />
     </div>
   );
 };

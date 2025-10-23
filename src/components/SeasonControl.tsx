@@ -11,6 +11,7 @@ const SeasonControl = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [userSwitched, setUserSwitched] = useState(false);
   
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
@@ -30,6 +31,7 @@ const SeasonControl = () => {
   // Smooth transition function for season changes
   const handleSeasonChange = (newSeason: string) => {
     if (newSeason === activeSeason) return;
+    setUserSwitched(true);
     setIsTransitioning(true);
     setTimeout(() => {
       setActiveSeason(newSeason);
@@ -39,7 +41,10 @@ const SeasonControl = () => {
   // Load animes when activeSeason changes
   useEffect(() => {
     const loadSeasonAnimes = async () => {
-      setLoading(true);
+      // Only show full loading skeleton on initial load, not on season changes
+      if (!userSwitched) {
+        setLoading(true);
+      }
       setError(null);
       
       try {
@@ -53,12 +58,13 @@ const SeasonControl = () => {
         setLoading(false);
         setTimeout(() => {
           setIsTransitioning(false);
+          setUserSwitched(false); // Reset flag
         }, 150);
       }
     };
 
     loadSeasonAnimes();
-  }, [activeSeason]);
+  }, [activeSeason, userSwitched]);
 
   if (loading) {
     return (

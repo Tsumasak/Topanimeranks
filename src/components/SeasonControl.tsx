@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { AnticipatedCardSkeleton } from './AnimeCardSkeleton';
+import { Progress } from './ui/progress';
 import { SEASONS_DATA } from '../config/seasons';
 import { JikanService } from '../services/jikan';
 import { AnticipatedAnime } from '../types/anime';
@@ -12,6 +13,8 @@ const SeasonControl = () => {
   const [error, setError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [userSwitched, setUserSwitched] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
   
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
@@ -49,7 +52,10 @@ const SeasonControl = () => {
       
       try {
         const { season, year } = parseSeasonId(activeSeason);
-        const seasonData = await JikanService.getAnticipatedBySeason(season, year);
+        const seasonData = await JikanService.getAnticipatedBySeason(season, year, (current, total, message) => {
+          setLoadingProgress(current);
+          setLoadingMessage(message);
+        });
         setAnimes(seasonData.animes);
       } catch (err) {
         console.error('Error loading season data:', err);
@@ -69,10 +75,10 @@ const SeasonControl = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-        <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
+        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Most Anticipated Anime
         </h1>
-        <p className="text-center mb-8 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+        <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
           {currentSeason ? currentSeason.period : 'Loading period...'}
         </p>
         
@@ -95,10 +101,22 @@ const SeasonControl = () => {
           </div>
         </div>
 
-        <div className="mb-6 text-center">
-          <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
-            Loading data from MyAnimeList... This may take a moment on first load.
+        <div className="mb-8 text-center max-w-2xl mx-auto">
+          <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
+            {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
           </p>
+          <div className="w-full">
+            <Progress 
+              value={loadingProgress} 
+              className="h-3"
+              style={{
+                backgroundColor: 'var(--card-background)',
+              }}
+            />
+            <p className="text-xs mt-2" style={{color: 'var(--foreground)', opacity: 0.5}}>
+              {loadingProgress}%
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -113,7 +131,7 @@ const SeasonControl = () => {
   if (error) {
     return (
       <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-        <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
+        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Most Anticipated Anime
         </h1>
         <div className="text-center py-16">
@@ -141,10 +159,10 @@ const SeasonControl = () => {
 
   return (
     <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-      <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
+      <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Most Anticipated Anime
       </h1>
-      <p className="text-center mb-8 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+      <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {currentSeason ? currentSeason.period : 'Loading period...'}
       </p>
       

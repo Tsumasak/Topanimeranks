@@ -193,7 +193,7 @@ export default function BaseAnimeCard({
               style={{ color: trendInfo.color }}
             >
               <span>{trendInfo.symbol}</span>
-              <span className="text-[10px]">{trendInfo.text}</span>
+              <span className="text-[12px]">{trendInfo.text}</span>
             </div>
           </div>
           

@@ -17,6 +17,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Scroll to top when page changes
+    window.scrollTo(0, 0);
+
     // Update dynamic background based on first anime card image
     const updateBackground = () => {
       const firstAnimeCard = document.querySelector('.anime-card-image img') as HTMLImageElement;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimeCard } from './AnimeCard';
 import { AnimeCardSkeleton } from './AnimeCardSkeleton';
+import { Progress } from './ui/progress';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
 import { JikanService } from '../services/jikan';
 import { Episode } from '../types/anime';
@@ -81,6 +82,8 @@ const WeekControl = () => {
   const [weekDates, setWeekDates] = useState<{ startDate: string; endDate: string } | null>(null);
   const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 episodes
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -127,8 +130,11 @@ const WeekControl = () => {
         
         console.log(`\n========== LOADING WEEK ${weekNumber} ==========`);
         
-        // Load current week episodes
-        const weekData = await JikanService.getWeekData(weekNumber);
+        // Load current week episodes with progress callback
+        const weekData = await JikanService.getWeekData(weekNumber, (current, total, message) => {
+          setLoadingProgress(current);
+          setLoadingMessage(message);
+        });
         setEpisodes(weekData.episodes);
         
         console.log(`[WeekControl] Week ${weekNumber} loaded: ${weekData.episodes.length} episodes`);
@@ -201,10 +207,10 @@ const WeekControl = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-        <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
-          Top Anime Ranks
+        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+          Weekly Episode Ranking
         </h1>
-        <p className="text-center mb-8 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+        <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
           {weekDates && currentWeek 
             ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, currentWeek.isCurrentWeek)
             : currentWeek 
@@ -231,10 +237,22 @@ const WeekControl = () => {
           </div>
         </div>
 
-        <div className="mb-6 text-center">
-          <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
-            Loading data from MyAnimeList... This may take a moment on first load.
+        <div className="mb-8 text-center max-w-2xl mx-auto">
+          <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
+            {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
           </p>
+          <div className="w-full">
+            <Progress 
+              value={loadingProgress} 
+              className="h-3"
+              style={{
+                backgroundColor: 'var(--card-background)',
+              }}
+            />
+            <p className="text-xs mt-2" style={{color: 'var(--foreground)', opacity: 0.5}}>
+              {loadingProgress}%
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -249,8 +267,8 @@ const WeekControl = () => {
   if (error) {
     return (
       <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-        <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
-          Top Anime Ranks
+        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+          Weekly Episode Ranking
         </h1>
         <div className="text-center py-16">
           <p className="text-xl mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
@@ -277,10 +295,10 @@ const WeekControl = () => {
 
   return (
     <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
-      <h1 className="text-4xl text-center mb-2" style={{color: 'var(--foreground)'}}>
-        Top Anime Ranks
+      <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+        Weekly Episode Ranking
       </h1>
-      <p className="text-center mb-8 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+      <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {weekDates && currentWeek 
           ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, currentWeek.isCurrentWeek)
           : currentWeek 

@@ -117,7 +117,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
       className={`theme-card rounded-lg overflow-hidden ${borderStyle} ${hoverClass} transition-all duration-300 h-full flex flex-col group`}
     >
       {/* Image Section with Tags */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden flex-shrink-0">
+      <div className="relative aspect-[3/4] w-full overflow-hidden flex-shrink-0 anime-card-image">
         <img 
           src={imageUrl} 
           alt={title}

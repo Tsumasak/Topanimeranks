@@ -2,9 +2,15 @@ import { JikanAnimeData, JikanEpisode, JikanEpisodesResponse, Episode, Anticipat
 import { CacheService } from './cache';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
-const RATE_LIMIT_DELAY = 1000; // 1 second between requests to be safe
+const RATE_LIMIT_DELAY = 350; // 350ms between requests (allows ~3 requests per second, staying under the 3/sec limit)
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
+
+// Cache version - increment this to invalidate all caches when fixing bugs
+const CACHE_VERSION = 'v4';
+
+// Progress callback type
+type ProgressCallback = (current: number, total: number, message: string) => void;
 
 class RateLimiter {
   private queue: Array<() => Promise<any>> = [];
@@ -80,31 +86,79 @@ export class JikanService {
     });
   }
 
-  // Get anime by season
-  static async getSeasonAnimes(year: number, season: string): Promise<JikanAnimeData[]> {
-    const cacheKey = `jikan_season_${year}_${season}`;
+  // Get anime by season with pagination
+  static async getSeasonAnimes(year: number, season: string, maxPages: number = 5): Promise<JikanAnimeData[]> {
+    const cacheKey = `${CACHE_VERSION}_jikan_season_${year}_${season}_${maxPages}`;
     const cached = CacheService.get<JikanAnimeData[]>(cacheKey);
     if (cached) return cached;
 
-    const data = await this.fetchWithRetry<JikanAnimeData[]>(`/seasons/${year}/${season}`);
-    CacheService.set(cacheKey, data);
-    return data;
+    const allAnimes: JikanAnimeData[] = [];
+    
+    // Fetch multiple pages to get more animes
+    for (let page = 1; page <= maxPages; page++) {
+      try {
+        const response = await this.fetchWithRetry<{data: JikanAnimeData[], pagination: JikanPagination}>(
+          `/seasons/${year}/${season}?page=${page}`,
+          MAX_RETRIES,
+          true
+        );
+        
+        allAnimes.push(...response.data);
+        
+        // Stop if there are no more pages
+        if (!response.pagination.has_next_page) {
+          console.log(`[SeasonAnimes] Fetched all ${allAnimes.length} animes for ${season} ${year} (${page} pages)`);
+          break;
+        }
+      } catch (error) {
+        console.warn(`[SeasonAnimes] Failed to fetch page ${page} for ${season} ${year}:`, error);
+        break;
+      }
+    }
+    
+    console.log(`[SeasonAnimes] Total animes fetched for ${season} ${year}: ${allAnimes.length}`);
+    CacheService.set(cacheKey, allAnimes);
+    return allAnimes;
   }
 
-  // Get upcoming animes
-  static async getUpcomingAnimes(): Promise<JikanAnimeData[]> {
-    const cacheKey = 'jikan_upcoming';
+  // Get upcoming animes with pagination
+  static async getUpcomingAnimes(maxPages: number = 10): Promise<JikanAnimeData[]> {
+    const cacheKey = `${CACHE_VERSION}_jikan_upcoming_${maxPages}`;
     const cached = CacheService.get<JikanAnimeData[]>(cacheKey);
     if (cached) return cached;
 
-    const data = await this.fetchWithRetry<JikanAnimeData[]>('/seasons/upcoming');
-    CacheService.set(cacheKey, data);
-    return data;
+    const allAnimes: JikanAnimeData[] = [];
+    
+    // Fetch multiple pages to get more upcoming animes
+    for (let page = 1; page <= maxPages; page++) {
+      try {
+        const response = await this.fetchWithRetry<{data: JikanAnimeData[], pagination: JikanPagination}>(
+          `/seasons/upcoming?page=${page}`,
+          MAX_RETRIES,
+          true
+        );
+        
+        allAnimes.push(...response.data);
+        
+        // Stop if there are no more pages
+        if (!response.pagination.has_next_page) {
+          console.log(`[UpcomingAnimes] Fetched all ${allAnimes.length} animes (${page} pages)`);
+          break;
+        }
+      } catch (error) {
+        console.warn(`[UpcomingAnimes] Failed to fetch page ${page}:`, error);
+        break;
+      }
+    }
+    
+    console.log(`[UpcomingAnimes] Total animes fetched: ${allAnimes.length}`);
+    CacheService.set(cacheKey, allAnimes);
+    return allAnimes;
   }
 
   // Get episodes for an anime with pagination support
   static async getAnimeEpisodes(animeId: number): Promise<JikanEpisode[]> {
-    const cacheKey = `jikan_episodes_${animeId}_all`;
+    const cacheKey = `${CACHE_VERSION}_jikan_episodes_${animeId}_all`;
     const cached = CacheService.get<JikanEpisode[]>(cacheKey);
     if (cached) return cached;
 
@@ -145,8 +199,17 @@ export class JikanService {
   }
 
   // Calculate the correct episode page URL for MAL
-  static getEpisodePageUrl(animeId: number, episodeNumber: number, totalEpisodes: number): string {
-    const baseUrl = `https://myanimelist.net/anime/${animeId}`;
+  static getEpisodePageUrl(animeUrl: string, episodeNumber: number, totalEpisodes: number): string {
+    // Extract the anime name from the URL
+    // Example: https://myanimelist.net/anime/57025/Tondemo_Skill_de_Isekai_Hourou_Meshi_2
+    // We want: https://myanimelist.net/anime/57025/Tondemo_Skill_de_Isekai_Hourou_Meshi_2/episode
+    
+    let baseUrl = animeUrl;
+    
+    // Remove trailing slash if present
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
     
     // MAL shows 100 episodes per page
     // offset is calculated as: (pageNumber - 1) * 100
@@ -164,7 +227,7 @@ export class JikanService {
 
   // Get anime details
   static async getAnimeDetails(animeId: number): Promise<JikanAnimeData> {
-    const cacheKey = `jikan_anime_${animeId}`;
+    const cacheKey = `${CACHE_VERSION}_jikan_anime_${animeId}`;
     const cached = CacheService.get<JikanAnimeData>(cacheKey);
     if (cached) return cached;
 
@@ -176,7 +239,7 @@ export class JikanService {
   // Helper: Convert Jikan anime + episode to our Episode type
   static convertToEpisode(anime: JikanAnimeData, episode: JikanEpisode): Episode {
     const totalEpisodes = anime.episodes || 0;
-    const episodePageUrl = this.getEpisodePageUrl(anime.mal_id, episode.mal_id, totalEpisodes);
+    const episodePageUrl = this.getEpisodePageUrl(anime.url, episode.mal_id, totalEpisodes);
     
     // Use episode score if available, otherwise default to 0
     const episodeScore = episode.score || 0;
@@ -223,8 +286,8 @@ export class JikanService {
   }
 
   // Get week data for Fall 2025
-  static async getWeekData(weekNumber: number): Promise<WeekData> {
-    const cacheKey = `anime_week_${weekNumber}`;
+  static async getWeekData(weekNumber: number, onProgress?: ProgressCallback): Promise<WeekData> {
+    const cacheKey = `${CACHE_VERSION}_anime_week_${weekNumber}`;
     const cached = CacheService.get<WeekData>(cacheKey);
     if (cached) {
       console.log(`[WeekData] Loading week ${weekNumber} from cache`);
@@ -232,6 +295,8 @@ export class JikanService {
     }
 
     console.log(`[WeekData] Fetching fresh data for week ${weekNumber}`);
+    
+    onProgress?.(0, 100, 'Fetching anime list from MyAnimeList...');
 
     // Calculate week dates (Week 1 starts September 29, 2025 - Fall 2025)
     const baseDate = new Date('2025-09-29');
@@ -249,14 +314,17 @@ export class JikanService {
     console.log(`[WeekData] Week ${weekNumber} range: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
 
     // Get Fall 2025 animes (September - December 2025)
+    onProgress?.(10, 100, 'Fetching anime list from MyAnimeList...');
     const animes = await this.getSeasonAnimes(2025, 'fall');
     console.log(`[WeekData] Found ${animes.length} animes in Fall 2025`);
     
-    // FILTER: Only animes with 20,000+ members
-    const popularAnimes = animes.filter(anime => anime.members >= 20000);
-    const filteredOut = animes.filter(anime => anime.members < 20000);
+    onProgress?.(20, 100, `Found ${animes.length} animes, filtering by popularity...`);
     
-    console.log(`[WeekData] After 20k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
+    // FILTER: Only animes with 10,000+ members
+    const popularAnimes = animes.filter(anime => anime.members >= 10000);
+    const filteredOut = animes.filter(anime => anime.members < 10000);
+    
+    console.log(`[WeekData] After 10k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
     
     // Log some examples of filtered out animes (if any)
     if (filteredOut.length > 0) {
@@ -275,7 +343,14 @@ export class JikanService {
     // Process all popular animes (no hard limit, just the member filter)
     console.log(`[WeekData] Processing ${popularAnimes.length} animes with 20k+ members`);
     
+    const totalAnimes = popularAnimes.length;
+    let processedAnimes = 0;
+    
     for (const anime of popularAnimes) {
+      processedAnimes++;
+      const progress = 20 + Math.floor((processedAnimes / totalAnimes) * 70); // 20% to 90%
+      onProgress?.(progress, 100, `Processing ${processedAnimes}/${totalAnimes} animes...`);
+      
       console.log(`[WeekData] Checking anime: ${anime.title} (${anime.members.toLocaleString()} members)`);
       const episodes = await this.getAnimeEpisodes(anime.mal_id);
       
@@ -337,6 +412,8 @@ export class JikanService {
     }
 
     console.log(`[WeekData] Total episodes found: ${allEpisodes.length}`);
+    
+    onProgress?.(90, 100, 'Organizing and ranking episodes...');
 
     // CRITICAL FIX: Keep only ONE episode per anime (the one with highest score)
     const animeMap = new Map<number, Episode>();
@@ -382,53 +459,132 @@ export class JikanService {
 
     console.log(`[WeekData] Caching ${weekData.episodes.length} episodes for week ${weekNumber}`);
     CacheService.set(cacheKey, weekData);
+    
+    onProgress?.(100, 100, 'Complete!');
+    
     return weekData;
   }
 
   // Get anticipated animes by season
-  static async getAnticipatedBySeason(season: string, year: number): Promise<SeasonData> {
-    const cacheKey = `anime_anticipated_${season}_${year}`;
+  static async getAnticipatedBySeason(season: string, year: number, onProgress?: ProgressCallback): Promise<SeasonData> {
+    const cacheKey = `${CACHE_VERSION}_anime_anticipated_${season}_${year}`;
     const cached = CacheService.get<SeasonData>(cacheKey);
     if (cached) return cached;
 
+    onProgress?.(0, 100, 'Fetching upcoming anime from MyAnimeList...');
+    
     let animes: JikanAnimeData[] = [];
 
     if (season === 'later') {
-      // For "later", get upcoming animes that are beyond Spring 2026
-      const upcoming = await this.getUpcomingAnimes();
-      animes = upcoming.filter(anime => {
-        if (!anime.year) return false;
-        if (anime.year > 2026) return true;
-        if (anime.year === 2026 && anime.season) {
-          const seasonOrder = ['winter', 'spring', 'summer', 'fall'];
-          const animeSeasonIndex = seasonOrder.indexOf(anime.season.toLowerCase());
-          return animeSeasonIndex > 1; // summer and fall of 2026, or later
-        }
-        return false;
+      // For "later": Get ALL upcoming, subtract animes from other tabs
+      onProgress?.(10, 100, 'Fetching all upcoming anime...');
+      
+      // 1. Get ALL upcoming animes
+      const allUpcoming = await this.getUpcomingAnimes();
+      console.log(`[Later] Total upcoming animes: ${allUpcoming.length}`);
+      
+      onProgress?.(30, 100, 'Fetching Fall 2025 animes...');
+      
+      // 2. Get animes from other tabs to subtract
+      const fall2025Animes = await this.getSeasonAnimes(2025, 'fall');
+      
+      onProgress?.(45, 100, 'Fetching Winter 2026 animes...');
+      const winter2026Animes = await this.getSeasonAnimes(2026, 'winter');
+      
+      onProgress?.(60, 100, 'Fetching Spring 2026 animes...');
+      const spring2026Animes = await this.getSeasonAnimes(2026, 'spring');
+      
+      onProgress?.(75, 100, 'Filtering Later animes...');
+      
+      // 3. Create a Set of IDs from other seasons
+      const otherSeasonsIds = new Set<number>();
+      [...fall2025Animes, ...winter2026Animes, ...spring2026Animes].forEach(anime => {
+        otherSeasonsIds.add(anime.mal_id);
       });
+      
+      console.log(`[Later] Animes in other seasons: ${otherSeasonsIds.size}`);
+      
+      // 4. Filter upcoming: remove animes that appear in other tabs
+      animes = allUpcoming.filter(anime => !otherSeasonsIds.has(anime.mal_id));
+      
+      console.log(`[Later] After subtracting other seasons: ${animes.length} animes`);
     } else {
       // For specific seasons, try to get from upcoming or season endpoint
       try {
-        animes = await this.getSeasonAnimes(year, season);
+        onProgress?.(30, 100, 'Fetching season anime...');
+        const seasonAnimes = await this.getSeasonAnimes(year, season);
+        
+        // STRICT FILTER: Only include animes that match the exact season and year
+        animes = seasonAnimes.filter(anime => {
+          const matchesSeason = anime.season?.toLowerCase() === season.toLowerCase();
+          const matchesYear = anime.year === year;
+          
+          if (!matchesSeason || !matchesYear) {
+            console.log(`[AnticipatedBySeason] Filtering out ${anime.title_english || anime.title}: Season=${anime.season} ${anime.year} (expected: ${season} ${year})`);
+            return false;
+          }
+          
+          return true;
+        });
       } catch {
         // If season doesn't exist yet, get from upcoming
+        onProgress?.(30, 100, 'Fetching from upcoming anime...');
         const upcoming = await this.getUpcomingAnimes();
-        animes = upcoming.filter(anime => 
-          anime.season?.toLowerCase() === season.toLowerCase() && 
-          anime.year === year
-        );
+        onProgress?.(60, 100, 'Filtering by season...');
+        animes = upcoming.filter(anime => {
+          const matchesSeason = anime.season?.toLowerCase() === season.toLowerCase();
+          const matchesYear = anime.year === year;
+          
+          if (!matchesSeason || !matchesYear) {
+            return false;
+          }
+          
+          return true;
+        });
       }
     }
 
+    onProgress?.(80, 100, 'Sorting by popularity...');
+    
+    console.log(`[AnticipatedBySeason] Found ${animes.length} animes for ${season} ${year}`);
+    
+    // DEDUPLICATION: Remove duplicates by mal_id
+    const uniqueAnimeMap = new Map<number, JikanAnimeData>();
+    for (const anime of animes) {
+      const existing = uniqueAnimeMap.get(anime.mal_id);
+      if (!existing) {
+        uniqueAnimeMap.set(anime.mal_id, anime);
+      } else {
+        console.log(`[AnticipatedBySeason] ⚠️ Duplicate found: ${anime.title} (ID: ${anime.mal_id})`);
+      }
+    }
+    
+    const uniqueAnimes = Array.from(uniqueAnimeMap.values());
+    console.log(`[AnticipatedBySeason] After deduplication: ${uniqueAnimes.length} unique animes`);
+    
+    // FILTER: Only animes with 10,000+ members to avoid overloading
+    const popularAnimes = uniqueAnimes.filter(anime => anime.members >= 10000);
+    const filteredOut = uniqueAnimes.filter(anime => anime.members < 10000);
+    
+    console.log(`[AnticipatedBySeason] After 10k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
+    
     // Sort by members (most popular first)
-    animes.sort((a, b) => b.members - a.members);
+    popularAnimes.sort((a, b) => b.members - a.members);
+    
+    // Log top 5 for debugging
+    console.log(`[AnticipatedBySeason] Top 5 animes:`, popularAnimes.slice(0, 5).map(a => 
+      `${a.title_english || a.title} (${a.members.toLocaleString()} members, Season: ${a.season} ${a.year})`
+    ));
 
     const seasonData: SeasonData = {
       season: `${season}_${year}`,
-      animes: animes.slice(0, 20).map(anime => this.convertToAnticipatedAnime(anime)),
+      animes: popularAnimes.slice(0, 50).map(anime => this.convertToAnticipatedAnime(anime)),
     };
 
     CacheService.set(cacheKey, seasonData);
+    
+    onProgress?.(100, 100, 'Complete!');
+    
     return seasonData;
   }
 }

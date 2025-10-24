@@ -1,5 +1,6 @@
 import { Sun, Moon } from "lucide-react";
 import { useState, useEffect } from "react";
+import Union from "../imports/Union";
 
 interface HeaderProps {
   onThemeToggle?: () => void;
@@ -49,9 +50,11 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
         <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
           <button 
             onClick={() => onPageChange?.('ranks')}
-            className="text-xl theme-nav-link"
+            className="flex items-center justify-start logo-button"
           >
-            Anime Ranks
+            <div className="h-[40px] md:h-[50px]">
+              <Union />
+            </div>
           </button>
           
           {/* Desktop Navigation */}
@@ -59,13 +62,13 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             <div className="space-x-4">
               <button 
                 onClick={() => onPageChange?.('ranks')}
-                className={`theme-nav-link transition-colors ${currentPage === 'ranks' ? 'font-bold' : ''}`}
+                className="theme-nav-link transition-colors"
               >
                 Top Episodes
               </button>
               <button 
                 onClick={() => onPageChange?.('anticipated')}
-                className={`theme-nav-link transition-colors ${currentPage === 'anticipated' ? 'font-bold' : ''}`}
+                className="theme-nav-link transition-colors"
               >
                 Most Anticipated
               </button>

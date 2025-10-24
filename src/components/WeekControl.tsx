@@ -131,7 +131,7 @@ const WeekControl = () => {
         console.log(`\n========== LOADING WEEK ${weekNumber} ==========`);
         
         // Load current week episodes with progress callback
-        const weekData = await JikanService.getWeekData(weekNumber, (current, total, message) => {
+        const weekData = await JikanService.getWeekData(weekNumber, (current, _total, message) => {
           setLoadingProgress(current);
           setLoadingMessage(message);
         });

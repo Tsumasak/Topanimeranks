@@ -1,4 +1,4 @@
-import { JikanAnimeData, JikanEpisode, JikanEpisodesResponse, Episode, AnticipatedAnime, WeekData, SeasonData } from '../types/anime';
+import { JikanAnimeData, JikanEpisode, JikanEpisodesResponse, JikanPagination, Episode, AnticipatedAnime, WeekData, SeasonData } from '../types/anime';
 import { CacheService } from './cache';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';

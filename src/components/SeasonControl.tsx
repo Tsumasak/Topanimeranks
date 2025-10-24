@@ -52,7 +52,7 @@ const SeasonControl = () => {
       
       try {
         const { season, year } = parseSeasonId(activeSeason);
-        const seasonData = await JikanService.getAnticipatedBySeason(season, year, (current, total, message) => {
+        const seasonData = await JikanService.getAnticipatedBySeason(season, year, (current, _total, message) => {
           setLoadingProgress(current);
           setLoadingMessage(message);
         });

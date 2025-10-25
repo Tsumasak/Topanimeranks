@@ -73,16 +73,31 @@ export const MANUAL_EPISODES: ManualEpisodeConfig[] = [
   {
     animeId: 60564,
     episodeNumber: 3,
-    episodeTitle: "Chestnuts Roasting on an Open Fire", // ⚠️ SUBSTITUIR pelo título real
+    episodeTitle: "Chestnuts Roasting on an Open Fire",
     weekNumber: 3,
     score: 4.41,
   },
   {
     animeId: 54703,
     episodeNumber: 3,
-    episodeTitle: "Mizuha", // ⚠️ SUBSTITUIR pelo título real
+    episodeTitle: "Mizuha",
     weekNumber: 3,
     score: 4.45,
+  },
+  {
+    animeId: 47158,
+    episodeNumber: 2,
+    episodeTitle:
+      "The Cousin I Haven`t Seen in Years Is Cold to Me",
+    weekNumber: 2,
+    score: 3.97,
+  },
+  {
+    animeId: 47158,
+    episodeNumber: 2,
+    episodeTitle: "Only I Can Be a Pain to My Uncle`s Daughter",
+    weekNumber: 3,
+    score: 3.98,
   },
 
   // Adicione mais episódios acima desta linha...

@@ -227,36 +227,8 @@ const WeekControl = () => {
             ? getFormattedPeriod(currentWeek, currentWeek.isCurrentWeek) 
             : 'Loading period...'}
         </p>
-        
-        {/* Week tabs with sliding indicator */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
-            {WEEKS_DATA.map((week) => (
-              <button
-                key={week.id}
-                onClick={() => handleWeekChange(week.id)}
-                className={`px-4 py-2 rounded-md text-sm relative overflow-hidden ${
-                  activeWeek === week.id 
-                    ? '' 
-                    : 'theme-nav-link'
-                }`}
-                style={activeWeek === week.id ? { color: 'var(--rank-text)' } : {}}
-              >
-                {activeWeek === week.id && (
-                  <motion.div
-                    layoutId="weekIndicator"
-                    className="absolute inset-0 rounded-md"
-                    style={{ backgroundColor: 'var(--rank-background)' }}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <span className="relative z-10">{week.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <div className="mb-8 text-center max-w-2xl mx-auto px-[40px] py-[0px]">
+        <div className="mb-8 text-center max-w-2xl mx-auto">
           <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
             {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
           </p>
@@ -354,8 +326,8 @@ const WeekControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40 -mx-[40px] px-[40px]">
-        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px] my-[0px]">
+      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40">
+        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
           {/* Previous Week Button */}
           {(() => {
             const currentIndex = WEEKS_DATA.findIndex(w => w.id === activeWeek);

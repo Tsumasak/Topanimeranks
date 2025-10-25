@@ -93,12 +93,21 @@
   --logo-color: #ffffff;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-y: scroll; /* Always show vertical scrollbar to prevent layout shift */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 101vh; /* Force scrollbar to always be present, preventing layout shift */
 }
+
+
 
 /* Custom theme classes for components */
 .theme-card {
@@ -219,6 +228,17 @@ body {
 /* Improve readability for form elements */
 button, input, select, textarea {
   color: var(--foreground);
+}
+
+/* Prevent zoom on input focus in iOS Safari */
+@media screen and (max-width: 767px) {
+  select, 
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* Ensure text contrast in all scenarios */
@@ -769,8 +789,33 @@ html {
   );
 }
 
+
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* Ensure Radix UI portals don't cause overflow */
+[data-radix-popper-content-wrapper] {
+  z-index: 100;
+}
+
+/* Prevent dropdown from causing page jump/shift */
+[data-radix-select-viewport] {
+  max-height: 300px;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 767px) {
+  /* Smooth scrolling on iOS */
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent horizontal overflow on mobile */
+  body {
+    overflow-x: hidden;
   }
 }

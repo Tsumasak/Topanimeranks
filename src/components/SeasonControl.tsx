@@ -85,37 +85,9 @@ const SeasonControl = () => {
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Most Anticipated Anime
         </h1>
-        <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
+        <p className="text-center mb-16 text-sm" style={{color: 'var(--rating-yellow)'}}>
           {currentSeason ? currentSeason.period : 'Loading period...'}
         </p>
-        
-        {/* Season tabs with sliding indicator */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
-            {SEASONS_DATA.map((season) => (
-              <button
-                key={season.id}
-                onClick={() => handleSeasonChange(season.id)}
-                className={`px-4 py-2 rounded-md text-sm relative overflow-hidden ${
-                  activeSeason === season.id 
-                    ? '' 
-                    : 'theme-nav-link'
-                }`}
-                style={activeSeason === season.id ? { color: 'var(--rank-text)' } : {}}
-              >
-                {activeSeason === season.id && (
-                  <motion.div
-                    layoutId="seasonIndicator"
-                    className="absolute inset-0 rounded-md"
-                    style={{ backgroundColor: 'var(--rank-background)' }}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <span className="relative z-10">{season.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div className="mb-8 text-center max-w-2xl mx-auto">
           <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
@@ -211,8 +183,8 @@ const SeasonControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40 -mx-[40px] px-[40px]">
-        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px] my-[0px]">
+      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40">
+        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
           {/* Previous Season Button */}
           {(() => {
             const currentIndex = SEASONS_DATA.findIndex(s => s.id === activeSeason);

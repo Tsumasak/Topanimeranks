@@ -12,7 +12,6 @@ interface AnimeCardProps {
   genres?: string[]; // Genres array like ["Action", "Comedy"]
   themes?: string[]; // Themes array like ["School", "Super Power"]
   positionChange?: number; // Position change from previous week (positive = up, negative = down, 0 = same, undefined = new)
-  isManual?: boolean; // True if episode was manually added (not from API)
 }
 
 export function AnimeCard({ 
@@ -26,8 +25,7 @@ export function AnimeCard({
   demographics = [],
   genres = [],
   themes = [],
-  positionChange,
-  isManual = false
+  positionChange
 }: AnimeCardProps) {
   return (
     <BaseAnimeCard
@@ -42,7 +40,6 @@ export function AnimeCard({
       genres={genres}
       themes={themes}
       positionChange={positionChange}
-      isManual={isManual}
     />
   );
 }

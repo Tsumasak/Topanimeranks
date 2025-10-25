@@ -289,8 +289,7 @@ export class JikanService {
   // Helper: Convert manual episode config to Episode
   static async convertManualEpisodeToEpisode(
     config: ManualEpisodeConfig,
-    weekStart: Date,
-    weekEnd: Date
+    weekStart: Date
   ): Promise<Episode | null> {
     try {
       console.log(`[ManualEpisode] Processing manual episode: Anime ${config.animeId}, EP${config.episodeNumber}`);
@@ -356,7 +355,7 @@ export class JikanService {
     
     const episodes: Episode[] = [];
     for (const config of manualEpisodesForWeek) {
-      const episode = await this.convertManualEpisodeToEpisode(config, weekStart, weekEnd);
+      const episode = await this.convertManualEpisodeToEpisode(config, weekStart);
       if (episode) {
         episodes.push(episode);
       }

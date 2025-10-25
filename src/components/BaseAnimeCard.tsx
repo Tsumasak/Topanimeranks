@@ -12,7 +12,6 @@ interface BaseAnimeCardProps {
   genres?: string[]; // Genres array like ["Action", "Comedy"]
   themes?: string[]; // Themes array like ["School", "Super Power"]
   positionChange?: number; // Position change from previous week (positive = up, negative = down, 0 = same, undefined = new)
-  isManual?: boolean; // True if episode was manually added (not from API)
 }
 
 export default function BaseAnimeCard({ 
@@ -26,8 +25,7 @@ export default function BaseAnimeCard({
   demographics = [],
   genres = [],
   themes = [],
-  positionChange,
-  isManual = false
+  positionChange
 }: BaseAnimeCardProps) {
   // Determine border styling and gradients based on rank
   let borderStyle = 'border border-gray-600'; // Default border for positions 4+

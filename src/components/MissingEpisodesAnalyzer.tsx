@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Search, Copy, CheckCircle, AlertTriangle, FileCode } from 'lucide-react';
 import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { JikanService } from '../services/jikan';
 import { Episode } from '../types/anime';
+import { WEEKS_DATA } from '../config/weeks';
 
 interface MissingEpisode {
   animeId: number;
@@ -11,48 +15,69 @@ interface MissingEpisode {
   suggestedEpisodeNumber: number;
   lastScore: number;
   suggestedScore: number;
+  episodeTitle: string;
+  newScore: number;
 }
 
 export function MissingEpisodesAnalyzer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [weekBase, setWeekBase] = useState<string>('2');
+  const [weekComparison, setWeekComparison] = useState<string>('3');
   const [missing, setMissing] = useState<MissingEpisode[]>([]);
   const [copied, setCopied] = useState(false);
+
+  const updateEpisodeTitle = (animeId: number, title: string) => {
+    setMissing(prev => prev.map(ep => 
+      ep.animeId === animeId ? { ...ep, episodeTitle: title } : ep
+    ));
+  };
+
+  const updateEpisodeScore = (animeId: number, score: number) => {
+    setMissing(prev => prev.map(ep => 
+      ep.animeId === animeId ? { ...ep, newScore: score } : ep
+    ));
+  };
 
   const analyzeEpisodes = async () => {
     setIsAnalyzing(true);
     setMissing([]);
 
     try {
-      console.log('🔍 Analisando episódios faltantes...');
+      const weekBaseNum = parseInt(weekBase);
+      const weekCompNum = parseInt(weekComparison);
 
-      // Carregar Week 2
-      const week2Data = await JikanService.getWeekData(2);
+      console.log(`🔍 Analisando episódios: Week ${weekBaseNum} vs Week ${weekCompNum}...`);
+
+      // Carregar Week Base
+      const weekBaseData = await JikanService.getWeekData(weekBaseNum);
       
-      // Carregar Week 3
-      const week3Data = await JikanService.getWeekData(3);
+      // Carregar Week Comparação
+      const weekCompData = await JikanService.getWeekData(weekCompNum);
 
       // Criar mapas
-      const week2Map = new Map<number, Episode>();
-      week2Data.episodes.forEach(ep => week2Map.set(ep.animeId, ep));
+      const weekBaseMap = new Map<number, Episode>();
+      weekBaseData.episodes.forEach(ep => weekBaseMap.set(ep.animeId, ep));
 
-      const week3Map = new Map<number, Episode>();
-      week3Data.episodes.forEach(ep => week3Map.set(ep.animeId, ep));
+      const weekCompMap = new Map<number, Episode>();
+      weekCompData.episodes.forEach(ep => weekCompMap.set(ep.animeId, ep));
 
       // Encontrar diferenças
       const missingEpisodes: MissingEpisode[] = [];
 
-      week2Map.forEach((week2Episode, animeId) => {
-        if (!week3Map.has(animeId)) {
+      weekBaseMap.forEach((baseEpisode, animeId) => {
+        if (!weekCompMap.has(animeId)) {
           const scoreVariation = (Math.random() - 0.5) * 0.1;
-          const suggestedScore = Math.max(0, Math.min(10, week2Episode.score + scoreVariation));
+          const suggestedScore = Math.max(0, Math.min(10, baseEpisode.score + scoreVariation));
 
           missingEpisodes.push({
             animeId,
-            animeTitle: week2Episode.animeTitle,
-            lastEpisodeNumber: week2Episode.episodeNumber,
-            suggestedEpisodeNumber: week2Episode.episodeNumber + 1,
-            lastScore: week2Episode.score,
+            animeTitle: baseEpisode.animeTitle,
+            lastEpisodeNumber: baseEpisode.episodeNumber,
+            suggestedEpisodeNumber: baseEpisode.episodeNumber + 1,
+            lastScore: baseEpisode.score,
             suggestedScore: parseFloat(suggestedScore.toFixed(2)),
+            episodeTitle: `Episode ${baseEpisode.episodeNumber + 1}`,
+            newScore: parseFloat(suggestedScore.toFixed(2)),
           });
         }
       });
@@ -74,9 +99,9 @@ export function MissingEpisodesAnalyzer() {
       return `  {
     animeId: ${item.animeId},
     episodeNumber: ${item.suggestedEpisodeNumber},
-    episodeTitle: "Episode ${item.suggestedEpisodeNumber}", // ⚠️ SUBSTITUIR pelo título real
-    weekNumber: 3,
-    score: ${item.suggestedScore}
+    episodeTitle: "${item.episodeTitle}",
+    weekNumber: ${weekComparison},
+    score: ${item.newScore}
   }`;
     }).join(',\n');
 
@@ -104,20 +129,62 @@ export function MissingEpisodesAnalyzer() {
           Analisador de Episódios Faltantes
         </h2>
         <p className="text-muted-foreground">
-          Compara Week 2 com Week 3 para identificar episódios que deveriam estar presentes mas não estão na API.
+          Compara duas semanas para identificar episódios que deveriam estar presentes mas não estão na segunda semana.
         </p>
       </div>
 
-      {/* Action Button */}
-      <div>
+      {/* Week Selection */}
+      <div className="space-y-4 p-4 bg-card border border-border rounded-lg">
+        <h3 className="">Selecione as semanas para análise</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="week-base">Week Base</Label>
+            <Select value={weekBase} onValueChange={setWeekBase}>
+              <SelectTrigger id="week-base">
+                <SelectValue placeholder="Selecione a week base" />
+              </SelectTrigger>
+              <SelectContent>
+                {WEEKS_DATA.map((week) => {
+                  const weekNum = week.label.split(' ')[1];
+                  return (
+                    <SelectItem key={week.id} value={weekNum}>
+                      {week.label} ({week.period.replace('Aired - ', '').replace('Airing - ', '')})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="week-comparison">Week Comparação</Label>
+            <Select value={weekComparison} onValueChange={setWeekComparison}>
+              <SelectTrigger id="week-comparison">
+                <SelectValue placeholder="Selecione a week de comparação" />
+              </SelectTrigger>
+              <SelectContent>
+                {WEEKS_DATA.map((week) => {
+                  const weekNum = week.label.split(' ')[1];
+                  return (
+                    <SelectItem key={week.id} value={weekNum}>
+                      {week.label} ({week.period.replace('Aired - ', '').replace('Airing - ', '')})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <Button
           onClick={analyzeEpisodes}
           disabled={isAnalyzing}
           size="lg"
-          className="gap-2"
+          className="gap-2 w-full"
         >
           <Search className="w-5 h-5" />
-          {isAnalyzing ? 'Analisando...' : 'Analisar Week 2 vs Week 3'}
+          {isAnalyzing ? 'Analisando...' : `Analisar Week ${weekBase} vs Week ${weekComparison}`}
         </Button>
       </div>
 
@@ -129,7 +196,7 @@ export function MissingEpisodesAnalyzer() {
             <AlertTriangle className="w-5 h-5 text-yellow-500" />
             <div>
               <p>
-                Encontrados <strong>{missing.length} episódios</strong> que estavam na Week 2 mas não estão na Week 3
+                Encontrados <strong>{missing.length} episódios</strong> que estavam na Week {weekBase} mas não estão na Week {weekComparison}
               </p>
             </div>
           </div>
@@ -140,11 +207,11 @@ export function MissingEpisodesAnalyzer() {
               Episódios Sugeridos
             </h3>
             
-            <div className="grid gap-2">
+            <div className="grid gap-4">
               {missing.map((item, idx) => (
                 <div
                   key={item.animeId}
-                  className="p-4 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="p-4 bg-card border border-border rounded-lg space-y-3"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 space-y-1">
@@ -158,8 +225,7 @@ export function MissingEpisodesAnalyzer() {
                           Último episódio: <strong>EP{item.lastEpisodeNumber}</strong> (Score: {item.lastScore})
                         </p>
                         <p>
-                          Sugestão: <strong className="text-primary">EP{item.suggestedEpisodeNumber}</strong>{' '}
-                          (Score estimado: {item.suggestedScore})
+                          Sugestão: <strong className="text-primary">EP{item.suggestedEpisodeNumber}</strong>
                         </p>
                       </div>
                     </div>
@@ -168,10 +234,43 @@ export function MissingEpisodesAnalyzer() {
                       href={`https://myanimelist.net/anime/${item.animeId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
+                      className="text-sm text-primary hover:underline whitespace-nowrap"
                     >
                       Ver no MAL →
                     </a>
+                  </div>
+
+                  {/* Editable Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-border">
+                    <div className="space-y-2">
+                      <Label htmlFor={`title-${item.animeId}`} className="text-sm">
+                        Nome do novo episódio
+                      </Label>
+                      <Input
+                        id={`title-${item.animeId}`}
+                        value={item.episodeTitle}
+                        onChange={(e) => updateEpisodeTitle(item.animeId, e.target.value)}
+                        placeholder="Ex: Episode 3"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`score-${item.animeId}`} className="text-sm">
+                        Score do novo episódio
+                      </Label>
+                      <Input
+                        id={`score-${item.animeId}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="10"
+                        value={item.newScore}
+                        onChange={(e) => updateEpisodeScore(item.animeId, parseFloat(e.target.value) || 0)}
+                        placeholder="Ex: 4.50"
+                        className="h-9"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -210,10 +309,10 @@ export function MissingEpisodesAnalyzer() {
               <code>{generateCode()}</code>
             </pre>
 
-            <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-              <p className="text-sm text-orange-600 dark:text-orange-400">
-                ⚠️ <strong>IMPORTANTE:</strong> Você precisa substituir os títulos "Episode X" pelos títulos reais dos episódios.
-                Visite os links "Ver no MAL" acima para encontrar os títulos corretos.
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                ✨ <strong>PRONTO PARA USAR:</strong> O código acima já contém os títulos e scores que você preencheu.
+                Basta copiar e colar no arquivo <code className="px-1.5 py-0.5 bg-blue-500/10 rounded">manual-episodes.ts</code>
               </p>
             </div>
           </div>

@@ -51,11 +51,11 @@ export class CacheService {
         localStorage.removeItem(key);
         console.log(`[Cache] Cleared: ${key}`);
       } else {
-        // Clear all anime-related cache
+        // Clear all anime-related cache (all versions)
         const keys = Object.keys(localStorage);
         let clearedCount = 0;
         keys.forEach(k => {
-          if (k.startsWith('jikan_') || k.startsWith('anime_')) {
+          if (k.startsWith('v') || k.startsWith('jikan_') || k.startsWith('anime_')) {
             localStorage.removeItem(k);
             clearedCount++;
           }

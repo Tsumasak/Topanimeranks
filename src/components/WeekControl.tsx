@@ -427,6 +427,7 @@ const WeekControl = () => {
                       genres={episode.genres}
                       themes={episode.themes}
                       positionChange={positionChange}
+                      isManual={episode.isManual}
                     />
                   </motion.div>
                 );

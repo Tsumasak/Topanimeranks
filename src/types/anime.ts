@@ -89,6 +89,7 @@ export interface Episode {
   genres: string[];
   themes: string[];
   url: string;
+  isManual?: boolean; // True if episode was added manually (not from API)
 }
 
 export interface AnticipatedAnime {

@@ -1,5 +1,6 @@
 import { JikanAnimeData, JikanEpisode, JikanEpisodesResponse, JikanPagination, Episode, AnticipatedAnime, WeekData, SeasonData } from '../types/anime';
 import { CacheService } from './cache';
+import { MANUAL_EPISODES, ManualEpisodeConfig } from '../data/manual-episodes';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 const RATE_LIMIT_DELAY = 350; // 350ms between requests (allows ~3 requests per second, staying under the 3/sec limit)
@@ -7,7 +8,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
 
 // Cache version - increment this to invalidate all caches when fixing bugs
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7_manual_episodes';
 
 // Progress callback type
 type ProgressCallback = (current: number, total: number, message: string) => void;
@@ -285,6 +286,85 @@ export class JikanService {
     };
   }
 
+  // Helper: Convert manual episode config to Episode
+  static async convertManualEpisodeToEpisode(
+    config: ManualEpisodeConfig,
+    weekStart: Date,
+    weekEnd: Date
+  ): Promise<Episode | null> {
+    try {
+      console.log(`[ManualEpisode] Processing manual episode: Anime ${config.animeId}, EP${config.episodeNumber}`);
+      
+      // Fetch anime details from API
+      const anime = await this.getAnimeDetails(config.animeId);
+      
+      // Use provided aired date or calculate from week
+      let airedDate: string;
+      if (config.aired) {
+        airedDate = config.aired;
+      } else {
+        // Use week's start date if no specific date provided
+        const airDate = new Date(weekStart);
+        airedDate = airDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      }
+      
+      const totalEpisodes = anime.episodes || 0;
+      const episodePageUrl = this.getEpisodePageUrl(anime.url, config.episodeNumber, totalEpisodes);
+      
+      const episode: Episode = {
+        id: config.episodeNumber,
+        animeId: anime.mal_id,
+        animeTitle: anime.title_english || anime.title,
+        episodeNumber: config.episodeNumber,
+        episodeTitle: config.episodeTitle,
+        score: config.score,
+        imageUrl: anime.images.webp.large_image_url || anime.images.jpg.large_image_url,
+        aired: airedDate,
+        animeType: anime.type || 'TV',
+        demographics: anime.demographics.map(d => d.name),
+        genres: anime.genres.map(g => g.name),
+        themes: anime.themes.map(t => t.name),
+        url: episodePageUrl,
+        isManual: true, // Mark as manually added
+      };
+      
+      console.log(`[ManualEpisode] ✓ Created manual episode: ${episode.animeTitle} EP${episode.episodeNumber} (${episode.score})`);
+      console.log(`[ManualEpisode]   → Anime has ${anime.members.toLocaleString()} members (manual episodes bypass 20k+ filter)`);
+      return episode;
+    } catch (error) {
+      console.error(`[ManualEpisode] ✗ Failed to create manual episode for anime ${config.animeId}:`, error);
+      return null;
+    }
+  }
+
+  // Get manual episodes for a specific week
+  static async getManualEpisodesForWeek(
+    weekNumber: number,
+    weekStart: Date,
+    weekEnd: Date
+  ): Promise<Episode[]> {
+    const manualEpisodesForWeek = MANUAL_EPISODES.filter(
+      ep => ep.weekNumber === weekNumber
+    );
+    
+    if (manualEpisodesForWeek.length === 0) {
+      console.log(`[ManualEpisode] No manual episodes configured for week ${weekNumber}`);
+      return [];
+    }
+    
+    console.log(`[ManualEpisode] Found ${manualEpisodesForWeek.length} manual episodes for week ${weekNumber}`);
+    
+    const episodes: Episode[] = [];
+    for (const config of manualEpisodesForWeek) {
+      const episode = await this.convertManualEpisodeToEpisode(config, weekStart, weekEnd);
+      if (episode) {
+        episodes.push(episode);
+      }
+    }
+    
+    return episodes;
+  }
+
   // Get week data for Fall 2025
   static async getWeekData(weekNumber: number, onProgress?: ProgressCallback): Promise<WeekData> {
     const cacheKey = `${CACHE_VERSION}_anime_week_${weekNumber}`;
@@ -442,6 +522,41 @@ export class JikanService {
     // Convert map back to array
     const uniqueEpisodes = Array.from(animeMap.values());
     console.log(`[WeekData] After deduplication: ${uniqueEpisodes.length} unique animes (was ${allEpisodes.length} episodes)`);
+
+    // Process manual episodes for this week
+    console.log(`[WeekData] Checking for manual episodes...`);
+    const manualEpisodes = await this.getManualEpisodesForWeek(weekNumber, weekStart, weekEnd);
+    
+    // Merge manual episodes with API episodes
+    // API episodes replace manual ones if they have the same animeId + episodeNumber
+    for (const manualEp of manualEpisodes) {
+      const existingEpisode = animeMap.get(manualEp.animeId);
+      
+      if (!existingEpisode) {
+        // No API episode for this anime, add manual episode
+        animeMap.set(manualEp.animeId, manualEp);
+        uniqueEpisodes.push(manualEp);
+        console.log(`[ManualEpisode] ✓ ADDED ${manualEp.animeTitle} EP${manualEp.episodeNumber} (manual)`);
+      } else if (existingEpisode.episodeNumber === manualEp.episodeNumber) {
+        // API has the same episode, API replaces manual
+        console.log(`[ManualEpisode] ⚠️ SKIPPED ${manualEp.animeTitle} EP${manualEp.episodeNumber} - API version exists`);
+      } else {
+        // API has a different episode from this anime
+        // Keep the one with higher score
+        if (manualEp.score > existingEpisode.score) {
+          animeMap.set(manualEp.animeId, manualEp);
+          const index = uniqueEpisodes.findIndex(ep => ep.animeId === manualEp.animeId);
+          if (index !== -1) {
+            uniqueEpisodes[index] = manualEp;
+          }
+          console.log(`[ManualEpisode] ✓ REPLACED ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.score}) with manual EP${manualEp.episodeNumber} (${manualEp.score})`);
+        } else {
+          console.log(`[ManualEpisode] ⚠️ SKIPPED ${manualEp.animeTitle} EP${manualEp.episodeNumber} - API version has higher score`);
+        }
+      }
+    }
+    
+    console.log(`[WeekData] After manual episodes: ${uniqueEpisodes.length} total episodes`);
 
     // Sort by score (highest first), episodes without score go to the end
     uniqueEpisodes.sort((a, b) => {

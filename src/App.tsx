@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import { Header } from "./components/Header";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
+import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
 
@@ -195,6 +196,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<TopEpisodesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
+          <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

@@ -339,8 +339,7 @@ export class JikanService {
   // Get manual episodes for a specific week
   static async getManualEpisodesForWeek(
     weekNumber: number,
-    weekStart: Date,
-    weekEnd: Date
+    weekStart: Date
   ): Promise<Episode[]> {
     const manualEpisodesForWeek = MANUAL_EPISODES.filter(
       ep => ep.weekNumber === weekNumber
@@ -524,7 +523,7 @@ export class JikanService {
 
     // Process manual episodes for this week
     console.log(`[WeekData] Checking for manual episodes...`);
-    const manualEpisodes = await this.getManualEpisodesForWeek(weekNumber, weekStart, weekEnd);
+    const manualEpisodes = await this.getManualEpisodesForWeek(weekNumber, weekStart);
     
     // Merge manual episodes with API episodes
     // API episodes replace manual ones if they have the same animeId + episodeNumber

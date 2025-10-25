@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimeCard } from './AnimeCard';
 import { AnimeCardSkeleton } from './AnimeCardSkeleton';
 import { Progress } from './ui/progress';
@@ -85,7 +85,6 @@ const WeekControl = () => {
   const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [weekDates, setWeekDates] = useState<{ startDate: string; endDate: string } | null>(null);
   const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 episodes
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -101,7 +100,6 @@ const WeekControl = () => {
   const handleWeekChange = (newWeek: string) => {
     if (newWeek === activeWeek) return;
     userSwitchedTab.current = true;
-    setIsTransitioning(true);
     setDisplayedCount(12); // Reset to 12 episodes when changing weeks
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
     setTimeout(() => {
@@ -184,7 +182,6 @@ const WeekControl = () => {
         setLoading(false);
         setDisplayedCount(12); // Reset to 12 on new load
         setTimeout(() => {
-          setIsTransitioning(false);
           userSwitchedTab.current = false; // Reset the flag
         }, 150);
       }
@@ -219,7 +216,7 @@ const WeekControl = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
+      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Weekly Episode Ranking
         </h1>
@@ -288,7 +285,7 @@ const WeekControl = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
+      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Weekly Episode Ranking
         </h1>
@@ -316,7 +313,7 @@ const WeekControl = () => {
   }
 
   return (
-    <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
+    <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
       <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Weekly Episode Ranking
       </h1>
@@ -329,7 +326,7 @@ const WeekControl = () => {
       </p>
       
       {/* Desktop: Week tabs with sliding indicator */}
-      <div className="hidden md:flex justify-center mb-8 sticky top-[88px] z-40 -mx-10 px-10">
+      <div className="hidden md:flex justify-center mb-8 sticky top-[88px] z-40 -mx-[40px] px-[40px]">
         <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
           {WEEKS_DATA.map((week) => (
             <button
@@ -357,7 +354,7 @@ const WeekControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40 -mx-10 px-10">
+      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40 -mx-[40px] px-[40px]">
         <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px] my-[0px]">
           {/* Previous Week Button */}
           {(() => {

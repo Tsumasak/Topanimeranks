@@ -47,7 +47,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
   return (
     <>
       <header className="theme-header fixed top-0 left-0 right-0 z-50">
-        <nav className="container mx-auto px-8 py-4 flex justify-between items-center">
+        <nav className="container mx-auto flex justify-between items-center px-[24px] py-[16px]">
           <button 
             onClick={() => onPageChange?.('ranks')}
             className="flex items-center justify-start logo-button"

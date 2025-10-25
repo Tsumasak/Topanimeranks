@@ -7,7 +7,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
 
 // Cache version - increment this to invalidate all caches when fixing bugs
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 
 // Progress callback type
 type ProgressCallback = (current: number, total: number, message: string) => void;
@@ -298,18 +298,19 @@ export class JikanService {
     
     onProgress?.(0, 100, 'Fetching anime list from MyAnimeList...');
 
-    // Calculate week dates (Week 1 starts September 29, 2025 - Fall 2025)
-    const baseDate = new Date('2025-09-29');
+    // Calculate week dates (Week 1 starts September 29, 2025 - Monday - Fall 2025)
+    // Using UTC to avoid timezone issues
+    const baseDate = new Date(Date.UTC(2025, 8, 29)); // September (month 8), 29, 2025 - Monday
     const weekStart = new Date(baseDate);
-    weekStart.setDate(baseDate.getDate() + (weekNumber - 1) * 7);
+    weekStart.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
     
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6); // Add 6 days to get to Sunday
     
-    // Set time to start of day for weekStart (00:00:00)
-    weekStart.setHours(0, 0, 0, 0);
-    // Set time to end of day for weekEnd (23:59:59)
-    weekEnd.setHours(23, 59, 59, 999);
+    // Set time to start of day for weekStart (00:00:00 UTC)
+    weekStart.setUTCHours(0, 0, 0, 0);
+    // Set time to end of day for weekEnd (23:59:59 UTC)
+    weekEnd.setUTCHours(23, 59, 59, 999);
 
     console.log(`[WeekData] Week ${weekNumber} range: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
 
@@ -387,8 +388,8 @@ export class JikanService {
           const daysSinceWeekEnd = (epDate.getTime() - weekEnd.getTime()) / msInDay;
           
           console.log(`[WeekData] Week ${weekNumber} - Checking ${anime.title} EP${ep.mal_id}:`);
-          console.log(`  → Aired: ${ep.aired} (${epDate.toLocaleDateString()})`);
-          console.log(`  → Week: ${weekStart.toLocaleDateString()} to ${weekEnd.toLocaleDateString()}`);
+          console.log(`  → Aired: ${ep.aired} (${epDate.toLocaleDateString('en-US', { timeZone: 'UTC' })})`);
+          console.log(`  → Week: ${weekStart.toLocaleDateString('en-US', { timeZone: 'UTC' })} to ${weekEnd.toLocaleDateString('en-US', { timeZone: 'UTC' })}`);
           console.log(`  → Days from week start: ${daysSinceWeekStart.toFixed(1)}`);
           console.log(`  → Days from week end: ${daysSinceWeekEnd.toFixed(1)}`);
 
@@ -424,13 +425,13 @@ export class JikanService {
       if (!existingEpisode) {
         // First episode from this anime
         animeMap.set(episode.animeId, episode);
-        console.log(`[Dedup] Adding ${episode.animeTitle} EP${episode.episodeNumber} (Score: ${episode.score}, Aired: ${new Date(episode.aired).toLocaleDateString()})`);
+        console.log(`[Dedup] Adding ${episode.animeTitle} EP${episode.episodeNumber} (Score: ${episode.score}, Aired: ${new Date(episode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })})`);
       } else {
         // Compare scores and keep the highest
         if (episode.score > existingEpisode.score) {
           console.log(`[Dedup] ⚠️ REPLACING ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.score}) with EP${episode.episodeNumber} (${episode.score}) - HIGHER SCORE`);
-          console.log(`  → Old aired: ${new Date(existingEpisode.aired).toLocaleDateString()}`);
-          console.log(`  → New aired: ${new Date(episode.aired).toLocaleDateString()}`);
+          console.log(`  → Old aired: ${new Date(existingEpisode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })}`);
+          console.log(`  → New aired: ${new Date(episode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })}`);
           animeMap.set(episode.animeId, episode);
         } else {
           console.log(`[Dedup] Skipping ${episode.animeTitle} EP${episode.episodeNumber} (${episode.score}) - already have EP${existingEpisode.episodeNumber} (${existingEpisode.score})`);

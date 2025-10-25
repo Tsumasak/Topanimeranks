@@ -25,11 +25,12 @@ const formatDynamicPeriod = (startDate: string, endDate: string, isCurrentWeek: 
   const end = new Date(endDate);
   
   // Format: "September 29 - October 05, 2025"
-  const startMonth = start.toLocaleDateString('en-US', { month: 'long' });
-  const startDay = start.getDate();
-  const endMonth = end.toLocaleDateString('en-US', { month: 'long' });
-  const endDay = end.getDate().toString().padStart(2, '0');
-  const year = end.getFullYear();
+  // Use UTC methods to avoid timezone issues
+  const startMonth = start.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+  const startDay = start.getUTCDate();
+  const endMonth = end.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+  const endDay = end.getUTCDate().toString().padStart(2, '0');
+  const year = end.getUTCFullYear();
   
   // If same month, show: "Month DD - DD, YYYY"
   if (startMonth === endMonth) {

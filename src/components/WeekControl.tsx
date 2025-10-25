@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { AnimeCard } from './AnimeCard';
 import { AnimeCardSkeleton } from './AnimeCardSkeleton';
 import { Progress } from './ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
 import { JikanService } from '../services/jikan';
 import { Episode } from '../types/anime';
@@ -71,6 +74,10 @@ const calculatePositionChange = (
 };
 
 const WeekControl = () => {
+  console.log("[WeekControl] Component rendering/re-rendering");
+  
+  // Track if component is mounted
+  const isMounted = useRef(false);
   // Track if user has manually switched tabs
   const userSwitchedTab = useRef(false);
   const [activeWeek, setActiveWeek] = useState<string>(`week${CURRENT_WEEK_NUMBER}`);
@@ -96,6 +103,7 @@ const WeekControl = () => {
     userSwitchedTab.current = true;
     setIsTransitioning(true);
     setDisplayedCount(12); // Reset to 12 episodes when changing weeks
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
     setTimeout(() => {
       setActiveWeek(newWeek);
     }, 150); // Half of the transition duration
@@ -117,7 +125,12 @@ const WeekControl = () => {
   
   // Load episodes when activeWeek changes
   useEffect(() => {
+    console.log(`[WeekControl useEffect] Triggered for activeWeek: ${activeWeek}, isMounted: ${isMounted.current}`);
+    isMounted.current = true;
+    
     const loadWeekEpisodes = async () => {
+      console.log(`[WeekControl] Starting to load week data for ${activeWeek}`);
+      
       // Only show full loading skeleton on initial load, not on tab changes
       if (!userSwitchedTab.current) {
         setLoading(true);
@@ -206,7 +219,7 @@ const WeekControl = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
+      <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Weekly Episode Ranking
         </h1>
@@ -218,26 +231,35 @@ const WeekControl = () => {
             : 'Loading period...'}
         </p>
         
-        {/* Week tabs */}
+        {/* Week tabs with sliding indicator */}
         <div className="flex justify-center mb-8">
-          <div className="flex space-x-2 theme-card rounded-lg p-1">
-            {WEEKS_DATA.map(week => (
+          <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
+            {WEEKS_DATA.map((week) => (
               <button
                 key={week.id}
                 onClick={() => handleWeekChange(week.id)}
-                className={`px-4 py-2 rounded-md text-sm transition-colors ${
+                className={`px-4 py-2 rounded-md text-sm relative overflow-hidden ${
                   activeWeek === week.id 
-                    ? 'theme-rank' 
+                    ? '' 
                     : 'theme-nav-link'
                 }`}
+                style={activeWeek === week.id ? { color: 'var(--rank-text)' } : {}}
               >
-                {week.label}
+                {activeWeek === week.id && (
+                  <motion.div
+                    layoutId="weekIndicator"
+                    className="absolute inset-0 rounded-md"
+                    style={{ backgroundColor: 'var(--rank-background)' }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative z-10">{week.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mb-8 text-center max-w-2xl mx-auto">
+        <div className="mb-8 text-center max-w-2xl mx-auto px-[40px] py-[0px]">
           <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
             {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
           </p>
@@ -266,7 +288,7 @@ const WeekControl = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
+      <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Weekly Episode Ranking
         </h1>
@@ -294,7 +316,7 @@ const WeekControl = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-8 pb-8 min-h-screen">
+    <div className="container mx-auto px-8 pt-8 pb-8 min-h-screen">
       <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Weekly Episode Ranking
       </h1>
@@ -306,22 +328,94 @@ const WeekControl = () => {
           : 'Loading period...'}
       </p>
       
-      {/* Week tabs */}
-      <div className="flex justify-center mb-8">
-        <div className="flex space-x-2 theme-card rounded-lg p-1">
-          {WEEKS_DATA.map(week => (
+      {/* Desktop: Week tabs with sliding indicator */}
+      <div className="hidden md:flex justify-center mb-8 sticky top-[88px] z-40 -mx-10 px-10">
+        <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
+          {WEEKS_DATA.map((week) => (
             <button
               key={week.id}
               onClick={() => handleWeekChange(week.id)}
-              className={`px-4 py-2 rounded-md text-sm transition-colors ${
+              className={`px-4 py-2 rounded-md text-sm relative overflow-hidden whitespace-nowrap ${
                 activeWeek === week.id 
-                  ? 'theme-rank' 
+                  ? '' 
                   : 'theme-nav-link'
               }`}
+              style={activeWeek === week.id ? { color: 'var(--rank-text)' } : {}}
             >
-              {week.label}
+              {activeWeek === week.id && (
+                <motion.div
+                  layoutId="weekIndicator"
+                  className="absolute inset-0 rounded-md"
+                  style={{ backgroundColor: 'var(--rank-background)' }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10">{week.label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Mobile: Unified Controller Bar */}
+      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40 -mx-10 px-10">
+        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px] my-[0px]">
+          {/* Previous Week Button */}
+          {(() => {
+            const currentIndex = WEEKS_DATA.findIndex(w => w.id === activeWeek);
+            const hasPrev = currentIndex > 0;
+            const prevWeek = hasPrev ? WEEKS_DATA[currentIndex - 1] : null;
+            
+            return (
+              <button
+                onClick={() => prevWeek && handleWeekChange(prevWeek.id)}
+                disabled={!hasPrev}
+                className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+                <span className="whitespace-nowrap">Prev</span>
+              </button>
+            );
+          })()}
+
+          {/* Dropdown (Active State) - Centered and compact */}
+          <div className="flex-shrink-0">
+            <Select value={activeWeek} onValueChange={handleWeekChange}>
+              <SelectTrigger 
+                className="border-0 px-3 py-2 rounded-md text-sm flex items-center gap-1.5 w-auto [&_svg]:!text-white [&_svg]:!opacity-100"
+                style={{
+                  backgroundColor: 'var(--rank-background)',
+                  color: 'var(--rank-text)'
+                }}
+              >
+                <SelectValue className="text-center" />
+              </SelectTrigger>
+              <SelectContent className="theme-card border" style={{borderColor: 'var(--card-border)'}}>
+                {WEEKS_DATA.map((week) => (
+                  <SelectItem key={week.id} value={week.id} className="theme-nav-link">
+                    {week.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Next Week Button */}
+          {(() => {
+            const currentIndex = WEEKS_DATA.findIndex(w => w.id === activeWeek);
+            const hasNext = currentIndex < WEEKS_DATA.length - 1 && !currentWeek?.isCurrentWeek;
+            const nextWeek = hasNext ? WEEKS_DATA[currentIndex + 1] : null;
+            
+            return (
+              <button
+                onClick={() => nextWeek && handleWeekChange(nextWeek.id)}
+                disabled={!hasNext}
+                className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <span className="whitespace-nowrap">Next</span>
+                <ChevronRight size={16} />
+              </button>
+            );
+          })()}
         </div>
       </div>
 
@@ -333,27 +427,41 @@ const WeekControl = () => {
         </div>
       ) : (
         <>
-          <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-            {episodes.slice(0, displayedCount).map((episode, index) => {
-              const rank = index + 1;
-              const positionChange = calculatePositionChange(episode, rank, previousWeekEpisodes);
-              return (
-                <AnimeCard 
-                  key={`${activeWeek}-${episode.animeId}-${episode.id}`} 
-                  rank={rank}
-                  title={episode.animeTitle}
-                  subtitle={`EP ${episode.episodeNumber} - ${episode.episodeTitle}`}
-                  imageUrl={episode.imageUrl}
-                  linkUrl={episode.url}
-                  bottomText={episode.score > 0 ? `★ ${episode.score.toFixed(2)}` : '★ N/A'}
-                  animeType={episode.animeType}
-                  demographics={episode.demographics}
-                  genres={episode.genres}
-                  themes={episode.themes}
-                  positionChange={positionChange}
-                />
-              );
-            })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <AnimatePresence mode="popLayout">
+              {episodes.slice(0, displayedCount).map((episode, index) => {
+                const rank = index + 1;
+                const positionChange = calculatePositionChange(episode, rank, previousWeekEpisodes);
+                return (
+                  <motion.div
+                    key={`${activeWeek}-${episode.animeId}-${episode.id}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: index * 0.03,
+                      ease: "easeOut"
+                    }}
+                    className="h-full"
+                  >
+                    <AnimeCard 
+                      rank={rank}
+                      title={episode.animeTitle}
+                      subtitle={`EP ${episode.episodeNumber} - ${episode.episodeTitle}`}
+                      imageUrl={episode.imageUrl}
+                      linkUrl={episode.url}
+                      bottomText={episode.score > 0 ? `★ ${episode.score.toFixed(2)}` : '★ N/A'}
+                      animeType={episode.animeType}
+                      demographics={episode.demographics}
+                      genres={episode.genres}
+                      themes={episode.themes}
+                      positionChange={positionChange}
+                    />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
           
           {/* Infinite Scroll Observer Target */}

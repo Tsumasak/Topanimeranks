@@ -7,7 +7,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
 
 // Cache version - increment this to invalidate all caches when fixing bugs
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 
 // Progress callback type
 type ProgressCallback = (current: number, total: number, message: string) => void;
@@ -320,11 +320,11 @@ export class JikanService {
     
     onProgress?.(20, 100, `Found ${animes.length} animes, filtering by popularity...`);
     
-    // FILTER: Only animes with 10,000+ members
-    const popularAnimes = animes.filter(anime => anime.members >= 10000);
-    const filteredOut = animes.filter(anime => anime.members < 10000);
+    // FILTER: Only animes with 20,000+ members
+    const popularAnimes = animes.filter(anime => anime.members >= 20000);
+    const filteredOut = animes.filter(anime => anime.members < 20000);
     
-    console.log(`[WeekData] After 10k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
+    console.log(`[WeekData] After 20k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
     
     // Log some examples of filtered out animes (if any)
     if (filteredOut.length > 0) {
@@ -562,11 +562,11 @@ export class JikanService {
     const uniqueAnimes = Array.from(uniqueAnimeMap.values());
     console.log(`[AnticipatedBySeason] After deduplication: ${uniqueAnimes.length} unique animes`);
     
-    // FILTER: Only animes with 10,000+ members to avoid overloading
-    const popularAnimes = uniqueAnimes.filter(anime => anime.members >= 10000);
-    const filteredOut = uniqueAnimes.filter(anime => anime.members < 10000);
+    // FILTER: Only animes with 20,000+ members to avoid overloading
+    const popularAnimes = uniqueAnimes.filter(anime => anime.members >= 20000);
+    const filteredOut = uniqueAnimes.filter(anime => anime.members < 20000);
     
-    console.log(`[AnticipatedBySeason] After 10k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
+    console.log(`[AnticipatedBySeason] After 20k+ members filter: ${popularAnimes.length} animes (filtered out ${filteredOut.length})`);
     
     // Sort by members (most popular first)
     popularAnimes.sort((a, b) => b.members - a.members);

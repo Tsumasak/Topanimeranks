@@ -114,6 +114,13 @@ body {
   transform: translateY(-2px);
 }
 
+/* Controller specific - no hover effects */
+.theme-controller {
+  background: var(--card-background);
+  border-color: var(--card-border);
+  box-shadow: 0 4px 6px -1px var(--shadow);
+}
+
 .theme-header {
   background: var(--header-background);
   border-color: var(--header-border);

@@ -1,13 +1,19 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Header } from "./components/Header";
-import WeekControl from "./components/WeekControl";
-import SeasonControl from "./components/SeasonControl";
+import TopEpisodesPage from "./pages/TopEpisodesPage";
+import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
 
-export default function App() {
+function AppContent() {
   const [theme, setTheme] = useState("dark");
-  const [currentPage, setCurrentPage] = useState<'ranks' | 'anticipated'>('ranks');
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  console.log("[AppContent] Current location:", location.pathname);
+  
+  const currentPage: 'ranks' | 'anticipated' = location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
 
   useEffect(() => {
     // Check for saved theme preference or default to dark
@@ -39,7 +45,7 @@ export default function App() {
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [currentPage]);
+  }, [location.pathname]);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -49,7 +55,11 @@ export default function App() {
   };
 
   const handlePageChange = (page: 'ranks' | 'anticipated') => {
-    setCurrentPage(page);
+    if (page === 'anticipated') {
+      navigate('/most-anticipated-animes');
+    } else {
+      navigate('/');
+    }
   };
 
   /* const animeData: Anime[] = [
@@ -182,11 +192,25 @@ export default function App() {
       />
 
       <div className="dynamic-background-content pt-20">
-        {currentPage === 'ranks' ? <WeekControl /> : <SeasonControl />}
+        <Routes>
+          <Route path="/" element={<TopEpisodesPage />} />
+          <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
 
       <FloatingButtons />
       <Toaster theme={theme as "light" | "dark"} />
     </div>
+  );
+}
+
+export default function App() {
+  console.log("[App] Rendering App component");
+  
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }

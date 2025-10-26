@@ -99,6 +99,48 @@ export const MANUAL_EPISODES: ManualEpisodeConfig[] = [
     weekNumber: 3,
     score: 3.98,
   },
+  {
+    animeId: 60098,
+    episodeNumber: 4,
+    episodeTitle: "Quirk: Explosion!!",
+    weekNumber: 4,
+    score: 4.69
+  },
+  {
+    animeId: 59027,
+    episodeNumber: 4,
+    episodeTitle: "Behind the Scandal / The Path to an Imperial Scholar",
+    weekNumber: 4,
+    score: 4.27
+  },
+  {
+    animeId: 61159,
+    episodeNumber: 4,
+    episodeTitle: "Who Is the Strongest Kamen Rider?",
+    weekNumber: 4,
+    score: 4.65
+  },
+  {
+    animeId: 54703,
+    episodeNumber: 4,
+    episodeTitle: "The One Who Vanished",
+    weekNumber: 4,
+    score: 4.44
+  },
+  {
+    animeId: 60564,
+    episodeNumber: 4,
+    episodeTitle: "Naval Engagement",
+    weekNumber: 4,
+    score: 4.49
+  },
+  {
+    animeId: 59267,
+    episodeNumber: 4,
+    episodeTitle: "Zeus, Smasher of Textbooks",
+    weekNumber: 4,
+    score: 4.46
+  },
 
   // Adicione mais episódios acima desta linha...
   // ⬆️ FIM DA LISTA ⬆️

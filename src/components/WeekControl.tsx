@@ -288,7 +288,7 @@ const WeekControl = () => {
   return (
     <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
       <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-        Weekly Episode Ranking
+        Weekly Anime Episodes
       </h1>
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {weekDates && currentWeek 

@@ -40,9 +40,8 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
     contentGradient = 'bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent';
   }
   
-  // Image height and card height based on card type
+  // Image height based on card type
   const imageHeight = isEpisode ? 'h-40' : 'h-72'; // episode = 160px (mais horizontal), anticipated = 288px (mais vertical)
-  const cardHeight = isEpisode ? 'h-[420px]' : 'h-[520px]'; // Fixed heights for uniform sizing
   
   // SVG Badge Components for top 3 positions (same as BaseAnimeCard)
   const GoldBadge = () => (
@@ -275,7 +274,7 @@ export function HomePage() {
               <div className="content-stretch flex flex-col md:flex-row items-start md:items-center justify-between not-italic relative shrink-0 w-full gap-4 md:gap-0">
                 <div className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0">
                   <p className="font-['Arial'] font-bold leading-[40px] relative shrink-0 text-[28px] md:text-[36px]" style={{ color: 'var(--foreground)' }}>
-                    Weekly Anime Episode Ranking
+                    Weekly Anime Episodes
                   </p>
                   <p className="font-['Arial'] leading-[16px] relative shrink-0 text-[12px]" style={{ color: 'var(--rating-text)' }}>
                     Rank the best episodes of the week

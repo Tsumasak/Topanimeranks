@@ -72,13 +72,13 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                 onClick={() => onPageChange?.('ranks')}
                 className="theme-nav-link transition-colors"
               >
-                Top Episodes
+                Weekly Anime Episodes
               </button>
               <button 
                 onClick={() => onPageChange?.('anticipated')}
                 className="theme-nav-link transition-colors"
               >
-                Most Anticipated
+                Most Anticipated Animes
               </button>
             </div>
             <button
@@ -144,7 +144,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             }}
             className={`mobile-menu-link ${currentPage === 'ranks' ? 'font-bold' : ''}`}
           >
-            📺 Top Episodes
+            📺 Weekly Anime Episodes
           </button>
           <button 
             onClick={() => {
@@ -153,7 +153,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             }}
             className={`mobile-menu-link ${currentPage === 'anticipated' ? 'font-bold' : ''}`}
           >
-            ⭐ Most Anticipated
+            ⭐ Most Anticipated Animes
           </button>
         </nav>
         

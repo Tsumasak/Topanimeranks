@@ -365,14 +365,8 @@ export class JikanService {
 
   // Get week data for Fall 2025
   static async getWeekData(weekNumber: number, onProgress?: ProgressCallback): Promise<WeekData> {
-    const cacheKey = `${CACHE_VERSION}_anime_week_${weekNumber}`;
-    const cached = CacheService.get<WeekData>(cacheKey);
-    if (cached) {
-      console.log(`[WeekData] Loading week ${weekNumber} from cache`);
-      return cached;
-    }
-
-    console.log(`[WeekData] Fetching fresh data for week ${weekNumber}`);
+    // NO CACHE for Weekly Rank - always fetch fresh data
+    console.log(`[WeekData] Fetching fresh data for week ${weekNumber} (cache disabled)`);
     
     onProgress?.(0, 100, 'Fetching anime list from MyAnimeList...');
 
@@ -571,8 +565,8 @@ export class JikanService {
       episodes: uniqueEpisodes.slice(0, 50), // Top 50 animes (one episode each)
     };
 
-    console.log(`[WeekData] Caching ${weekData.episodes.length} episodes for week ${weekNumber}`);
-    CacheService.set(cacheKey, weekData);
+    // NO CACHE for Weekly Rank - always fetch fresh data
+    console.log(`[WeekData] Returning ${weekData.episodes.length} episodes for week ${weekNumber} (not cached)`);
     
     onProgress?.(100, 100, 'Complete!');
     

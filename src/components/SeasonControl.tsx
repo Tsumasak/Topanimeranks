@@ -83,7 +83,7 @@ const SeasonControl = () => {
     return (
       <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-          Most Anticipated Anime
+          Most Anticipated Animes
         </h1>
         <p className="text-center mb-16 text-sm" style={{color: 'var(--rating-yellow)'}}>
           {currentSeason ? currentSeason.period : 'Loading period...'}
@@ -120,7 +120,7 @@ const SeasonControl = () => {
     return (
       <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
         <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-          Most Anticipated Anime
+          Most Anticipated Animes
         </h1>
         <div className="text-center py-16">
           <p className="text-xl mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
@@ -148,7 +148,7 @@ const SeasonControl = () => {
   return (
     <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
       <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-        Most Anticipated Anime
+        Most Anticipated Animes
       </h1>
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {currentSeason ? currentSeason.period : 'Loading period...'}

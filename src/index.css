@@ -670,14 +670,6 @@
     height: 380px;
   }
 
-  .h-\[420px\] {
-    height: 420px;
-  }
-
-  .h-\[520px\] {
-    height: 520px;
-  }
-
   .h-\[var\(--radix-select-trigger-height\)\] {
     height: var(--radix-select-trigger-height);
   }

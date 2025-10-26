@@ -104,42 +104,71 @@ export const MANUAL_EPISODES: ManualEpisodeConfig[] = [
     episodeNumber: 4,
     episodeTitle: "Quirk: Explosion!!",
     weekNumber: 4,
-    score: 4.69
+    score: 4.69,
   },
   {
     animeId: 59027,
     episodeNumber: 4,
-    episodeTitle: "Behind the Scandal / The Path to an Imperial Scholar",
+    episodeTitle:
+      "Behind the Scandal / The Path to an Imperial Scholar",
     weekNumber: 4,
-    score: 4.27
+    score: 4.27,
   },
   {
     animeId: 61159,
     episodeNumber: 4,
     episodeTitle: "Who Is the Strongest Kamen Rider?",
     weekNumber: 4,
-    score: 4.65
+    score: 4.65,
   },
   {
     animeId: 54703,
     episodeNumber: 4,
     episodeTitle: "The One Who Vanished",
     weekNumber: 4,
-    score: 4.44
+    score: 4.44,
   },
   {
     animeId: 60564,
     episodeNumber: 4,
     episodeTitle: "Naval Engagement",
     weekNumber: 4,
-    score: 4.49
+    score: 4.49,
   },
   {
     animeId: 59267,
     episodeNumber: 4,
     episodeTitle: "Zeus, Smasher of Textbooks",
     weekNumber: 4,
-    score: 4.46
+    score: 4.46,
+  },
+  {
+    animeId: 61517,
+    episodeNumber: 1,
+    episodeTitle: "Qin`s Stumbling Block",
+    weekNumber: 1,
+    score: 4.62,
+  },
+  {
+    animeId: 61517,
+    episodeNumber: 2,
+    episodeTitle: "The Rising Tumult",
+    weekNumber: 2,
+    score: 4.54,
+  },
+  {
+    animeId: 61517,
+    episodeNumber: 3,
+    episodeTitle: "The Qin Army Lineup",
+    weekNumber: 3,
+    score: 4.67,
+  },
+  {
+    animeId: 61517,
+    episodeNumber: 4,
+    episodeTitle: "Zhao`s National Gate",
+    weekNumber: 4,
+    score: 4.51,
   },
 
   // Adicione mais episódios acima desta linha...

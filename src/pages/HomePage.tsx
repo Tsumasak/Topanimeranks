@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { JikanService } from '../services/jikan';
 import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER } from '../config/weeks';
+import { Progress } from '../components/ui/progress';
 
 interface HomeCardData {
   rank: number;
@@ -213,14 +214,36 @@ export function HomePage() {
   const [topEpisodes, setTopEpisodes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+        setLoadingProgress(0);
+        setLoadingMessage('Loading top episodes...');
 
-        // Load Top Episodes
-        const weekData = await JikanService.getWeekData(CURRENT_WEEK_NUMBER);
+        // OPTIMIZATION: Load both in parallel instead of sequentially
+        const [weekData, anticipatedData] = await Promise.all([
+          JikanService.getWeekData(CURRENT_WEEK_NUMBER, (current, _total, message) => {
+            // Update progress for first half (0-50%)
+            setLoadingProgress(Math.floor(current / 2));
+            setLoadingMessage(message);
+          }),
+          (async () => {
+            setLoadingMessage('Loading most anticipated animes...');
+            setLoadingProgress(50);
+            const data = await JikanService.getAnticipatedBySeason('winter', 2026);
+            setLoadingProgress(90);
+            return data;
+          })()
+        ]);
+
+        setLoadingMessage('Processing data...');
+        setLoadingProgress(95);
+
+        // Process Top Episodes
         const topEps = weekData.episodes.slice(0, 3).map((ep: Episode, index: number) => ({
           rank: index + 1,
           title: ep.animeTitle,
@@ -238,8 +261,7 @@ export function HomePage() {
           document.documentElement.style.setProperty('--bg-image', `url(${topEps[0].image})`);
         }
 
-        // Load Most Anticipated (Winter 2026)
-        const anticipatedData = await JikanService.getAnticipatedBySeason('winter', 2026);
+        // Process Most Anticipated
         const topAnticipated = anticipatedData.animes.slice(0, 3).map((anime: AnticipatedAnime, index: number) => ({
           rank: index + 1,
           title: anime.title,
@@ -251,8 +273,12 @@ export function HomePage() {
         }));
         setAnticipated(topAnticipated);
 
+        setLoadingProgress(100);
+        setLoadingMessage('Complete!');
+
       } catch (error) {
         console.error('Error loading home data:', error);
+        setLoadingMessage('Error loading data');
       } finally {
         setIsLoading(false);
       }
@@ -260,6 +286,37 @@ export function HomePage() {
 
     loadData();
   }, []);
+
+  // Show loading screen with progress bar
+  if (isLoading) {
+    return (
+      <div className="dynamic-background min-h-screen">
+        <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+          <div className="max-w-md w-full text-center">
+            <h1 className="text-3xl mb-4" style={{ color: 'var(--foreground)' }}>
+              Loading Top Anime Ranks
+            </h1>
+            <p className="text-sm mb-6" style={{ color: 'var(--foreground)', opacity: 0.7 }}>
+              {loadingMessage || 'Fetching data from MyAnimeList...'}
+            </p>
+            <div className="w-full mb-4">
+              <Progress 
+                value={loadingProgress} 
+                className="h-3"
+                style={{
+                  '--progress-background': 'var(--card-background)',
+                  '--progress-foreground': 'var(--rating-yellow)',
+                } as React.CSSProperties}
+              />
+            </div>
+            <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
+              {loadingProgress}% complete
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dynamic-background min-h-screen">
@@ -286,19 +343,11 @@ export function HomePage() {
               </div>
 
               {/* Cards */}
-              {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                  {[1, 2, 3].map(i => (
-                    <div key={`skeleton-episode-${i}`} className="bg-slate-700 h-[280px] w-full animate-pulse rounded-[10px]" />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                  {topEpisodes.map((ep) => (
-                    <HomeAnimeCard key={`episode-${ep.rank}`} data={ep} type="episode" />
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                {topEpisodes.map((ep) => (
+                  <HomeAnimeCard key={`episode-${ep.rank}`} data={ep} type="episode" />
+                ))}
+              </div>
 
               {/* View Complete Link */}
               <Link 

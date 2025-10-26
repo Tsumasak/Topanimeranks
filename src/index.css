@@ -94,6 +94,8 @@
     --text-lg--line-height: calc(1.75 / 1.125);
     --text-xl: 1.25rem;
     --text-xl--line-height: calc(1.75 / 1.25);
+    --text-3xl: 1.875rem;
+    --text-3xl--line-height: calc(2.25 / 1.875);
     --text-4xl: 2.25rem;
     --text-4xl--line-height: calc(2.5 / 2.25);
     --font-weight-medium: 500;
@@ -526,6 +528,10 @@
     margin-bottom: calc(var(--spacing) * 4);
   }
 
+  .mb-6 {
+    margin-bottom: calc(var(--spacing) * 6);
+  }
+
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
   }
@@ -688,6 +694,10 @@
 
   .min-h-\[16px\] {
     min-height: 16px;
+  }
+
+  .min-h-\[calc\(100vh-200px\)\] {
+    min-height: calc(100vh - 200px);
   }
 
   .min-h-screen {
@@ -1384,6 +1394,11 @@
 
   .font-\[\'Arial\'\] {
     font-family: Arial;
+  }
+
+  .text-3xl {
+    font-size: var(--text-3xl);
+    line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 
   .text-4xl {

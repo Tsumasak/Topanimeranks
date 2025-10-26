@@ -127,6 +127,9 @@ const WeekControl = () => {
     console.log(`[WeekControl useEffect] Triggered for activeWeek: ${activeWeek}, isMounted: ${isMounted.current}`);
     isMounted.current = true;
     
+    // Reset displayed count when week changes
+    setDisplayedCount(12);
+    
     const loadWeekEpisodes = async () => {
       console.log(`[WeekControl] Starting to load week data for ${activeWeek}`);
       
@@ -150,6 +153,11 @@ const WeekControl = () => {
         setEpisodes(weekData.episodes);
         
         console.log(`[WeekControl] Week ${weekNumber} loaded: ${weekData.episodes.length} episodes`);
+        
+        // Auto-trigger load more if we have few episodes and they all fit on screen
+        if (weekData.episodes.length <= 12) {
+          console.log(`[WeekControl] Week has ${weekData.episodes.length} episodes (≤12), all will be shown immediately`);
+        }
         console.log(`[WeekControl] Top 5 episodes:`, weekData.episodes.slice(0, 5).map(ep => 
           `#${weekData.episodes.indexOf(ep) + 1} ${ep.animeTitle} EP${ep.episodeNumber} (ID: ${ep.id}, AnimeID: ${ep.animeId})`
         ));
@@ -181,7 +189,6 @@ const WeekControl = () => {
         setError('Failed to load anime data. Please try again later.');
       } finally {
         setLoading(false);
-        setDisplayedCount(12); // Reset to 12 on new load
         setTimeout(() => {
           userSwitchedTab.current = false; // Reset the flag
         }, 150);
@@ -193,27 +200,62 @@ const WeekControl = () => {
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
+    console.log(`[InfiniteScroll] Setup - displayedCount: ${displayedCount}, total episodes: ${episodes.length}, isLoadingMore: ${isLoadingMore}`);
+    
+    // Don't set up observer if there's nothing more to load
+    if (displayedCount >= episodes.length) {
+      console.log('[InfiniteScroll] All episodes already displayed, skipping observer setup');
+      return;
+    }
+    
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && displayedCount < episodes.length) {
-          console.log('[InfiniteScroll] Intersection detected, loading more...');
+        const isIntersecting = entries[0].isIntersecting;
+        const canLoadMore = displayedCount < episodes.length;
+        
+        console.log(`[InfiniteScroll] Observer triggered - intersecting: ${isIntersecting}, canLoadMore: ${canLoadMore} (${displayedCount}/${episodes.length}), isLoadingMore: ${isLoadingMore}`);
+        
+        if (isIntersecting && !isLoadingMore && canLoadMore) {
+          console.log('[InfiniteScroll] Conditions met, loading more...');
           loadMoreEpisodes();
         }
       },
-      { threshold: 0.1, rootMargin: '200px' } // Start loading 200px before reaching the target
+      { threshold: 0.1, rootMargin: '100px' } // Start loading 100px before reaching the target
     );
 
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    // Use a small delay to ensure the DOM is ready
+    const timeoutId = setTimeout(() => {
+      const currentTarget = observerTarget.current;
+      if (currentTarget) {
+        console.log('[InfiniteScroll] Observer target found, observing...');
+        observer.observe(currentTarget);
+      } else {
+        console.log('[InfiniteScroll] Observer target NOT found');
+      }
+    }, 100);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      clearTimeout(timeoutId);
+      observer.disconnect(); // Disconnect all observations
     };
   }, [displayedCount, episodes.length, isLoadingMore, loadMoreEpisodes]);
+
+  // Auto-load more if content doesn't fill the viewport (fallback for when observer doesn't trigger)
+  useEffect(() => {
+    if (loading || isLoadingMore || displayedCount >= episodes.length) return;
+    
+    // Check if we need to auto-load more after a short delay
+    const checkViewportId = setTimeout(() => {
+      const hasScrollbar = document.documentElement.scrollHeight > window.innerHeight;
+      
+      if (!hasScrollbar && displayedCount < episodes.length) {
+        console.log('[InfiniteScroll] No scrollbar detected, auto-loading more episodes...');
+        loadMoreEpisodes();
+      }
+    }, 500); // Wait for animations to complete
+    
+    return () => clearTimeout(checkViewportId);
+  }, [loading, episodes.length, displayedCount, isLoadingMore, loadMoreEpisodes]);
 
   if (loading) {
     return (
@@ -434,10 +476,10 @@ const WeekControl = () => {
             </AnimatePresence>
           </div>
           
-          {/* Infinite Scroll Observer Target */}
-          {displayedCount < episodes.length && (
-            <div ref={observerTarget} className="flex justify-center mt-8 py-8">
-              {isLoadingMore && (
+          {/* Infinite Scroll Observer Target + Load More Button */}
+          {displayedCount < episodes.length ? (
+            <div ref={observerTarget} className="flex flex-col items-center gap-4 mt-8 py-8">
+              {isLoadingMore ? (
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 border-3 border-t-transparent rounded-full animate-spin" 
                        style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}></div>
@@ -445,7 +487,30 @@ const WeekControl = () => {
                     Loading more episodes...
                   </p>
                 </div>
+              ) : (
+                <>
+                  <p className="text-xs opacity-50" style={{color: 'var(--foreground)'}}>
+                    Scroll to load more ({displayedCount}/{episodes.length})
+                  </p>
+                  {/* Manual Load More Button as fallback */}
+                  <button
+                    onClick={loadMoreEpisodes}
+                    className="px-6 py-2 rounded-lg transition-all hover:opacity-80"
+                    style={{
+                      backgroundColor: 'var(--rank-background)',
+                      color: 'var(--rank-text)',
+                    }}
+                  >
+                    Load More Episodes
+                  </button>
+                </>
               )}
+            </div>
+          ) : (
+            <div className="text-center mt-8 py-8">
+              <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.5}}>
+                All {episodes.length} episodes loaded
+              </p>
             </div>
           )}
         </>

@@ -170,6 +170,13 @@ export const MANUAL_EPISODES: ManualEpisodeConfig[] = [
     weekNumber: 4,
     score: 4.51,
   },
+  {
+    animeId: 52807,
+    episodeNumber: 3,
+    episodeTitle: "Organism Limits",
+    weekNumber: 4,
+    score: 3.04,
+  },
 
   // Adicione mais episódios acima desta linha...
   // ⬆️ FIM DA LISTA ⬆️

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Header } from "./components/Header";
+import { HomePage } from "./pages/HomePage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
@@ -14,7 +15,9 @@ function AppContent() {
   
   console.log("[AppContent] Current location:", location.pathname);
   
-  const currentPage: 'ranks' | 'anticipated' = location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
+  const currentPage: 'home' | 'ranks' | 'anticipated' = 
+    location.pathname === '/home' ? 'home' :
+    location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
 
   useEffect(() => {
     // Check for saved theme preference or default to dark
@@ -55,11 +58,13 @@ function AppContent() {
     localStorage.setItem("theme", newTheme);
   };
 
-  const handlePageChange = (page: 'ranks' | 'anticipated') => {
-    if (page === 'anticipated') {
+  const handlePageChange = (page: 'home' | 'ranks' | 'anticipated') => {
+    if (page === 'home') {
+      navigate('/home');
+    } else if (page === 'anticipated') {
       navigate('/most-anticipated-animes');
     } else {
-      navigate('/');
+      navigate('/ranks');
     }
   };
 
@@ -194,10 +199,12 @@ function AppContent() {
 
       <div className="dynamic-background-content pt-20">
         <Routes>
-          <Route path="/" element={<TopEpisodesPage />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/ranks" element={<TopEpisodesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>
 

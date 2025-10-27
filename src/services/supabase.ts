@@ -100,10 +100,24 @@ export async function getWeeklyEpisodes(
     }
   }
 
-  // Fallback to Jikan (initial load or error)
-  console.log('[SupabaseService] 📡 Fetching from Jikan API...');
-  onProgress?.(0, 100, 'Loading from MyAnimeList API...');
-  return await JikanService.getWeekData(weekNumber, onProgress);
+  // NO FALLBACK TO JIKAN - Data must be in Supabase
+  console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
+  onProgress?.(100, 100, 'No data available - sync required');
+  
+  // Return empty data
+  const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+  const weekStart = new Date(baseDate);
+  weekStart.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  weekStart.setUTCHours(0, 0, 0, 0);
+  weekEnd.setUTCHours(23, 59, 59, 999);
+
+  return {
+    episodes: [],
+    startDate: weekStart.toISOString(),
+    endDate: weekEnd.toISOString(),
+  };
 }
 
 /**
@@ -205,9 +219,9 @@ export async function getSeasonRankings(
     }
   }
 
-  // Fallback to Jikan
-  console.log('[SupabaseService] 📡 Fetching from Jikan API...');
-  return await JikanService.getSeasonAnimes(year, season);
+  // NO FALLBACK TO JIKAN - Data must be in Supabase
+  console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
+  return [];
 }
 
 // ============================================
@@ -275,9 +289,9 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
     }
   }
 
-  // Fallback to Jikan
-  console.log('[SupabaseService] 📡 Fetching from Jikan API...');
-  return await JikanService.getMostAnticipated();
+  // NO FALLBACK TO JIKAN - Data must be in Supabase
+  console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
+  return [];
 }
 
 // ============================================

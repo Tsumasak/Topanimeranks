@@ -6,10 +6,6 @@
 -- Enable pg_cron extension (if not already enabled)
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
--- Grant necessary permissions
-GRANT USAGE ON SCHEMA cron TO postgres;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA cron TO postgres;
-
 -- ============================================
 -- Schedule: Sync Weekly Episodes (every 10 minutes)
 -- ============================================
@@ -76,7 +72,6 @@ SELECT cron.schedule(
 -- ============================================
 -- Utility: View scheduled jobs
 -- ============================================
-COMMENT ON SCHEMA cron IS 'pg_cron extension schema';
 
 -- Query to check scheduled jobs:
 -- SELECT * FROM cron.job;

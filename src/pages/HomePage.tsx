@@ -6,6 +6,7 @@ import { CURRENT_WEEK_NUMBER } from '../config/weeks';
 import { Progress } from '../components/ui/progress';
 import { SetupBanner } from '../components/SetupBanner';
 import { CacheInfoBanner } from '../components/CacheInfoBanner';
+import { SyncStatusBanner } from '../components/SyncStatusBanner';
 
 interface HomeCardData {
   rank: number;
@@ -361,6 +362,9 @@ export function HomePage() {
     <div className="dynamic-background min-h-screen">
       {/* Main Content */}
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col gap-[32px]">
+        {/* Sync Status Banner - shows if data needs sync */}
+        <SyncStatusBanner />
+        
         {/* Setup Banner */}
         <SetupBanner />
         

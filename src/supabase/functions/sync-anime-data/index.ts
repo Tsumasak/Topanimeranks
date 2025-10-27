@@ -60,7 +60,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     endDate.setDate(endDate.getDate() + 6);
 
     // Fetch schedules for the week
-    const scheduleUrl = `${JIKAN_BASE_URL}/schedules?filter=tv&kids=false&sfw=true`;
+    // Note: Jikan v4 schedules endpoint returns all airing anime for the current week
+    const scheduleUrl = `${JIKAN_BASE_URL}/schedules`;
     console.log('🌐 Fetching from:', scheduleUrl);
     
     const scheduleData = await fetchWithRetry(scheduleUrl);

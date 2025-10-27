@@ -6,7 +6,7 @@ import { AnimeCardSkeleton } from './AnimeCardSkeleton';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
-import { JikanService } from '../services/jikan';
+import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix
@@ -145,8 +145,8 @@ const WeekControl = () => {
         
         console.log(`\n========== LOADING WEEK ${weekNumber} ==========`);
         
-        // Load current week episodes with progress callback
-        const weekData = await JikanService.getWeekData(weekNumber, (current, _total, message) => {
+        // Load current week episodes from Supabase (with Jikan fallback)
+        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber, (current, _total, message) => {
           setLoadingProgress(current);
           setLoadingMessage(message);
         });
@@ -171,7 +171,7 @@ const WeekControl = () => {
         // Load previous week data for comparison
         if (weekNumber > 1) {
           console.log(`[WeekControl] Loading previous week ${weekNumber - 1} for comparison...`);
-          const previousWeekData = await JikanService.getWeekData(weekNumber - 1);
+          const previousWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
           setPreviousWeekEpisodes(previousWeekData.episodes);
           
           console.log(`[WeekControl] Previous week ${weekNumber - 1} loaded: ${previousWeekData.episodes.length} episodes`);

@@ -6,7 +6,7 @@ import { AnticipatedCardSkeleton } from './AnimeCardSkeleton';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SEASONS_DATA } from '../config/seasons';
-import { JikanService } from '../services/jikan';
+import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime } from '../types/anime';
 
 const SeasonControl = () => {
@@ -60,11 +60,10 @@ const SeasonControl = () => {
       
       try {
         const { season, year } = parseSeasonId(activeSeason);
-        const seasonData = await JikanService.getAnticipatedBySeason(season, year, (current, _total, message) => {
-          setLoadingProgress(current);
-          setLoadingMessage(message);
-        });
-        setAnimes(seasonData.animes);
+        // Use Supabase service (with Jikan fallback)
+        const animesList = await SupabaseService.getSeasonRankings(season, year);
+        setAnimes(animesList);
+        setLoadingProgress(100);
       } catch (err) {
         console.error('Error loading season data:', err);
         setError('Failed to load anime data. Please try again later.');

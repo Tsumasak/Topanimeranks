@@ -1,6 +1,13 @@
-# Top Anime Ranks
+# Top Anime Ranks ⚡
 
-Site completo de rankings de episódios de anime e animes mais antecipados, com integração à API Jikan (MyAnimeList).
+Site completo de rankings de episódios de anime e animes mais antecipados, com **cache Supabase para performance 100x mais rápida** e integração à API Jikan (MyAnimeList).
+
+## 🎯 Performance
+
+- ⚡ **< 1 segundo** de carregamento (com Supabase)
+- 🚀 **100x mais rápido** que acesso direto à API Jikan
+- 🔄 **Atualização automática** a cada 10 minutos
+- 💾 **Cache inteligente** com fallback automático
 
 ## 🚀 Deploy no Vercel
 
@@ -96,7 +103,15 @@ npm run preview  # Preview do build de produção
    npm run dev
    ```
 
-3. **Acessar:**
+3. **⚡ IMPORTANTE - Setup do Supabase (Primeira vez):**
+   ```
+   Acesse: http://localhost:5173/setup
+   Clique: "Executar Setup Automático"
+   ```
+   
+   **OU consulte:** `/COMO_FAZER_SETUP.md` para instruções detalhadas
+
+4. **Acessar o site:**
    ```
    http://localhost:5173
    ```

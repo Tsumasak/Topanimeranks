@@ -4,6 +4,8 @@ import { JikanService } from '../services/jikan';
 import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER } from '../config/weeks';
 import { Progress } from '../components/ui/progress';
+import { SetupBanner } from '../components/SetupBanner';
+import { CacheInfoBanner } from '../components/CacheInfoBanner';
 
 interface HomeCardData {
   rank: number;
@@ -216,35 +218,67 @@ export function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [usedJikanFallback, setUsedJikanFallback] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         setLoadingProgress(0);
-        setLoadingMessage('Loading top episodes...');
+        setLoadingMessage('Checking Supabase cache...');
 
-        // OPTIMIZATION: Load both in parallel instead of sequentially
-        const [weekData, anticipatedData] = await Promise.all([
-          JikanService.getWeekData(CURRENT_WEEK_NUMBER, (current, _total, message) => {
-            // Update progress for first half (0-50%)
-            setLoadingProgress(Math.floor(current / 2));
-            setLoadingMessage(message);
-          }),
-          (async () => {
-            setLoadingMessage('Loading most anticipated animes...');
-            setLoadingProgress(50);
-            const data = await JikanService.getAnticipatedBySeason('winter', 2026);
-            setLoadingProgress(90);
-            return data;
-          })()
+        // TRY SUPABASE FIRST (fast cache)
+        const supabaseDataImport = await import('../services/supabase-data');
+        const SupabaseDataService = supabaseDataImport.SupabaseDataService;
+        
+        setLoadingProgress(10);
+        
+        const [weekResult, anticipatedResult] = await Promise.all([
+          SupabaseDataService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER),
+          SupabaseDataService.getAnticipatedAnimes()
         ]);
+
+        let weekEpisodes: Episode[] = [];
+        let anticipatedAnimes: AnticipatedAnime[] = [];
+
+        // Check if we got data from Supabase
+        if (weekResult.success && weekResult.data.length > 0) {
+          console.log('[HomePage] ✓ Using cached week data from Supabase');
+          weekEpisodes = weekResult.data;
+          setLoadingProgress(50);
+        } else {
+          // Fallback to Jikan API
+          console.log('[HomePage] ⚠️ No Supabase data, falling back to Jikan API...');
+          setUsedJikanFallback(true);
+          setLoadingMessage('Loading from MyAnimeList API...');
+          const weekData = await JikanService.getWeekData(CURRENT_WEEK_NUMBER, (current, _total, message) => {
+            setLoadingProgress(10 + Math.floor(current * 0.4));
+            setLoadingMessage(message);
+          });
+          weekEpisodes = weekData.episodes;
+          setLoadingProgress(50);
+        }
+
+        // Anticipated animes
+        if (anticipatedResult.success && anticipatedResult.data.length > 0) {
+          console.log('[HomePage] ✓ Using cached anticipated data from Supabase');
+          anticipatedAnimes = anticipatedResult.data;
+          setLoadingProgress(90);
+        } else {
+          // Fallback to Jikan API
+          console.log('[HomePage] ⚠️ No Supabase data for anticipated, falling back to Jikan API...');
+          setUsedJikanFallback(true);
+          setLoadingMessage('Loading most anticipated from API...');
+          const anticipatedData = await JikanService.getAnticipatedBySeason('winter', 2026);
+          anticipatedAnimes = anticipatedData.animes;
+          setLoadingProgress(90);
+        }
 
         setLoadingMessage('Processing data...');
         setLoadingProgress(95);
 
         // Process Top Episodes
-        const topEps = weekData.episodes.slice(0, 3).map((ep: Episode, index: number) => ({
+        const topEps = weekEpisodes.slice(0, 3).map((ep: Episode, index: number) => ({
           rank: index + 1,
           title: ep.animeTitle,
           subtitle: `EP ${ep.episodeNumber} - ${ep.episodeTitle}`,
@@ -262,7 +296,7 @@ export function HomePage() {
         }
 
         // Process Most Anticipated
-        const topAnticipated = anticipatedData.animes.slice(0, 3).map((anime: AnticipatedAnime, index: number) => ({
+        const topAnticipated = anticipatedAnimes.slice(0, 3).map((anime: AnticipatedAnime, index: number) => ({
           rank: index + 1,
           title: anime.title,
           image: anime.imageUrl,
@@ -296,9 +330,14 @@ export function HomePage() {
             <h1 className="text-3xl mb-4" style={{ color: 'var(--foreground)' }}>
               Loading Top Anime Ranks
             </h1>
-            <p className="text-sm mb-6" style={{ color: 'var(--foreground)', opacity: 0.7 }}>
+            <p className="text-sm mb-2" style={{ color: 'var(--foreground)', opacity: 0.7 }}>
               {loadingMessage || 'Fetching data from MyAnimeList...'}
             </p>
+            {loadingProgress < 50 && (
+              <p className="text-xs mb-6" style={{ color: 'var(--rating-yellow)', opacity: 0.8 }}>
+                ⚡ Tip: Enable Supabase cache for instant loading!
+              </p>
+            )}
             <div className="w-full mb-4">
               <Progress 
                 value={loadingProgress} 
@@ -322,6 +361,12 @@ export function HomePage() {
     <div className="dynamic-background min-h-screen">
       {/* Main Content */}
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col gap-[32px]">
+        {/* Setup Banner */}
+        <SetupBanner />
+        
+        {/* Cache Info Banner - shows when using Jikan fallback */}
+        {usedJikanFallback && <CacheInfoBanner />}
+        
         {/* Weekly Episodes Section */}
         <div className="relative rounded-[10px] shrink-0 w-full" style={{ backgroundColor: 'var(--card-background)' }}>
           <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />

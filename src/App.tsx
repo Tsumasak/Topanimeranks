@@ -5,19 +5,27 @@ import { HomePage } from "./pages/HomePage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
+import SetupPage from "./pages/SetupPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
+import { SetupRequiredBanner } from "./components/SetupRequiredBanner";
+import { useSupabaseStatus } from "./hooks/useSupabaseStatus";
 
 function AppContent() {
   const [theme, setTheme] = useState("dark");
   const location = useLocation();
   const navigate = useNavigate();
+  const { needsSetup, loading: statusLoading } = useSupabaseStatus();
   
   console.log("[AppContent] Current location:", location.pathname);
+  console.log("[AppContent] Needs setup:", needsSetup);
   
   const currentPage: 'home' | 'ranks' | 'anticipated' = 
     location.pathname === '/home' ? 'home' :
     location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
+  
+  const isSetupPage = location.pathname === '/setup';
+  const showSetupBanner = needsSetup && !isSetupPage && !statusLoading;
 
   useEffect(() => {
     // Check for saved theme preference or default to dark
@@ -197,13 +205,17 @@ function AppContent() {
         onPageChange={handlePageChange}
       />
 
-      <div className="dynamic-background-content pt-20">
+      {/* Setup Required Banner - shows on all pages except /setup when tables don't exist */}
+      {showSetupBanner && <SetupRequiredBanner />}
+
+      <div className={`dynamic-background-content ${showSetupBanner ? 'pt-44' : 'pt-20'}`}>
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/ranks" element={<TopEpisodesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
+          <Route path="/setup" element={<SetupPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>

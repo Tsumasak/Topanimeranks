@@ -59,23 +59,43 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 6);
 
-    // Fetch schedules for the week
+    // Fetch schedules for the week - FETCH ALL PAGES
     // Note: Jikan v4 schedules endpoint returns all airing anime for the current week
-    const scheduleUrl = `${JIKAN_BASE_URL}/schedules`;
-    console.log('🌐 Fetching from:', scheduleUrl);
+    let allAnimes: any[] = [];
+    let currentPage = 1;
+    let hasNextPage = true;
     
-    const scheduleData = await fetchWithRetry(scheduleUrl);
-    console.log('📦 Schedule response:', JSON.stringify(scheduleData).substring(0, 500));
-    
-    if (!scheduleData || !scheduleData.data) {
-      throw new Error(`No schedule data received. Response: ${JSON.stringify(scheduleData)}`);
-    }
+    while (hasNextPage) {
+      const scheduleUrl = `${JIKAN_BASE_URL}/schedules?page=${currentPage}`;
+      console.log(`🌐 Fetching page ${currentPage}: ${scheduleUrl}`);
+      
+      const scheduleData = await fetchWithRetry(scheduleUrl);
+      
+      if (!scheduleData || !scheduleData.data) {
+        throw new Error(`No schedule data received. Response: ${JSON.stringify(scheduleData)}`);
+      }
 
-    const allAnimes = scheduleData.data;
-    console.log(`📺 Found ${allAnimes.length} total airing animes`);
+      allAnimes = allAnimes.concat(scheduleData.data);
+      hasNextPage = scheduleData.pagination?.has_next_page || false;
+      currentPage++;
+      
+      console.log(`📄 Page ${currentPage - 1}: Added ${scheduleData.data.length} animes. Total so far: ${allAnimes.length}`);
+      
+      // Respect rate limits between pages
+      if (hasNextPage) {
+        await delay(RATE_LIMIT_DELAY);
+      }
+    }
+    
+    console.log(`📺 Found ${allAnimes.length} total airing animes across ${currentPage - 1} pages`);
 
     // Filter and process episodes
     const episodes: any[] = [];
+    
+    // Log member counts to understand the data
+    const memberCounts = allAnimes.map(a => a.members || 0).sort((a, b) => b - a);
+    console.log(`📊 Member counts - Top 10: ${memberCounts.slice(0, 10).join(', ')}`);
+    console.log(`📊 Member counts - Min: ${Math.min(...memberCounts)}, Max: ${Math.max(...memberCounts)}`);
     
     // First, filter by members
     const filteredByMembers = allAnimes.filter((anime: any) => anime.members && anime.members >= 20000);

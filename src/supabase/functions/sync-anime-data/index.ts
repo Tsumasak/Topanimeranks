@@ -72,28 +72,38 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     }
 
     const allAnimes = scheduleData.data;
-    console.log(`Found ${allAnimes.length} airing animes`);
+    console.log(`📺 Found ${allAnimes.length} total airing animes`);
 
     // Filter and process episodes
     const episodes: any[] = [];
     
-    for (const anime of allAnimes) {
+    // First, filter by members
+    const filteredByMembers = allAnimes.filter((anime: any) => anime.members && anime.members >= 20000);
+    console.log(`✅ After 20k+ members filter: ${filteredByMembers.length} animes`);
+    
+    for (const anime of filteredByMembers) {
       await delay(RATE_LIMIT_DELAY);
 
-      // Filter: Only animes with 20k+ members
-      if (!anime.members || anime.members < 20000) continue;
+      console.log(`🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
 
       // Get full anime data
       const animeUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/full`;
       const animeData = await fetchWithRetry(animeUrl);
       const fullAnime = animeData.data;
 
-      // Check if anime has episodes in this week
-      if (!fullAnime.broadcast || !fullAnime.broadcast.day) continue;
+      // Check if anime has broadcast info
+      console.log(`📡 Broadcast info: ${JSON.stringify(fullAnime.broadcast)}`);
+      
+      if (!fullAnime.broadcast || !fullAnime.broadcast.day) {
+        console.log(`⏭️ Skipping ${anime.title} - no broadcast day`);
+        continue;
+      }
 
       // Get episode number from broadcast info
       const episodeNumber = fullAnime.episodes || 1;
       const episodeId = `${anime.mal_id}_${episodeNumber}`;
+
+      console.log(`✅ Adding episode: ${anime.title} - Episode ${episodeNumber}`);
 
       const episode = {
         anime_id: anime.mal_id,
@@ -140,9 +150,12 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       ep.position_in_week = index + 1;
     });
 
-    console.log(`Processed ${episodes.length} episodes for week ${weekNumber}`);
+    console.log(`\n📦 Processed ${episodes.length} episodes for week ${weekNumber}`);
+    console.log(`📋 Sample episode data:`, JSON.stringify(episodes[0], null, 2));
 
     // Upsert to database
+    console.log(`\n💾 Starting database upsert for ${episodes.length} episodes...`);
+    
     for (const episode of episodes) {
       const { data, error } = await supabase
         .from('weekly_episodes')
@@ -153,9 +166,11 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         .select();
 
       if (error) {
-        console.error('Upsert error:', error);
+        console.error(`❌ Upsert error for ${episode.title}:`, error);
         continue;
       }
+      
+      console.log(`✅ Upserted: ${episode.title}`);
 
       if (data && data.length > 0) {
         // Check if it was created or updated

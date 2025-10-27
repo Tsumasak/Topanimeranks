@@ -17,18 +17,25 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function fetchWithRetry(url: string, retries = 3): Promise<any> {
   for (let i = 0; i < retries; i++) {
     try {
+      console.log(`🔄 Fetching (attempt ${i + 1}/${retries}): ${url}`);
       const response = await fetch(url);
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      
       if (response.status === 429) {
         console.log(`Rate limited, waiting 3 seconds... (attempt ${i + 1}/${retries})`);
         await delay(3000);
         continue;
       }
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ HTTP Error: ${response.status} - ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
-      return await response.json();
+      const data = await response.json();
+      console.log(`✅ Data received, keys: ${Object.keys(data).join(', ')}`);
+      return data;
     } catch (error) {
-      console.error(`Fetch error (attempt ${i + 1}/${retries}):`, error);
+      console.error(`❌ Fetch error (attempt ${i + 1}/${retries}):`, error);
       if (i === retries - 1) throw error;
       await delay(2000);
     }
@@ -54,10 +61,13 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // Fetch schedules for the week
     const scheduleUrl = `${JIKAN_BASE_URL}/schedules?filter=tv&kids=false&sfw=true`;
-    const scheduleData = await fetchWithRetry(scheduleUrl);
+    console.log('🌐 Fetching from:', scheduleUrl);
     
-    if (!scheduleData.data) {
-      throw new Error('No schedule data received');
+    const scheduleData = await fetchWithRetry(scheduleUrl);
+    console.log('📦 Schedule response:', JSON.stringify(scheduleData).substring(0, 500));
+    
+    if (!scheduleData || !scheduleData.data) {
+      throw new Error(`No schedule data received. Response: ${JSON.stringify(scheduleData)}`);
     }
 
     const allAnimes = scheduleData.data;
@@ -465,7 +475,11 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get request body
-    const { sync_type, week_number, season, year } = await req.json();
+    const body = await req.text();
+    console.log('📦 Raw body received:', body);
+    
+    const { sync_type, week_number, season, year } = body ? JSON.parse(body) : {};
+    console.log('📋 Parsed sync_type:', sync_type);
 
     let result;
 

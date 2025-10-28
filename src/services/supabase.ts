@@ -204,7 +204,7 @@ export async function getSeasonRankings(
               large_image_url: row.image_url || '',
             },
           },
-          score: row.score,
+          score: row.anime_score,
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,
@@ -280,7 +280,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
         const membersA = a.members || 0;
         const membersB = b.members || 0;
         if (membersB !== membersA) return membersB - membersA;
-        return (b.score || 0) - (a.score || 0);
+        return (b.anime_score || 0) - (a.anime_score || 0);
       });
 
       if (sortedData.length > 0) {
@@ -305,7 +305,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
               large_image_url: row.image_url || '',
             },
           },
-          score: row.score,
+          score: row.anime_score,
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,

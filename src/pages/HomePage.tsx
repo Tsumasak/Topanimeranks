@@ -41,8 +41,8 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
     contentGradient = 'bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent';
   }
   
-  // Image height: Episode cards use old size (160px), new layout uses 230px
-  const imageHeight = isEpisode ? 'h-40' : 'h-[230px]';
+  // Image height: Episode cards use old size (160px), new layout uses 230px on desktop, 280px on mobile
+  const imageHeight = isEpisode ? 'h-40' : 'h-[280px] md:h-[230px]';
   
   // SVG Badge Components for top 3 positions (same as BaseAnimeCard)
   const GoldBadge = () => (
@@ -217,7 +217,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
   return (
     <CardWrapper 
       {...cardProps}
-      className={`relative block theme-card rounded-lg overflow-visible flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-[213px] h-full`}
+      className={`relative block theme-card rounded-lg overflow-visible flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-full md:w-[213px] max-w-[400px] md:max-w-none h-full`}
     >
       {/* Image Section */}
       <div className={`relative flex-shrink-0 overflow-hidden ${imageHeight} rounded-t-lg`}>
@@ -507,7 +507,7 @@ export function HomePage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="flex gap-[24px] w-full"
+                    className="flex flex-col md:flex-row gap-[24px] w-full"
                     onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for episodes')}
                     onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for episodes')}
                   >
@@ -522,14 +522,14 @@ export function HomePage() {
                             delay: index * 0.03,
                             ease: [0.34, 1.56, 0.64, 1]
                           }}
-                          className="flex flex-1 w-full"
+                          className="flex md:flex-1 w-full"
                         >
                           <HomeAnimeCard data={ep} type="episode" />
                         </motion.div>
                       ))
                     ) : (
                       [1, 2, 3].map(i => (
-                        <div key={`placeholder-episode-${i}`} className="bg-slate-700/50 h-[320px] flex-1 w-full rounded-[10px] flex items-center justify-center">
+                        <div key={`placeholder-episode-${i}`} className="bg-slate-700/50 h-[320px] md:flex-1 w-full rounded-[10px] flex items-center justify-center">
                           <p className="text-slate-400 text-sm">Loading...</p>
                         </div>
                       ))
@@ -573,7 +573,7 @@ export function HomePage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
-                      className="flex gap-6 w-full overflow-x-auto"
+                      className="flex flex-col md:flex-row gap-6 w-full md:overflow-x-auto items-center md:items-start"
                       onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for season animes')}
                       onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for season animes')}
                     >
@@ -588,14 +588,14 @@ export function HomePage() {
                               delay: index * 0.03,
                               ease: [0.34, 1.56, 0.64, 1]
                             }}
-                            className="flex-shrink-0 flex"
+                            className="flex-shrink-0 flex w-full md:w-auto justify-center"
                           >
                             <HomeAnimeCard data={anime} type="top" />
                           </motion.div>
                         ))
                       ) : (
                         [1, 2, 3].map(i => (
-                          <div key={`placeholder-season-${i}`} className="bg-slate-700/50 h-[380px] w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
+                          <div key={`placeholder-season-${i}`} className="bg-slate-700/50 h-[380px] w-full md:w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
                             <p className="text-slate-400 text-sm">Loading...</p>
                           </div>
                         ))
@@ -635,7 +635,7 @@ export function HomePage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
-                      className="flex gap-6 w-full overflow-x-auto"
+                      className="flex flex-col md:flex-row gap-6 w-full md:overflow-x-auto items-center md:items-start"
                       onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for anticipated animes')}
                       onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for anticipated animes')}
                     >
@@ -650,14 +650,14 @@ export function HomePage() {
                               delay: index * 0.03,
                               ease: [0.34, 1.56, 0.64, 1]
                             }}
-                            className="flex-shrink-0 flex"
+                            className="flex-shrink-0 flex w-full md:w-auto justify-center"
                           >
                             <HomeAnimeCard data={anime} type="anticipated" />
                           </motion.div>
                         ))
                       ) : (
                         [1, 2, 3].map(i => (
-                          <div key={`placeholder-anticipated-${i}`} className="bg-slate-700/50 h-[380px] w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
+                          <div key={`placeholder-anticipated-${i}`} className="bg-slate-700/50 h-[380px] w-full md:w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
                             <p className="text-slate-400 text-sm">Loading...</p>
                           </div>
                         ))

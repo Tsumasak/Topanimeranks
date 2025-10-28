@@ -18,7 +18,6 @@ const SeasonControl = () => {
   const [error, setError] = useState<string | null>(null);
   const [userSwitched, setUserSwitched] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
   
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
@@ -82,10 +81,10 @@ const SeasonControl = () => {
           animeType: anime.type || 'TV',
           season: anime.season || season,
           year: anime.year || year,
-          demographics: Array.isArray(anime.demographics) ? anime.demographics.map(d => d.name || d) : [],
-          genres: Array.isArray(anime.genres) ? anime.genres.map(g => g.name || g) : [],
-          themes: Array.isArray(anime.themes) ? anime.themes.map(t => t.name || t) : [],
-          studios: Array.isArray(anime.studios) ? anime.studios.map(s => s.name || s) : [],
+          demographics: Array.isArray(anime.demographics) ? anime.demographics.map(d => typeof d === 'string' ? d : d.name) : [],
+          genres: Array.isArray(anime.genres) ? anime.genres.map(g => typeof g === 'string' ? g : g.name) : [],
+          themes: Array.isArray(anime.themes) ? anime.themes.map(t => typeof t === 'string' ? t : t.name) : [],
+          studios: Array.isArray(anime.studios) ? anime.studios.map(s => typeof s === 'string' ? s : s.name) : [],
           url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
         }));
         

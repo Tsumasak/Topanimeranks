@@ -65,7 +65,7 @@ export async function findMissingEpisodes(): Promise<MissingEpisodeSuggestion[]>
       const scoreVariation = (Math.random() - 0.5) * 0.1; // -0.05 a +0.05
       const suggestedScore = Math.max(
         0,
-        Math.min(10, week2Episode.score + scoreVariation)
+        Math.min(10, week2Episode.episodeScore + scoreVariation)
       );
 
       missing.push({
@@ -73,7 +73,7 @@ export async function findMissingEpisodes(): Promise<MissingEpisodeSuggestion[]>
         animeTitle: week2Episode.animeTitle,
         lastEpisodeNumber: week2Episode.episodeNumber,
         suggestedEpisodeNumber,
-        lastScore: week2Episode.score,
+        lastScore: week2Episode.episodeScore,
         suggestedScore: parseFloat(suggestedScore.toFixed(2)),
         reason: `Estava na Week 2 com EP${week2Episode.episodeNumber}, provavelmente tem EP${suggestedEpisodeNumber} na Week 3`,
       });

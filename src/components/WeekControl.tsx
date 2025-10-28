@@ -44,7 +44,8 @@ const formatDynamicPeriod = (startDate: string, endDate: string, isCurrentWeek: 
 
 // Function to calculate position change for an ANIME (not specific episode)
 // This compares the ANIME's ranking between weeks, regardless of which episode aired
-const calculatePositionChange = (
+// NOTE: Currently not used, but kept for future trend calculation features
+/*const calculatePositionChange = (
   episode: Episode,
   currentRank: number,
   previousWeekEpisodes: Episode[]
@@ -69,11 +70,11 @@ const calculatePositionChange = (
   const change = previousRank - currentRank;
   
   console.log(`[TrendIndicator] ${episode.animeTitle}: #${currentRank} (was #${previousRank}, change: ${change > 0 ? '+' : ''}${change})`);
-  console.log(`  → Current: EP${episode.episodeNumber} (Score: ${episode.score})`);
-  console.log(`  → Previous: EP${previousAnimeEntry.episodeNumber} (Score: ${previousAnimeEntry.score})`);
+  console.log(`  → Current: EP${episode.episodeNumber} (Score: ${episode.episodeScore})`);
+  console.log(`  → Previous: EP${previousAnimeEntry.episodeNumber} (Score: ${previousAnimeEntry.episodeScore})`);
   
   return change;
-};
+};*/
 
 const WeekControl = () => {
   // Track if component is mounted
@@ -85,7 +86,6 @@ const WeekControl = () => {
   const [activeWeek, setActiveWeek] = useState<string>(`week${CURRENT_WEEK_NUMBER}`);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [displayedEpisodes, setDisplayedEpisodes] = useState<Episode[]>([]);
-  const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isChangingWeek, setIsChangingWeek] = useState(false);
   const [error, setError] = useState<string | null>(null);

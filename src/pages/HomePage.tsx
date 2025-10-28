@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { JikanService } from '../services/jikan';
 import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
 import { Progress } from '../components/ui/progress';
@@ -242,7 +241,6 @@ export function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [usedJikanFallback, setUsedJikanFallback] = useState(false);
   const [displayedWeekNumber, setDisplayedWeekNumber] = useState(CURRENT_WEEK_NUMBER);
 
   useEffect(() => {
@@ -270,7 +268,7 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             score: anime.score || 0,
             animeType: anime.type || 'TV',
-            demographics: anime.demographics?.map(d => d.name || d) || [],
+            demographics: anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setTopSeasonAnimes(topSeason);
@@ -387,9 +385,6 @@ export function HomePage() {
     <div className="dynamic-background min-h-screen">
       {/* Main Content */}
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col gap-[32px]">
-        {/* Cache Info Banner - shows when using Jikan fallback */}
-        {usedJikanFallback && <CacheInfoBanner />}
-        
         {/* Weekly Episodes Section */}
         <div className="relative rounded-[10px] shrink-0 w-full" style={{ backgroundColor: 'var(--card-background)' }}>
           <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />

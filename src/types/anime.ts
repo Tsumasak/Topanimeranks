@@ -81,14 +81,17 @@ export interface Episode {
   animeTitle: string;
   episodeNumber: number;
   episodeTitle: string;
-  score: number;
+  episodeUrl: string; // Link to MAL episode page
+  episodeScore: number; // Score of the specific episode
   imageUrl: string;
   aired: string;
   animeType: string;
   demographics: string[];
   genres: string[];
   themes: string[];
-  url: string;
+  url: string; // Link to anime page (forum_url)
+  trend?: string; // Position change: 'NEW', '+1', '-2', '='
+  positionInWeek?: number; // Current ranking position
   isManual?: boolean; // True if episode was added manually (not from API)
 }
 
@@ -96,7 +99,7 @@ export interface AnticipatedAnime {
   id: number;
   title: string;
   imageUrl: string;
-  score: number | null;
+  animeScore: number | null; // Overall anime score
   members: number;
   synopsis: string;
   animeType: string;

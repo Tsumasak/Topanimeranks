@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
 import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
+import { EmptyDataAlert } from './EmptyDataAlert';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix
 const getFormattedPeriod = (week: WeekConfig, isCurrentWeek: boolean): string => {
@@ -143,23 +144,23 @@ const WeekControl = () => {
         // Get week number from activeWeek id (e.g., "week1" -> 1)
         const weekNumber = parseInt(activeWeek.replace('week', ''));
         
-        console.log(`\n========== LOADING WEEK ${weekNumber} ==========`);
+        console.log(`\n========== LOADING WEEK ${weekNumber} FROM SUPABASE ==========`);
         
-        // Load current week episodes from Supabase (with Jikan fallback)
-        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber, (current, _total, message) => {
-          setLoadingProgress(current);
-          setLoadingMessage(message);
-        });
+        setLoadingProgress(30);
+        setLoadingMessage('Fetching weekly episodes...');
+        
+        // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
+        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber);
+        
+        setLoadingProgress(70);
+        
+        // Episodes are already in the correct format from SupabaseService
         setEpisodes(weekData.episodes);
+        setLoadingProgress(100);
         
         console.log(`[WeekControl] Week ${weekNumber} loaded: ${weekData.episodes.length} episodes`);
-        
-        // Auto-trigger load more if we have few episodes and they all fit on screen
-        if (weekData.episodes.length <= 12) {
-          console.log(`[WeekControl] Week has ${weekData.episodes.length} episodes (≤12), all will be shown immediately`);
-        }
-        console.log(`[WeekControl] Top 5 episodes:`, weekData.episodes.slice(0, 5).map(ep => 
-          `#${weekData.episodes.indexOf(ep) + 1} ${ep.animeTitle} EP${ep.episodeNumber} (ID: ${ep.id}, AnimeID: ${ep.animeId})`
+        console.log(`[WeekControl] Top 5 episodes:`, weekData.episodes.slice(0, 5).map((ep, i) => 
+          `#${i + 1} ${ep.animeTitle} EP${ep.episodeNumber} (Score: ${ep.score})`
         ));
         
         // Store the week dates from API
@@ -168,19 +169,13 @@ const WeekControl = () => {
           endDate: weekData.endDate,
         });
 
-        // Load previous week data for comparison
+        // Load previous week for position comparison
         if (weekNumber > 1) {
-          console.log(`[WeekControl] Loading previous week ${weekNumber - 1} for comparison...`);
-          const previousWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
-          setPreviousWeekEpisodes(previousWeekData.episodes);
-          
-          console.log(`[WeekControl] Previous week ${weekNumber - 1} loaded: ${previousWeekData.episodes.length} episodes`);
-          console.log(`[WeekControl] Previous week top 5:`, previousWeekData.episodes.slice(0, 5).map(ep => 
-            `#${previousWeekData.episodes.indexOf(ep) + 1} ${ep.animeTitle} EP${ep.episodeNumber} (ID: ${ep.id}, AnimeID: ${ep.animeId})`
-          ));
+          const prevWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
+          setPreviousWeekEpisodes(prevWeekData.episodes);
+          console.log(`[WeekControl] Previous week ${weekNumber - 1} loaded: ${prevWeekData.episodes.length} episodes`);
         } else {
           setPreviousWeekEpisodes([]);
-          console.log(`[WeekControl] Week 1 - no previous week data`);
         }
         
         console.log(`========================================\n`);
@@ -310,13 +305,8 @@ const WeekControl = () => {
           </p>
           <button
             onClick={() => {
-              setLoading(true);
-              setError(null);
-              const weekNumber = parseInt(activeWeek.replace('week', ''));
-              JikanService.getWeekData(weekNumber).then(weekData => {
-                setEpisodes(weekData.episodes);
-                setLoading(false);
-              });
+              // Force reload by reloading the page
+              window.location.reload();
             }}
             className="theme-rank px-6 py-2 rounded-lg"
           >
@@ -432,18 +422,38 @@ const WeekControl = () => {
       </div>
 
       {episodes.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-xl" style={{color: 'var(--foreground)', opacity: 0.5}}>
-            No episode data available for this week yet.
-          </p>
-        </div>
+        <>
+          {/* Show EmptyDataAlert only if ALL weeks are empty (database not populated) */}
+          {activeWeek === 1 && (
+            <EmptyDataAlert />
+          )}
+          {activeWeek !== 1 && (
+            <div className="text-center py-16">
+              <p className="text-xl" style={{color: 'var(--foreground)', opacity: 0.5}}>
+                No episode data available for this week yet.
+              </p>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <AnimatePresence mode="popLayout">
               {episodes.slice(0, displayedCount).map((episode, index) => {
                 const rank = index + 1;
-                const positionChange = calculatePositionChange(episode, rank, previousWeekEpisodes);
+                
+                // Convert trend string to positionChange number
+                let positionChange: number | undefined;
+                if (episode.trend) {
+                  if (episode.trend === 'NEW') {
+                    positionChange = undefined; // NEW episodes
+                  } else if (episode.trend === '=') {
+                    positionChange = 0; // Same position
+                  } else {
+                    positionChange = parseInt(episode.trend); // +2, -3, etc.
+                  }
+                }
+                
                 return (
                   <motion.div
                     key={`${activeWeek}-${episode.animeId}-${episode.id}`}
@@ -462,8 +472,8 @@ const WeekControl = () => {
                       title={episode.animeTitle}
                       subtitle={`EP ${episode.episodeNumber} - ${episode.episodeTitle}`}
                       imageUrl={episode.imageUrl}
-                      linkUrl={episode.url}
-                      bottomText={episode.score > 0 ? `★ ${episode.score.toFixed(2)}` : '★ N/A'}
+                      linkUrl={episode.episodeUrl}
+                      bottomText={episode.episodeScore > 0 ? `★ ${episode.episodeScore.toFixed(2)}` : '★ N/A'}
                       animeType={episode.animeType}
                       demographics={episode.demographics}
                       genres={episode.genres}

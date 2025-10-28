@@ -2,17 +2,29 @@
 
 ## 📌 Início Rápido
 
+### 1️⃣ Rodar o Site
 ```bash
-# 1. Instalar dependências
+# Instalar dependências
 npm install
 
-# 2. Rodar o projeto
+# Rodar o projeto
 npm run dev
 
-# 3. Abrir http://localhost:5173
+# Abrir http://localhost:5173
 ```
 
-**Pronto!** O site vai carregar (demora 10-30s na primeira vez).
+### 2️⃣ Popular o Banco de Dados (Necessário!)
+
+O site vai mostrar "Database Not Populated". Para resolver:
+
+1. Abra: https://supabase.com/dashboard/project/kgiuycrbdctbbuvtlyro/sql/new
+2. Cole: `SELECT sync_all_weeks();`
+3. Clique em **RUN**
+4. Aguarde 2-5 minutos
+
+**Pronto!** O site agora vai carregar os episódios instantaneamente.
+
+📖 **Guia completo:** `/QUICK_SETUP.md`
 
 ---
 

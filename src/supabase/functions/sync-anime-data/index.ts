@@ -53,91 +53,90 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
   let itemsUpdated = 0;
 
   try {
-    // Calculate week dates
-    const startDate = new Date('2025-01-06');
-    startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
+    // Calculate week dates - Week 1 starts on September 29, 2025 (Monday)
+    const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+    const startDate = new Date(baseDate);
+    startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 6);
-
-    // Fetch schedules for the week - FETCH ALL PAGES
-    // Note: Jikan v4 schedules endpoint returns all airing anime for the current week
-    let allAnimes: any[] = [];
-    let currentPage = 1;
-    let hasNextPage = true;
+    endDate.setUTCDate(startDate.getUTCDate() + 6); // Sunday
     
-    while (hasNextPage) {
-      const scheduleUrl = `${JIKAN_BASE_URL}/schedules?page=${currentPage}`;
-      console.log(`🌐 Fetching page ${currentPage}: ${scheduleUrl}`);
-      
-      const scheduleData = await fetchWithRetry(scheduleUrl);
-      
-      if (!scheduleData || !scheduleData.data) {
-        throw new Error(`No schedule data received. Response: ${JSON.stringify(scheduleData)}`);
-      }
+    console.log(`📅 Week ${weekNumber}: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
 
-      allAnimes = allAnimes.concat(scheduleData.data);
-      hasNextPage = scheduleData.pagination?.has_next_page || false;
-      currentPage++;
-      
-      console.log(`📄 Page ${currentPage - 1}: Added ${scheduleData.data.length} animes. Total so far: ${allAnimes.length}`);
-      
-      // Respect rate limits between pages
-      if (hasNextPage) {
-        await delay(RATE_LIMIT_DELAY);
-      }
+    // Fetch Fall 2025 season anime (current airing season)
+    const seasonUrl = `${JIKAN_BASE_URL}/seasons/2025/fall`;
+    console.log(`🌐 Fetching Fall 2025 season: ${seasonUrl}`);
+    const seasonData = await fetchWithRetry(seasonUrl);
+    
+    if (!seasonData || !seasonData.data) {
+      throw new Error(`No season data received. Response: ${JSON.stringify(seasonData)}`);
     }
-    
-    console.log(`📺 Found ${allAnimes.length} total airing animes across ${currentPage - 1} pages`);
 
-    // Filter and process episodes
+    const allAnimes = seasonData.data;
+    console.log(`📺 Found ${allAnimes.length} Fall 2025 animes`);
+
+    // Filter by members >= 5000 and currently airing
+    const airingAnimes = allAnimes.filter((anime: any) => 
+      anime.members >= 5000 && 
+      anime.status === 'Currently Airing'
+    );
+    console.log(`✅ After filter (5k+ members, airing): ${airingAnimes.length} animes`);
+
+    // Process episodes for this week
     const episodes: any[] = [];
+    const processedAnimeIds = new Set<number>(); // Track to ensure 1 episode per anime
     
-    // Log member counts to understand the data
-    const memberCounts = allAnimes.map(a => a.members || 0).sort((a, b) => b - a);
-    console.log(`📊 Member counts - Top 10: ${memberCounts.slice(0, 10).join(', ')}`);
-    console.log(`📊 Member counts - Min: ${Math.min(...memberCounts)}, Max: ${Math.max(...memberCounts)}`);
-    
-    // First, filter by members
-    const filteredByMembers = allAnimes.filter((anime: any) => anime.members && anime.members >= 20000);
-    console.log(`✅ After 20k+ members filter: ${filteredByMembers.length} animes`);
-    
-    for (const anime of filteredByMembers) {
+    for (const anime of airingAnimes) {
       await delay(RATE_LIMIT_DELAY);
 
       console.log(`🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
 
-      // Get full anime data
-      const animeUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/full`;
-      const animeData = await fetchWithRetry(animeUrl);
-      const fullAnime = animeData.data;
-
-      // Check if anime has broadcast info
-      console.log(`📡 Broadcast info: ${JSON.stringify(fullAnime.broadcast)}`);
+      // Get anime episodes
+      const episodesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes`;
+      const episodesData = await fetchWithRetry(episodesUrl);
       
-      if (!fullAnime.broadcast || !fullAnime.broadcast.day) {
-        console.log(`⏭️ Skipping ${anime.title} - no broadcast day`);
+      if (!episodesData || !episodesData.data || episodesData.data.length === 0) {
+        console.log(`⏭️ No episodes found for ${anime.title}`);
         continue;
       }
 
-      // Get episode number from broadcast info
-      const episodeNumber = fullAnime.episodes || 1;
-      const episodeId = `${anime.mal_id}_${episodeNumber}`;
+      // Find episode that aired in this week
+      const weekEpisode = episodesData.data.find((ep: any) => {
+        if (!ep.aired) return false;
+        const airedDate = new Date(ep.aired);
+        return airedDate >= startDate && airedDate <= endDate;
+      });
 
-      console.log(`✅ Adding episode: ${anime.title} - Episode ${episodeNumber}`);
+      if (!weekEpisode) {
+        console.log(`⏭️ No episode aired in week ${weekNumber} for ${anime.title}`);
+        continue;
+      }
+
+      // Skip if we already have an episode from this anime for this week
+      if (processedAnimeIds.has(anime.mal_id)) {
+        console.log(`⏭️ Already processed anime ${anime.title}, skipping duplicate`);
+        continue;
+      }
+
+      processedAnimeIds.add(anime.mal_id);
+
+      const episodeId = `${anime.mal_id}_${weekEpisode.mal_id}`;
+      console.log(`✅ Adding episode: ${anime.title} EP${weekEpisode.mal_id} "${weekEpisode.title}" (Aired: ${weekEpisode.aired}, Score: ${weekEpisode.score || 'N/A'})`);
 
       const episode = {
         anime_id: anime.mal_id,
-        episode_number: episodeNumber,
+        episode_number: weekEpisode.mal_id,
         episode_id: episodeId,
+        episode_title: weekEpisode.title,
+        episode_url: weekEpisode.url,
         anime_title: anime.title,
         anime_title_english: anime.title_english,
         anime_image_url: anime.images?.jpg?.large_image_url,
-        aired_at: anime.aired?.from,
+        aired_at: weekEpisode.aired,
         duration: anime.duration ? parseInt(anime.duration) : null,
-        filler: false,
-        recap: false,
-        forum_url: anime.url,
-        score: anime.score,
+        filler: weekEpisode.filler || false,
+        recap: weekEpisode.recap || false,
+        forum_url: weekEpisode.forum_url || anime.url,
+        episode_score: weekEpisode.score || null, // ✅ EPISODE SCORE (not anime score!)
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,
@@ -157,18 +156,49 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       episodes.push(episode);
     }
 
-    // Sort by score and members
+    console.log(`📊 Found ${episodes.length} episodes for week ${weekNumber}`);
+
+    // Sort episodes: First by episode_score (N/A at end), then by members
     episodes.sort((a, b) => {
-      const scoreA = a.score || 0;
-      const scoreB = b.score || 0;
+      const scoreA = a.episode_score !== null ? a.episode_score : -1; // N/A goes to end
+      const scoreB = b.episode_score !== null ? b.episode_score : -1;
+      
       if (scoreB !== scoreA) return scoreB - scoreA;
       return (b.members || 0) - (a.members || 0);
     });
 
-    // Add position
-    episodes.forEach((ep, index) => {
-      ep.position_in_week = index + 1;
-    });
+    // Add position and calculate trend
+    for (let i = 0; i < episodes.length; i++) {
+      const episode = episodes[i];
+      const currentPosition = i + 1;
+      episode.position_in_week = currentPosition;
+
+      // Get position from previous week for trend calculation
+      if (weekNumber > 1) {
+        const previousWeek = weekNumber - 1;
+        const { data: prevEpisode } = await supabase
+          .from('weekly_episodes')
+          .select('position_in_week')
+          .eq('anime_id', episode.anime_id)
+          .eq('week_number', previousWeek)
+          .single();
+
+        if (prevEpisode) {
+          const positionChange = prevEpisode.position_in_week - currentPosition;
+          if (positionChange > 0) {
+            episode.trend = `+${positionChange}`; // Moved up
+          } else if (positionChange < 0) {
+            episode.trend = `${positionChange}`; // Moved down
+          } else {
+            episode.trend = '='; // Same position
+          }
+        } else {
+          episode.trend = 'NEW'; // First appearance
+        }
+      } else {
+        episode.trend = 'NEW'; // Week 1 is always NEW
+      }
+    }
 
     console.log(`\n📦 Processed ${episodes.length} episodes for week ${weekNumber}`);
     console.log(`📋 Sample episode data:`, JSON.stringify(episodes[0], null, 2));
@@ -186,11 +216,11 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         .select();
 
       if (error) {
-        console.error(`❌ Upsert error for ${episode.title}:`, error);
+        console.error(`❌ Upsert error for ${episode.anime_title}:`, error);
         continue;
       }
       
-      console.log(`✅ Upserted: ${episode.title}`);
+      console.log(`✅ Upserted: ${episode.anime_title}`);
 
       if (data && data.length > 0) {
         // Check if it was created or updated
@@ -262,10 +292,11 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     const animes = data.data
       .filter((anime: any) => anime.members >= 20000)
       .sort((a: any, b: any) => {
-        const scoreA = a.score || 0;
-        const scoreB = b.score || 0;
-        if (scoreB !== scoreA) return scoreB - scoreA;
-        return (b.members || 0) - (a.members || 0);
+        // Sort by members first (descending), then by score
+        const membersA = a.members || 0;
+        const membersB = b.members || 0;
+        if (membersB !== membersA) return membersB - membersA;
+        return (b.score || 0) - (a.score || 0);
       });
 
     console.log(`Found ${animes.length} animes for ${season} ${year}`);
@@ -276,7 +307,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
         title: anime.title,
         title_english: anime.title_english,
         image_url: anime.images?.jpg?.large_image_url,
-        score: anime.score,
+        anime_score: anime.score,
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,
@@ -354,6 +385,149 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
       status: 'error',
       season: season,
       year: year,
+      error_message: error.message,
+      error_details: { stack: error.stack },
+      duration_ms: duration,
+    });
+
+    throw error;
+  }
+}
+
+// ============================================
+// SYNC UPCOMING ANIMES (for "Later" tab)
+// ============================================
+async function syncUpcomingAnimes(supabase: any) {
+  console.log(`\n🔮 Syncing upcoming animes for "Later" tab...`);
+  
+  const startTime = Date.now();
+  let itemsCreated = 0;
+  let itemsUpdated = 0;
+
+  try {
+    // Fetch ALL upcoming animes from Jikan
+    let allAnimes: any[] = [];
+    let currentPage = 1;
+    let hasNextPage = true;
+    
+    while (hasNextPage) {
+      const url = `${JIKAN_BASE_URL}/seasons/upcoming?page=${currentPage}`;
+      console.log(`🌐 Fetching upcoming page ${currentPage}: ${url}`);
+      
+      const data = await fetchWithRetry(url);
+      
+      if (!data || !data.data) {
+        throw new Error(`No upcoming data received. Response: ${JSON.stringify(data)}`);
+      }
+
+      allAnimes = allAnimes.concat(data.data);
+      hasNextPage = data.pagination?.has_next_page || false;
+      currentPage++;
+      
+      console.log(`📄 Page ${currentPage - 1}: Added ${data.data.length} animes. Total so far: ${allAnimes.length}`);
+      
+      if (hasNextPage) {
+        await delay(RATE_LIMIT_DELAY);
+      }
+    }
+
+    console.log(`📺 Found ${allAnimes.length} total upcoming animes`);
+
+    // Filter by status "Not yet aired" AND members >= 20000
+    const filtered = allAnimes
+      .filter((anime: any) => anime.status === 'Not yet aired')
+      .filter((anime: any) => anime.members >= 20000);
+    console.log(`✅ Filtered to ${filtered.length} animes (Not yet aired + 20k+ members)`);
+
+    // Sort by members first, then score
+    filtered.sort((a: any, b: any) => {
+      const membersA = a.members || 0;
+      const membersB = b.members || 0;
+      if (membersB !== membersA) return membersB - membersA;
+      return (b.score || 0) - (a.score || 0);
+    });
+
+    for (const anime of filtered) {
+      // Use season/year from anime data, or 'upcoming'/null if not available
+      const seasonData = {
+        anime_id: anime.mal_id,
+        title: anime.title,
+        title_english: anime.title_english,
+        image_url: anime.images?.jpg?.large_image_url,
+        score: anime.score,
+        scored_by: anime.scored_by,
+        members: anime.members,
+        favorites: anime.favorites,
+        popularity: anime.popularity,
+        rank: anime.rank,
+        type: anime.type,
+        status: anime.status,
+        rating: anime.rating,
+        source: anime.source,
+        episodes: anime.episodes,
+        aired_from: anime.aired?.from,
+        aired_to: anime.aired?.to,
+        duration: anime.duration,
+        demographics: anime.demographics || [],
+        genres: anime.genres || [],
+        themes: anime.themes || [],
+        studios: anime.studios || [],
+        synopsis: anime.synopsis,
+        season: anime.season || 'upcoming', // Use 'upcoming' if season is null
+        year: anime.year || 9999, // Use 9999 for unknown year to put at end
+      };
+
+      const { data: upsertData, error } = await supabase
+        .from('season_rankings')
+        .upsert(seasonData, {
+          onConflict: 'anime_id,season,year',
+          ignoreDuplicates: false,
+        })
+        .select();
+
+      if (error) {
+        console.error('Upsert error:', error);
+        continue;
+      }
+
+      if (upsertData && upsertData.length > 0) {
+        const existing = await supabase
+          .from('season_rankings')
+          .select('created_at, updated_at')
+          .eq('id', upsertData[0].id)
+          .single();
+
+        if (existing.data.created_at === existing.data.updated_at) {
+          itemsCreated++;
+        } else {
+          itemsUpdated++;
+        }
+      }
+
+      await delay(RATE_LIMIT_DELAY);
+    }
+
+    const duration = Date.now() - startTime;
+
+    await supabase.from('sync_logs').insert({
+      sync_type: 'upcoming',
+      status: 'success',
+      items_synced: filtered.length,
+      items_created: itemsCreated,
+      items_updated: itemsUpdated,
+      duration_ms: duration,
+    });
+
+    console.log(`✅ Upcoming animes synced: ${itemsCreated} created, ${itemsUpdated} updated (${duration}ms)`);
+    
+    return { success: true, itemsCreated, itemsUpdated };
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ Error syncing upcoming animes:`, error);
+
+    await supabase.from('sync_logs').insert({
+      sync_type: 'upcoming',
+      status: 'error',
       error_message: error.message,
       error_details: { stack: error.stack },
       duration_ms: duration,
@@ -535,6 +709,10 @@ serve(async (req) => {
 
       case 'anticipated':
         result = await syncAnticipatedAnimes(supabase);
+        break;
+
+      case 'upcoming':
+        result = await syncUpcomingAnimes(supabase);
         break;
 
       default:

@@ -67,14 +67,14 @@ export function MissingEpisodesAnalyzer() {
       weekBaseMap.forEach((baseEpisode, animeId) => {
         if (!weekCompMap.has(animeId)) {
           const scoreVariation = (Math.random() - 0.5) * 0.1;
-          const suggestedScore = Math.max(0, Math.min(10, baseEpisode.score + scoreVariation));
+          const suggestedScore = Math.max(0, Math.min(10, baseEpisode.episodeScore + scoreVariation));
 
           missingEpisodes.push({
             animeId,
             animeTitle: baseEpisode.animeTitle,
             lastEpisodeNumber: baseEpisode.episodeNumber,
             suggestedEpisodeNumber: baseEpisode.episodeNumber + 1,
-            lastScore: baseEpisode.score,
+            lastScore: baseEpisode.episodeScore,
             suggestedScore: parseFloat(suggestedScore.toFixed(2)),
             episodeTitle: `Episode ${baseEpisode.episodeNumber + 1}`,
             newScore: parseFloat(suggestedScore.toFixed(2)),

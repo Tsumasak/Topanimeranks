@@ -6,8 +6,8 @@ import Union from "../imports/Union";
 interface HeaderProps {
   onThemeToggle?: () => void;
   theme?: string;
-  currentPage?: 'home' | 'ranks' | 'anticipated';
-  onPageChange?: (page: 'home' | 'ranks' | 'anticipated') => void;
+  currentPage?: 'home' | 'ranks' | 'anticipated' | 'season';
+  onPageChange?: (page: 'home' | 'ranks' | 'anticipated' | 'season') => void;
 }
 
 export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChange }: HeaderProps) {
@@ -73,6 +73,12 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                 className="theme-nav-link transition-colors"
               >
                 Weekly Anime Episodes
+              </button>
+              <button 
+                onClick={() => onPageChange?.('season')}
+                className="theme-nav-link transition-colors"
+              >
+                Top Season Animes
               </button>
               <button 
                 onClick={() => onPageChange?.('anticipated')}
@@ -145,6 +151,15 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             className={`mobile-menu-link ${currentPage === 'ranks' ? 'font-bold' : ''}`}
           >
             📺 Weekly Anime Episodes
+          </button>
+          <button 
+            onClick={() => {
+              onPageChange?.('season');
+              closeMobileMenu();
+            }}
+            className={`mobile-menu-link ${currentPage === 'season' ? 'font-bold' : ''}`}
+          >
+            🏆 Top Season Animes
           </button>
           <button 
             onClick={() => {

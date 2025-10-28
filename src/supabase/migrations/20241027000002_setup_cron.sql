@@ -3,8 +3,9 @@
 -- Runs every 10 minutes
 -- ============================================
 
--- Enable pg_cron extension (if not already enabled)
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- ============================================
 -- Schedule: Sync Weekly Episodes (every 10 minutes)

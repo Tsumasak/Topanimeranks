@@ -3,29 +3,21 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import { Header } from "./components/Header";
 import { HomePage } from "./pages/HomePage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
+import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
-import SetupPage from "./pages/SetupPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
-import { SetupRequiredBanner } from "./components/SetupRequiredBanner";
-import { useSupabaseStatus } from "./hooks/useSupabaseStatus";
 
 function AppContent() {
   const [theme, setTheme] = useState("dark");
   const location = useLocation();
   const navigate = useNavigate();
-  const { needsSetup, loading: statusLoading } = useSupabaseStatus();
   
-  console.log("[AppContent] Current location:", location.pathname);
-  console.log("[AppContent] Needs setup:", needsSetup);
-  
-  const currentPage: 'home' | 'ranks' | 'anticipated' = 
+  const currentPage: 'home' | 'ranks' | 'anticipated' | 'season' = 
     location.pathname === '/home' ? 'home' :
+    location.pathname === '/top-season-animes' ? 'season' :
     location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
-  
-  const isSetupPage = location.pathname === '/setup';
-  const showSetupBanner = needsSetup && !isSetupPage && !statusLoading;
 
   useEffect(() => {
     // Check for saved theme preference or default to dark
@@ -66,9 +58,11 @@ function AppContent() {
     localStorage.setItem("theme", newTheme);
   };
 
-  const handlePageChange = (page: 'home' | 'ranks' | 'anticipated') => {
+  const handlePageChange = (page: 'home' | 'ranks' | 'anticipated' | 'season') => {
     if (page === 'home') {
       navigate('/home');
+    } else if (page === 'season') {
+      navigate('/top-season-animes');
     } else if (page === 'anticipated') {
       navigate('/most-anticipated-animes');
     } else {
@@ -205,17 +199,14 @@ function AppContent() {
         onPageChange={handlePageChange}
       />
 
-      {/* Setup Required Banner - shows on all pages except /setup when tables don't exist */}
-      {showSetupBanner && <SetupRequiredBanner />}
-
-      <div className={`dynamic-background-content ${showSetupBanner ? 'pt-44' : 'pt-20'}`}>
+      <div className="dynamic-background-content pt-20">
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/ranks" element={<TopEpisodesPage />} />
+          <Route path="/top-season-animes" element={<TopSeasonAnimesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
-          <Route path="/setup" element={<SetupPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>

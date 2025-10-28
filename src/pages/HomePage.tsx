@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { JikanService } from '../services/jikan';
 import { Episode, AnticipatedAnime } from '../types/anime';
-import { CURRENT_WEEK_NUMBER } from '../config/weeks';
+import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
 import { Progress } from '../components/ui/progress';
-import { SetupBanner } from '../components/SetupBanner';
 import { CacheInfoBanner } from '../components/CacheInfoBanner';
-import { SyncStatusBanner } from '../components/SyncStatusBanner';
 
 interface HomeCardData {
   rank: number;
@@ -127,10 +125,13 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
   const CardWrapper = data.url ? 'a' : 'div';
   const cardProps = data.url ? { href: data.url, target: '_blank', rel: 'noopener noreferrer' } : {};
   
+  // Ensure all cards have same minimum height (episode cards are shorter)
+  const minHeightClass = isEpisode ? 'min-h-[320px]' : 'min-h-[450px]';
+  
   return (
     <CardWrapper 
       {...cardProps}
-      className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300`}
+      className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} ${minHeightClass} transition-all duration-300`}
     >
       {/* Image Section */}
       <div className={`relative flex-shrink-0 overflow-hidden anime-card-image ${imageHeight}`}>
@@ -200,11 +201,32 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionHeader({ title, subtitle, highlightText, highlightColor }: { 
+  title: string; 
+  subtitle: string;
+  highlightText?: string;
+  highlightColor?: string;
+}) {
+  // Split title to highlight specific text
+  const renderTitle = () => {
+    if (!highlightText) {
+      return title;
+    }
+    
+    const parts = title.split(highlightText);
+    return (
+      <>
+        {parts[0]}
+        <span style={{ color: highlightColor || 'var(--rating-yellow)' }}>{highlightText}</span>
+        {parts[1]}
+      </>
+    );
+  };
+  
   return (
     <div className="flex flex-col gap-[4px] items-start justify-center w-full">
       <p className="font-['Arial'] font-bold leading-[40px] relative shrink-0 text-[28px] md:text-[36px] break-words" style={{ color: 'var(--foreground)' }}>
-        {title}
+        {renderTitle()}
       </p>
       <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
         {subtitle}
@@ -215,11 +237,13 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
 
 export function HomePage() {
   const [topEpisodes, setTopEpisodes] = useState<HomeCardData[]>([]);
+  const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [usedJikanFallback, setUsedJikanFallback] = useState(false);
+  const [displayedWeekNumber, setDisplayedWeekNumber] = useState(CURRENT_WEEK_NUMBER);
 
   useEffect(() => {
     const loadData = async () => {
@@ -228,85 +252,86 @@ export function HomePage() {
         setLoadingProgress(0);
         setLoadingMessage('Checking Supabase cache...');
 
-        // TRY SUPABASE FIRST (fast cache)
-        const supabaseDataImport = await import('../services/supabase-data');
-        const SupabaseDataService = supabaseDataImport.SupabaseDataService;
+        // Load Top Season Animes from Supabase (Fall 2025)
+        const supabaseImport = await import('../services/supabase');
+        const SupabaseService = supabaseImport.SupabaseService;
         
         setLoadingProgress(10);
+        setLoadingMessage('Loading Fall 2025 rankings...');
         
-        const [weekResult, anticipatedResult] = await Promise.all([
-          SupabaseDataService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER),
-          SupabaseDataService.getAnticipatedAnimes()
-        ]);
+        // Fall 2025 - Order by SCORE (rating-based ranking)
+        const seasonAnimes = await SupabaseService.getSeasonRankings('fall', 2025, 'score');
+        
+        // Process Top Season Animes (top 3)
+        if (seasonAnimes.length > 0) {
+          const topSeason = seasonAnimes.slice(0, 3).map((anime, index) => ({
+            rank: index + 1,
+            title: anime.title_english || anime.title,
+            image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+            score: anime.score || 0,
+            animeType: anime.type || 'TV',
+            demographics: anime.demographics?.map(d => d.name || d) || [],
+            url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
+          }));
+          setTopSeasonAnimes(topSeason);
+          
+          // Set dynamic background from #1 anime
+          if (topSeason.length > 0) {
+            document.documentElement.style.setProperty('--bg-image', `url(${topSeason[0].image})`);
+          }
+        }
+        
+        setLoadingProgress(40);
+        setLoadingMessage('Loading Winter 2026 most anticipated...');
 
-        let weekEpisodes: Episode[] = [];
-        let anticipatedAnimes: AnticipatedAnime[] = [];
+        // Winter 2026 - Order by MEMBERS (popularity-based ranking)
+        const winter2026Animes = await SupabaseService.getSeasonRankings('winter', 2026, 'members');
+        
+        if (winter2026Animes.length > 0) {
+          const topAnticipated = winter2026Animes.slice(0, 3).map((anime, index) => ({
+            rank: index + 1,
+            title: anime.title_english || anime.title,
+            image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+            members: `${(anime.members / 1000).toFixed(0)}K Members`,
+            animeType: anime.type || 'TV',
+            demographics: anime.demographics?.map(d => d.name || d) || [],
+            url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
+          }));
+          setAnticipated(topAnticipated);
+        }
+        
+        setLoadingProgress(70);
+        setLoadingMessage('Loading weekly episodes...');
 
-        // Check if we got data from Supabase
-        if (weekResult.success && weekResult.data.length > 0) {
-          console.log('[HomePage] ✓ Using cached week data from Supabase');
-          weekEpisodes = weekResult.data;
-          setLoadingProgress(50);
+        // Weekly Episodes - Try current week, fallback to previous if less than 3 episodes
+        let weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER);
+        let weekToShow = CURRENT_WEEK_NUMBER;
+        
+        // If current week has less than 3 episodes, try previous week
+        if (weeklyEpisodesData.episodes.length < 3 && CURRENT_WEEK_NUMBER > 1) {
+          console.log(`[HomePage] Week ${CURRENT_WEEK_NUMBER} has less than 3 episodes, trying Week ${CURRENT_WEEK_NUMBER - 1}...`);
+          weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER - 1);
+          weekToShow = CURRENT_WEEK_NUMBER - 1;
+        }
+        
+        if (weeklyEpisodesData.episodes.length > 0) {
+          const topWeekly = weeklyEpisodesData.episodes.slice(0, 3).map((episode, index) => ({
+            rank: index + 1,
+            title: episode.animeTitle,
+            subtitle: `EP ${episode.episodeNumber}`,
+            image: episode.imageUrl || '',
+            score: episode.episodeScore || 0,
+            animeType: episode.animeType || 'TV',
+            demographics: episode.demographics || [],
+            url: episode.url || `https://myanimelist.net/anime/${episode.animeId}`
+          }));
+          setTopEpisodes(topWeekly);
+          setDisplayedWeekNumber(weekToShow);
+          console.log(`[HomePage] Loaded ${topWeekly.length} episodes from Week ${weekToShow}`);
         } else {
-          // Fallback to Jikan API
-          console.log('[HomePage] ⚠️ No Supabase data, falling back to Jikan API...');
-          setUsedJikanFallback(true);
-          setLoadingMessage('Loading from MyAnimeList API...');
-          const weekData = await JikanService.getWeekData(CURRENT_WEEK_NUMBER, (current, _total, message) => {
-            setLoadingProgress(10 + Math.floor(current * 0.4));
-            setLoadingMessage(message);
-          });
-          weekEpisodes = weekData.episodes;
-          setLoadingProgress(50);
+          console.log('[HomePage] No weekly episodes found');
+          setTopEpisodes([]);
         }
-
-        // Anticipated animes
-        if (anticipatedResult.success && anticipatedResult.data.length > 0) {
-          console.log('[HomePage] ✓ Using cached anticipated data from Supabase');
-          anticipatedAnimes = anticipatedResult.data;
-          setLoadingProgress(90);
-        } else {
-          // Fallback to Jikan API
-          console.log('[HomePage] ⚠️ No Supabase data for anticipated, falling back to Jikan API...');
-          setUsedJikanFallback(true);
-          setLoadingMessage('Loading most anticipated from API...');
-          const anticipatedData = await JikanService.getAnticipatedBySeason('winter', 2026);
-          anticipatedAnimes = anticipatedData.animes;
-          setLoadingProgress(90);
-        }
-
-        setLoadingMessage('Processing data...');
-        setLoadingProgress(95);
-
-        // Process Top Episodes
-        const topEps = weekEpisodes.slice(0, 3).map((ep: Episode, index: number) => ({
-          rank: index + 1,
-          title: ep.animeTitle,
-          subtitle: `EP ${ep.episodeNumber} - ${ep.episodeTitle}`,
-          image: ep.imageUrl,
-          score: ep.score,
-          animeType: ep.animeType,
-          demographics: ep.demographics,
-          url: ep.url
-        }));
-        setTopEpisodes(topEps);
-
-        // Set dynamic background from #1 episode
-        if (topEps.length > 0) {
-          document.documentElement.style.setProperty('--bg-image', `url(${topEps[0].image})`);
-        }
-
-        // Process Most Anticipated
-        const topAnticipated = anticipatedAnimes.slice(0, 3).map((anime: AnticipatedAnime, index: number) => ({
-          rank: index + 1,
-          title: anime.title,
-          image: anime.imageUrl,
-          members: `${anime.members.toLocaleString()} Members`,
-          animeType: anime.animeType,
-          demographics: anime.demographics,
-          url: anime.url
-        }));
-        setAnticipated(topAnticipated);
 
         setLoadingProgress(100);
         setLoadingMessage('Complete!');
@@ -362,12 +387,6 @@ export function HomePage() {
     <div className="dynamic-background min-h-screen">
       {/* Main Content */}
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col gap-[32px]">
-        {/* Sync Status Banner - shows if data needs sync */}
-        <SyncStatusBanner />
-        
-        {/* Setup Banner */}
-        <SetupBanner />
-        
         {/* Cache Info Banner - shows when using Jikan fallback */}
         {usedJikanFallback && <CacheInfoBanner />}
         
@@ -387,15 +406,27 @@ export function HomePage() {
                   </p>
                 </div>
                 <p className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px]" style={{ color: 'var(--rating-yellow)' }}>
-                  Week {CURRENT_WEEK_NUMBER} - October 20-26, 2025
+                  {WEEKS_DATA.find(w => w.id === `week${displayedWeekNumber}`)?.period || `Week ${displayedWeekNumber}`}
                 </p>
               </div>
 
               {/* Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                {topEpisodes.map((ep) => (
-                  <HomeAnimeCard key={`episode-${ep.rank}`} data={ep} type="episode" />
-                ))}
+                {isLoading ? (
+                  [1, 2, 3].map(i => (
+                    <div key={`skeleton-episode-${i}`} className="bg-slate-700 h-[320px] w-full animate-pulse rounded-[10px]" />
+                  ))
+                ) : topEpisodes.length > 0 ? (
+                  topEpisodes.map((ep) => (
+                    <HomeAnimeCard key={`episode-${ep.rank}`} data={ep} type="episode" />
+                  ))
+                ) : (
+                  [1, 2, 3].map(i => (
+                    <div key={`placeholder-episode-${i}`} className="bg-slate-700/50 h-[320px] w-full rounded-[10px] flex items-center justify-center">
+                      <p className="text-slate-400 text-sm">Placeholder #{i}</p>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* View Complete Link */}
@@ -418,21 +449,42 @@ export function HomePage() {
               <SectionHeader 
                 title="Top Animes - Fall 2025"
                 subtitle="Highest rated animes of the season and worth checking out."
+                highlightText="Fall 2025"
+                highlightColor="var(--rating-yellow)"
               />
             </div>
             <div className="relative rounded-[10px] w-full" style={{ backgroundColor: 'var(--card-background)' }}>
               <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />
               <div className="flex flex-col items-end justify-end">
                 <div className="box-border flex flex-col gap-[24px] items-end justify-end p-[24px] w-full">
-                  <div className="w-full">
-                    {/* Single placeholder card for Top Animes */}
-                    <div className="bg-slate-700/50 h-[280px] relative rounded-[10px] flex items-center justify-center">
-                      <p className="text-slate-400 text-sm">Coming Soon</p>
+                  {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                      {[1, 2, 3].map(i => (
+                        <div key={`skeleton-season-${i}`} className="bg-slate-700 h-[380px] w-full animate-pulse rounded-[10px]" />
+                      ))}
                     </div>
-                  </div>
-                  <p className="font-['Arial'] font-bold leading-[20px] text-[14px] text-right w-full" style={{ color: 'var(--foreground)' }}>
+                  ) : topSeasonAnimes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                      {topSeasonAnimes.map((anime) => (
+                        <HomeAnimeCard key={`season-${anime.rank}`} data={anime} type="top" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                      {[1, 2, 3].map(i => (
+                        <div key={`placeholder-season-${i}`} className="bg-slate-700/50 h-[380px] w-full rounded-[10px] flex items-center justify-center">
+                          <p className="text-slate-400 text-sm">Placeholder #{i}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Link 
+                    to="/top-season-animes"
+                    className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
-                  </p>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -442,8 +494,10 @@ export function HomePage() {
           <div className="flex flex-col gap-[18px] lg:flex-1 w-full">
             <div className="flex items-center w-full">
               <SectionHeader 
-                title="Most Anticipated Animes"
+                title="Most Anticipated Animes - Winter 2026"
                 subtitle="Most anticipated animes of the upcoming seasons. Check out all the future seasons here."
+                highlightText="Winter 2026"
+                highlightColor="var(--rating-yellow)"
               />
             </div>
             <div className="relative rounded-[10px] w-full" style={{ backgroundColor: 'var(--card-background)' }}>
@@ -456,10 +510,18 @@ export function HomePage() {
                         <div key={`skeleton-anticipated-${i}`} className="bg-slate-700 h-[380px] w-full animate-pulse rounded-[10px]" />
                       ))}
                     </div>
-                  ) : (
+                  ) : anticipated.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                       {anticipated.map((anime) => (
                         <HomeAnimeCard key={`anticipated-${anime.rank}`} data={anime} type="anticipated" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                      {[1, 2, 3].map(i => (
+                        <div key={`placeholder-anticipated-${i}`} className="bg-slate-700/50 h-[380px] w-full rounded-[10px] flex items-center justify-center">
+                          <p className="text-slate-400 text-sm">Placeholder #{i}</p>
+                        </div>
                       ))}
                     </div>
                   )}

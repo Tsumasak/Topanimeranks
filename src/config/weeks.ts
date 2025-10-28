@@ -4,41 +4,61 @@ export interface WeekData {
   title: string;
   period: string;
   isCurrentWeek: boolean;
+  startDate: Date;
+  endDate: Date;
 }
 
-export const CURRENT_WEEK_NUMBER = 4; // Current active week
+// Week 1 started on September 29, 2025 (Monday)
+// Today is October 27, 2025 (Monday) - Week 5 Day 1
+// A full season has 12-13 weeks
+export const CURRENT_WEEK_NUMBER = 5;
+export const TOTAL_WEEKS = 13; // Full anime season
 
-export const WEEKS_DATA: WeekData[] = [
-  {
-    id: 'week1',
-    label: 'Week 1',
-    title: 'Week 1 - September 29 - October 5, 2025',
-    period: 'Aired - September 29 - October 5, 2025',
-    isCurrentWeek: false,
-  },
-  {
-    id: 'week2',
-    label: 'Week 2',
-    title: 'Week 2 - October 6-12, 2025',
-    period: 'Aired - October 6-12, 2025',
-    isCurrentWeek: false,
-  },
-  {
-    id: 'week3',
-    label: 'Week 3',
-    title: 'Week 3 - October 13-19, 2025',
-    period: 'Aired - October 13-19, 2025',
-    isCurrentWeek: false,
-  },
-  {
-    id: 'week4',
-    label: 'Week 4',
-    title: 'Week 4 - October 20-26, 2025',
-    period: 'Airing - October 20-26, 2025',
-    isCurrentWeek: true,
-  },
-];
+// Helper to calculate Monday of a week
+const getWeekDates = (weekNumber: number) => {
+  // Week 1 starts on September 29, 2025 (Monday)
+  const baseDate = new Date(2025, 8, 29); // Month is 0-indexed (8 = September)
+  const startDate = new Date(baseDate);
+  startDate.setDate(baseDate.getDate() + (weekNumber - 1) * 7);
+  
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6); // Sunday
+  
+  return { startDate, endDate };
+};
+
+// Format date as "Month DD"
+const formatDate = (date: Date) => {
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const day = date.getDate();
+  return `${month} ${day}`;
+};
+
+// Generate weeks data for full season (13 weeks)
+export const WEEKS_DATA: WeekData[] = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
+  const weekNumber = i + 1;
+  const { startDate, endDate } = getWeekDates(weekNumber);
+  const isCurrentWeek = weekNumber === CURRENT_WEEK_NUMBER;
+  
+  return {
+    id: `week${weekNumber}`,
+    label: `Week ${weekNumber}`,
+    title: `Week ${weekNumber} - ${formatDate(startDate)} - ${formatDate(endDate)}, 2025`,
+    period: `${isCurrentWeek ? 'Airing' : 'Aired'} - ${formatDate(startDate)} - ${formatDate(endDate)}, 2025`,
+    isCurrentWeek,
+    startDate,
+    endDate,
+  };
+});
 
 export const getCurrentWeek = (): WeekData | undefined => {
   return WEEKS_DATA.find(week => week.isCurrentWeek);
+};
+
+// Get week number from a date
+export const getWeekNumberFromDate = (date: Date): number => {
+  const baseDate = new Date(2025, 8, 29); // Week 1 start
+  const diffTime = date.getTime() - baseDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.floor(diffDays / 7) + 1;
 };

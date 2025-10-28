@@ -23,9 +23,9 @@ const SeasonControl = () => {
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
   // Parse season ID to get season name and year
-  const parseSeasonId = (seasonId: string): { season: string; year: number } => {
+  const parseSeasonId = (seasonId: string): { season: string; year: number; isLater?: boolean } => {
     if (seasonId === 'later') {
-      return { season: 'later', year: 2026 };
+      return { season: 'summer', year: 2026, isLater: true };
     }
     // Extract season and year from ID like "fall2025"
     const match = seasonId.match(/([a-z]+)(\d+)/);
@@ -59,10 +59,37 @@ const SeasonControl = () => {
       setError(null);
       
       try {
-        const { season, year } = parseSeasonId(activeSeason);
+        const { season, year, isLater } = parseSeasonId(activeSeason);
+        
         // Use Supabase service (with Jikan fallback)
-        const animesList = await SupabaseService.getSeasonRankings(season, year);
-        setAnimes(animesList);
+        let jikanAnimesList;
+        if (isLater) {
+          // For "Later" tab, get all upcoming animes from Summer 2026 onwards
+          jikanAnimesList = await SupabaseService.getLaterAnimes();
+        } else {
+          // For regular seasons, use getSeasonRankings (ordered by members for anticipated ranking)
+          jikanAnimesList = await SupabaseService.getSeasonRankings(season, year, 'members');
+        }
+        
+        // Transform JikanAnimeData to AnticipatedAnime
+        const transformedAnimes: AnticipatedAnime[] = jikanAnimesList.map(anime => ({
+          id: anime.mal_id,
+          title: anime.title_english || anime.title,
+          imageUrl: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+          animeScore: anime.score,
+          members: anime.members || 0,
+          synopsis: anime.synopsis || '',
+          animeType: anime.type || 'TV',
+          season: anime.season || season,
+          year: anime.year || year,
+          demographics: Array.isArray(anime.demographics) ? anime.demographics.map(d => d.name || d) : [],
+          genres: Array.isArray(anime.genres) ? anime.genres.map(g => g.name || g) : [],
+          themes: Array.isArray(anime.themes) ? anime.themes.map(t => t.name || t) : [],
+          studios: Array.isArray(anime.studios) ? anime.studios.map(s => s.name || s) : [],
+          url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
+        }));
+        
+        setAnimes(transformedAnimes);
         setLoadingProgress(100);
       } catch (err) {
         console.error('Error loading season data:', err);
@@ -126,15 +153,7 @@ const SeasonControl = () => {
             {error}
           </p>
           <button
-            onClick={() => {
-              setLoading(true);
-              setError(null);
-              const { season, year } = parseSeasonId(activeSeason);
-              JikanService.getAnticipatedBySeason(season, year).then(seasonData => {
-                setAnimes(seasonData.animes);
-                setLoading(false);
-              });
-            }}
+            onClick={() => window.location.reload()}
             className="theme-rank px-6 py-2 rounded-lg"
           >
             Retry
@@ -270,7 +289,7 @@ const SeasonControl = () => {
                   rank={index + 1}
                   title={anime.title}
                   imageUrl={anime.imageUrl}
-                  score={anime.score}
+                  score={anime.animeScore}
                   members={anime.members}
                   synopsis={anime.synopsis}
                   animeType={anime.animeType}

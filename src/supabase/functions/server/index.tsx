@@ -31,6 +31,59 @@ app.get("/make-server-c1d1bfd8/health", (c) => {
 // DATA ENDPOINTS
 // ============================================
 
+// Get available weeks (weeks with at least 1 episode)
+app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Current week is 5 (October 28, 2025)
+    const CURRENT_WEEK = 5;
+
+    // Get distinct week numbers that have episodes
+    // Only return weeks up to the current week (no future weeks)
+    const { data, error } = await supabase
+      .from('weekly_episodes')
+      .select('week_number')
+      .lte('week_number', CURRENT_WEEK)
+      .order('week_number', { ascending: true });
+
+    if (error) {
+      console.error("Error fetching available weeks:", error);
+      return c.json({
+        success: false,
+        error: error.message
+      }, 500);
+    }
+
+    // Get unique week numbers
+    const uniqueWeeks = [...new Set(data?.map(row => row.week_number) || [])];
+    
+    console.log(`[Server] Available weeks (up to week ${CURRENT_WEEK}): ${uniqueWeeks.join(', ')}`);
+
+    return c.json({
+      success: true,
+      weeks: uniqueWeeks
+    });
+
+  } catch (error) {
+    console.error("❌ Available weeks error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
 // Get weekly episodes data
 app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
   try {
@@ -48,10 +101,12 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get episodes for the week, ordered by position
+    // FILTER: Only show episodes with a valid score (NOT NULL)
     const { data: episodes, error } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
+      .not('episode_score', 'is', null)
       .order('position_in_week', { ascending: true });
 
     if (error) {
@@ -62,6 +117,8 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
         needsData: true
       }, 200);
     }
+
+    console.log(`[Server] Week ${weekNumber}: ${episodes?.length || 0} episodes with scores (N/A episodes hidden)`);
 
     return c.json({
       success: true,

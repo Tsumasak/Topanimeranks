@@ -13,7 +13,7 @@ export class SupabaseDataService {
       episodeNumber: dbEpisode.episode_number,
       episodeTitle: dbEpisode.episode_title || `Episode ${dbEpisode.episode_number}`,
       episodeUrl: dbEpisode.episode_url || `https://myanimelist.net/anime/${dbEpisode.anime_id}`,
-      episodeScore: dbEpisode.episode_score || 0,
+      episodeScore: dbEpisode.episode_score ?? null,
       imageUrl: dbEpisode.anime_image_url || '',
       aired: dbEpisode.aired_at || new Date().toISOString(),
       animeType: dbEpisode.type || 'TV',

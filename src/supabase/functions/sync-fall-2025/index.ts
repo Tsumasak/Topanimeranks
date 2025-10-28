@@ -204,24 +204,34 @@ Deno.serve(async (_req) => {
       }
     }
     
-    // Calcular posições por semana (ordenar por score)
+    // Calcular posições por semana (ordenar por score, NULLs por último)
     console.log("📊 Calculando posições por semana...");
     
     for (let week = 1; week <= 13; week++) {
-      const { data: weekEpisodes, error: fetchError } = await supabase
+      // Buscar todos os episódios da semana
+      const { data: allEpisodes, error: fetchError } = await supabase
         .from('weekly_episodes')
         .select('anime_id, episode_number, episode_score')
-        .eq('week_number', week)
-        .order('episode_score', { ascending: false });
+        .eq('week_number', week);
       
-      if (fetchError || !weekEpisodes) {
+      if (fetchError || !allEpisodes) {
         console.error(`❌ Erro ao buscar episódios da semana ${week}`);
         continue;
       }
       
+      // Ordenar manualmente: score DESC (NULLs last)
+      const sortedEpisodes = allEpisodes.sort((a, b) => {
+        // NULL vai pro final
+        if (a.episode_score === null && b.episode_score === null) return 0;
+        if (a.episode_score === null) return 1;
+        if (b.episode_score === null) return -1;
+        // Scores válidos: maior primeiro
+        return b.episode_score - a.episode_score;
+      });
+      
       // Atualizar posições
-      for (let i = 0; i < weekEpisodes.length; i++) {
-        const ep = weekEpisodes[i];
+      for (let i = 0; i < sortedEpisodes.length; i++) {
+        const ep = sortedEpisodes[i];
         await supabase
           .from('weekly_episodes')
           .update({ position_in_week: i + 1 })
@@ -230,7 +240,7 @@ Deno.serve(async (_req) => {
           .eq('week_number', week);
       }
       
-      console.log(`✅ Semana ${week}: ${weekEpisodes.length} episódios ranqueados`);
+      console.log(`✅ Semana ${week}: ${sortedEpisodes.length} episódios ranqueados`);
     }
     
     const message = `✅ Sync concluído! ${totalAnimes} animes, ${totalEpisodes} episódios inseridos. ${errors} erros.`;

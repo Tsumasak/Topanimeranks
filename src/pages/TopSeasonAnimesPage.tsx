@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import BaseAnimeCard from '../components/BaseAnimeCard';
-import { AnimeCardSkeleton } from '../components/AnimeCardSkeleton';
-import { Progress } from '../components/ui/progress';
 import { SupabaseService } from '../services/supabase';
 import { JikanAnimeData } from '../types/anime';
 
@@ -10,9 +9,7 @@ export default function TopSeasonAnimesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [displayedCount, setDisplayedCount] = useState(12);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
+  const [animationKey, setAnimationKey] = useState('initial');
   
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -21,13 +18,7 @@ export default function TopSeasonAnimesPage() {
     const loadSeasonAnimes = async () => {
       try {
         setLoading(true);
-        setLoadingProgress(10);
-        setLoadingMessage('Connecting to Supabase...');
 
-        // Fetch Fall 2025 from season_rankings table
-        setLoadingProgress(30);
-        setLoadingMessage('Loading Fall 2025 rankings...');
-        
         // Fall 2025 - Order by SCORE (rating-based ranking)
         const seasonAnimes = await SupabaseService.getSeasonRankings('fall', 2025, 'score');
         
@@ -37,16 +28,19 @@ export default function TopSeasonAnimesPage() {
           return;
         }
 
-        console.log(`[TopSeasonAnimesPage] Loaded ${seasonAnimes.length} Fall 2025 animes`);
+        console.log(`[TopSeasonAnimesPage] ✅ Loaded ${seasonAnimes.length} Fall 2025 animes`);
         
         setAnimes(seasonAnimes);
-        setLoadingProgress(100);
-        setLoadingMessage('Complete!');
+        
+        // Update animation key after data is loaded
+        console.log('[TopSeasonAnimesPage] 🎬 CRITICAL: Data loaded, updating animationKey');
+        setAnimationKey('loaded');
         
       } catch (err) {
-        console.error('[TopSeasonAnimesPage] Error loading season animes:', err);
+        console.error('[TopSeasonAnimesPage] ❌ Error loading season animes:', err);
         setError(`Failed to load season rankings: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
+        console.log('[TopSeasonAnimesPage] 🏁 Finally block: setting loading to false');
         setLoading(false);
       }
     };
@@ -54,18 +48,13 @@ export default function TopSeasonAnimesPage() {
     loadSeasonAnimes();
   }, []);
 
-  // Infinite scroll
+  // Infinite scroll - instant, no delay
   const loadMoreAnimes = useCallback(() => {
-    if (isLoadingMore || displayedCount >= animes.length) return;
+    if (displayedCount >= animes.length) return;
     
     console.log('[InfiniteScroll] Loading more animes...');
-    setIsLoadingMore(true);
-    
-    setTimeout(() => {
-      setDisplayedCount(prev => Math.min(prev + 12, animes.length));
-      setIsLoadingMore(false);
-    }, 300);
-  }, [isLoadingMore, displayedCount, animes.length]);
+    setDisplayedCount(prev => Math.min(prev + 12, animes.length));
+  }, [displayedCount, animes.length]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -90,36 +79,17 @@ export default function TopSeasonAnimesPage() {
     };
   }, [loadMoreAnimes, loading]);
 
-  // Loading state
+  // No loading screen - render directly
   if (loading) {
-    return (
-      <div className="dynamic-background min-h-screen">
-        <div className="container mx-auto px-[24px] pt-[32px] pb-[32px]">
-          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-            <h1 className="text-3xl mb-4" style={{ color: 'var(--foreground)' }}>
-              Loading Top Season Animes
-            </h1>
-            <p className="text-sm mb-2" style={{ color: 'var(--foreground)', opacity: 0.7 }}>
-              {loadingMessage || 'Fetching Fall 2025 rankings...'}
-            </p>
-            <div className="w-full max-w-md mb-4">
-              <Progress 
-                value={loadingProgress} 
-                className="h-3"
-                style={{
-                  '--progress-background': 'var(--card-background)',
-                  '--progress-foreground': 'var(--rating-yellow)',
-                } as React.CSSProperties}
-              />
-            </div>
-            <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
-              {loadingProgress}% complete
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    console.log('[TopSeasonAnimesPage] 🚫 Render blocked: loading is true');
+    return null;
   }
+  
+  console.log('[TopSeasonAnimesPage] 🎨 Rendering main content:', {
+    animationKey,
+    animesCount: animes.length,
+    displayedCount
+  });
 
   // Error state
   if (error) {
@@ -148,7 +118,7 @@ export default function TopSeasonAnimesPage() {
     <div className="dynamic-background min-h-screen">
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px]">
         {/* Header */}
-        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+        <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Top Animes - Fall 2025
         </h1>
         <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
@@ -156,32 +126,46 @@ export default function TopSeasonAnimesPage() {
         </p>
 
         {/* Animes Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-          {animes.slice(0, displayedCount).map((anime, index) => (
-            <BaseAnimeCard
-              key={`${anime.mal_id}-${index}`}
-              rank={index + 1}
-              title={anime.title_english || anime.title}
-              subtitle={`${anime.type || 'TV'} • Fall 2025`}
-              imageUrl={anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || ''}
-              linkUrl={anime.url || `https://myanimelist.net/anime/${anime.mal_id}`}
-              bottomText={`⭐ ${(anime.score || 0).toFixed(2)}`}
-              animeType={anime.type}
-              demographics={anime.demographics?.map(d => d.name || d) || []}
-              genres={anime.genres?.map(g => g.name || g) || []}
-              themes={anime.themes?.map(t => t.name || t) || []}
-            />
-          ))}
-        </div>
-
-        {/* Loading More Indicator */}
-        {isLoadingMore && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <AnimeCardSkeleton key={`skeleton-${i}`} />
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={animationKey}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
+            onAnimationStart={() => console.log('[TopSeasonAnimesPage] 🎬 Animation START')}
+            onAnimationComplete={() => console.log('[TopSeasonAnimesPage] ✨ Animation COMPLETE')}
+          >
+            {animes.slice(0, displayedCount).map((anime, index) => (
+              <motion.div
+                key={`${anime.mal_id}-${index}`}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.03,
+                  ease: [0.34, 1.56, 0.64, 1]
+                }}
+              >
+                <BaseAnimeCard
+                  rank={index + 1}
+                  title={anime.title_english || anime.title}
+                  subtitle={`${anime.type || 'TV'} • Fall 2025`}
+                  imageUrl={anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || ''}
+                  linkUrl={anime.url || `https://myanimelist.net/anime/${anime.mal_id}`}
+                  bottomText={`⭐ ${(anime.score || 0).toFixed(2)}`}
+                  animeType={anime.type}
+                  demographics={anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || []}
+                  genres={anime.genres?.map(g => typeof g === 'string' ? g : g.name) || []}
+                  themes={anime.themes?.map(t => typeof t === 'string' ? t : t.name) || []}
+                />
+              </motion.div>
             ))}
-          </div>
-        )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Loading More - no skeleton, just seamless addition */}
 
         {/* Intersection Observer Target */}
         {displayedCount < animes.length && (

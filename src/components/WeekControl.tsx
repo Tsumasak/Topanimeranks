@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimeCard } from './AnimeCard';
-import { AnimeCardSkeleton } from './AnimeCardSkeleton';
-import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
 import { SupabaseService } from '../services/supabase';
@@ -22,30 +20,46 @@ const getFormattedPeriod = (week: WeekConfig, isCurrentWeek: boolean): string =>
 const formatDynamicPeriod = (startDate: string, endDate: string, isCurrentWeek: boolean): string => {
   const prefix = isCurrentWeek ? 'Airing' : 'Aired';
   
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Format: "September 29 - October 05, 2025"
-  // Use UTC methods to avoid timezone issues
-  const startMonth = start.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
-  const startDay = start.getUTCDate();
-  const endMonth = end.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
-  const endDay = end.getUTCDate().toString().padStart(2, '0');
-  const year = end.getUTCFullYear();
-  
-  // If same month, show: "Month DD - DD, YYYY"
-  if (startMonth === endMonth) {
-    return `${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`;
+  // Validate dates first
+  if (!startDate || !endDate) {
+    console.warn('[formatDynamicPeriod] Missing dates:', { startDate, endDate });
+    return 'Date unavailable';
   }
   
-  // If different months, show: "Month1 DD - Month2 DD, YYYY"
-  return `${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Check if dates are valid
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.warn('[formatDynamicPeriod] Invalid dates:', { startDate, endDate });
+      return 'Date unavailable';
+    }
+    
+    // Format: "September 29 - October 05, 2025"
+    // Use UTC methods to avoid timezone issues
+    const startMonth = start.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+    const startDay = start.getUTCDate();
+    const endMonth = end.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+    const endDay = end.getUTCDate().toString().padStart(2, '0');
+    const year = end.getUTCFullYear();
+    
+    // If same month, show: "Month DD - DD, YYYY"
+    if (startMonth === endMonth) {
+      return `${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`;
+    }
+    
+    // If different months, show: "Month1 DD - Month2 DD, YYYY"
+    return `${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+  } catch (err) {
+    console.error('[formatDynamicPeriod] Error formatting dates:', err);
+    return 'Date unavailable';
+  }
 };
 
 // Function to calculate position change for an ANIME (not specific episode)
 // This compares the ANIME's ranking between weeks, regardless of which episode aired
-// NOTE: Currently not used, but kept for future trend calculation features
-/*const calculatePositionChange = (
+const calculatePositionChange = (
   episode: Episode,
   currentRank: number,
   previousWeekEpisodes: Episode[]
@@ -74,7 +88,7 @@ const formatDynamicPeriod = (startDate: string, endDate: string, isCurrentWeek: 
   console.log(`  → Previous: EP${previousAnimeEntry.episodeNumber} (Score: ${previousAnimeEntry.episodeScore})`);
   
   return change;
-};*/
+};
 
 const WeekControl = () => {
   // Track if component is mounted
@@ -87,17 +101,14 @@ const WeekControl = () => {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [displayedEpisodes, setDisplayedEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isChangingWeek, setIsChangingWeek] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // CRITICAL: Animation key that only changes when NEW data is ready
   const [animationKey, setAnimationKey] = useState(activeWeek);
   const [weekDates, setWeekDates] = useState<{ startDate: string; endDate: string } | null>(null);
   const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 episodes
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
+  const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]); // For trend calculation
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -109,33 +120,28 @@ const WeekControl = () => {
   // Smooth transition function for week changes
   const handleWeekChange = (newWeek: string) => {
     if (newWeek === activeWeek) return;
+    console.log(`[WeekControl] 🔄 handleWeekChange: ${activeWeek} → ${newWeek}`);
     userSwitchedTab.current = true;
     setDisplayedCount(12); // Reset to 12 episodes when changing weeks
+    setActiveWeek(newWeek); // Change immediately
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
-    setTimeout(() => {
-      setActiveWeek(newWeek);
-    }, 150); // Half of the transition duration
   };
 
-  // Load more episodes automatically (infinite scroll)
+  // Load more episodes automatically (infinite scroll) - instant, no loading
   const loadMoreEpisodes = useCallback(() => {
-    if (isLoadingMore || displayedCount >= episodes.length) return;
+    if (displayedCount >= episodes.length) return;
     
-    setIsLoadingMore(true);
-    
-    setTimeout(() => {
-      setDisplayedCount(prev => Math.min(prev + 12, episodes.length));
-      setIsLoadingMore(false);
-    }, 300);
-  }, [isLoadingMore, displayedCount, episodes.length]);
+    setDisplayedCount(prev => Math.min(prev + 12, episodes.length));
+  }, [displayedCount, episodes.length]);
   
-  // Load available weeks on mount (check which weeks have data)
+  // Load available weeks on mount (check which weeks have 5+ episodes)
   useEffect(() => {
     const loadAvailableWeeks = async () => {
-      console.log('[WeekControl] Checking which weeks have data...');
+      console.log('[WeekControl] 🔍 Starting to load available weeks (5+ episodes filter)...');
+      console.log('[WeekControl] 📅 Current week number:', CURRENT_WEEK_NUMBER);
       
       try {
-        // Call server endpoint to get weeks summary
+        // Call server endpoint to get weeks summary (already filtered to 5+ episodes)
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
           {
@@ -148,31 +154,33 @@ const WeekControl = () => {
         const result = await response.json();
         
         if (result.success && result.weeks) {
-          // Filter to only show weeks that have data AND are not in the future
-          const weeksWithData = result.weeks
-            .filter((w: number) => w <= CURRENT_WEEK_NUMBER) // Only past and current weeks
-            .map((w: number) => `week${w}`);
+          // Server already filters to weeks with 5+ episodes and up to current week
+          const weeksWithData = result.weeks.map((w: number) => `week${w}`);
           
+          console.log(`[WeekControl] ✅ Received ${weeksWithData.length} weeks with 5+ episodes:`, weeksWithData);
           setAvailableWeeks(weeksWithData);
           
-          // If current week has no data, switch to first available or last week
+          // If current week is not in available weeks (less than 5 episodes), use last available week
           if (weeksWithData.length > 0 && !weeksWithData.includes(`week${CURRENT_WEEK_NUMBER}`)) {
-            // Try to use the last available week (most recent)
-            setActiveWeek(weeksWithData[weeksWithData.length - 1]);
+            const lastAvailableWeek = weeksWithData[weeksWithData.length - 1];
+            console.log(`[WeekControl] 📌 Week ${CURRENT_WEEK_NUMBER} has less than 5 episodes, defaulting to ${lastAvailableWeek}`);
+            setActiveWeek(lastAvailableWeek);
           }
         } else {
-          // Fallback: show only weeks up to current week
+          // Fallback: show only weeks up to current week (no filtering by episode count)
           const pastWeeks = WEEKS_DATA
             .filter(w => parseInt(w.id.replace('week', '')) <= CURRENT_WEEK_NUMBER)
             .map(w => w.id);
+          console.log(`[WeekControl] ⚠️  Server returned no weeks - using fallback:`, pastWeeks);
           setAvailableWeeks(pastWeeks);
         }
       } catch (error) {
-        console.error('[WeekControl] Error loading available weeks:', error);
-        // Fallback: show only weeks up to current week
+        console.error('[WeekControl] ❌ Error loading available weeks:', error);
+        // Fallback: show only weeks up to current week (no filtering by episode count)
         const pastWeeks = WEEKS_DATA
           .filter(w => parseInt(w.id.replace('week', '')) <= CURRENT_WEEK_NUMBER)
           .map(w => w.id);
+        console.log(`[WeekControl] ⚠️  Using fallback - showing all weeks up to ${CURRENT_WEEK_NUMBER}:`, pastWeeks);
         setAvailableWeeks(pastWeeks);
       }
     };
@@ -182,25 +190,32 @@ const WeekControl = () => {
   
   // Load episodes when activeWeek changes
   useEffect(() => {
+    console.log(`[WeekControl useEffect] ⚡ Triggered for activeWeek: ${activeWeek}, userSwitched: ${userSwitchedTab.current}`);
+    console.log(`[WeekControl useEffect] 📊 Current state:`, {
+      activeWeek,
+      userSwitched: userSwitchedTab.current,
+      animationKey,
+      currentEpisodesCount: episodes.length,
+      displayedEpisodesCount: displayedEpisodes.length
+    });
+    
     isMounted.current = true;
     
     // Reset displayed count when week changes
     setDisplayedCount(12);
     
     const loadWeekEpisodes = async () => {
+      console.log(`[WeekControl] 🔍 Starting to load week data for ${activeWeek}`);
+      
       // Mark that we're transitioning
       isTransitioning.current = true;
       
-      // If user switched tabs manually, just set changing week flag
-      if (userSwitchedTab.current) {
-        setIsChangingWeek(true);
-        // Keep old episodes visible AND keep animation key unchanged
-        // Animation key will only change when new data arrives
-      } else {
-        // First load - show full loading skeleton
+      // Only show loading on first mount
+      if (!userSwitchedTab.current) {
+        console.log(`[WeekControl] 🔃 Setting loading to true (initial load)`);
         setLoading(true);
-        setDisplayedEpisodes([]); // Clear on first load
-        setAnimationKey(activeWeek); // Set initial animation key
+      } else {
+        console.log(`[WeekControl] 🏃 User switched - skipping loading state`);
       }
       setError(null);
       
@@ -208,50 +223,68 @@ const WeekControl = () => {
         // Get week number from activeWeek id (e.g., "week1" -> 1)
         const weekNumber = parseInt(activeWeek.replace('week', ''));
         
-        setLoadingProgress(30);
-        setLoadingMessage('Fetching weekly episodes...');
-        
         // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
         const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber);
         
-        setLoadingProgress(70);
-        
         // Episodes are already in the correct format from SupabaseService
+        console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for ${activeWeek}`);
         setEpisodes(weekData.episodes);
         
         // CRITICAL FIX: Update displayed episodes AND animation key together
         // This ensures AnimatePresence only triggers when NEW data is ready
+        console.log(`[WeekControl] 🎬 CRITICAL: Updating displayedEpisodes (${weekData.episodes.length}) and animationKey (${activeWeek})`);
+        console.log(`[WeekControl] 🎬 Previous animationKey: ${animationKey} → New: ${activeWeek}`);
         setDisplayedEpisodes(weekData.episodes);
         setAnimationKey(activeWeek); // Only NOW change the animation key
+        console.log(`[WeekControl] 🎬 displayedEpisodes and animationKey updated!`);
         
-        setLoadingProgress(100);
-        
-        // Store the week dates from API
-        setWeekDates({
-          startDate: weekData.startDate,
+        // Store the week dates from API (validate they exist)
+        console.log('[WeekControl] Week data received:', { 
+          episodesCount: weekData.episodes.length,
+          startDate: weekData.startDate, 
           endDate: weekData.endDate,
+          hasValidDates: !!(weekData.startDate && weekData.endDate)
         });
+        
+        if (weekData.startDate && weekData.endDate) {
+          setWeekDates({
+            startDate: weekData.startDate,
+            endDate: weekData.endDate,
+          });
+        } else {
+          // Dates will be calculated from config - this is expected until migration is applied
+          setWeekDates(null);
+        }
 
-        // Load previous week for position comparison
+        // Load previous week for position comparison (for trend indicator)
         if (weekNumber > 1) {
-          const prevWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
-          setPreviousWeekEpisodes(prevWeekData.episodes);
+          try {
+            const prevWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
+            setPreviousWeekEpisodes(prevWeekData.episodes);
+            console.log(`[WeekControl] Loaded ${prevWeekData.episodes.length} episodes from Week ${weekNumber - 1} for trend calculation`);
+          } catch (err) {
+            console.error('[WeekControl] Error loading previous week data:', err);
+            setPreviousWeekEpisodes([]);
+          }
         } else {
           setPreviousWeekEpisodes([]);
         }
       } catch (err) {
+        console.error('[WeekControl] ❌ Error loading week data:', err);
         setError('Failed to load anime data. Please try again later.');
         setDisplayedEpisodes([]); // Clear on error
       } finally {
+        console.log(`[WeekControl] 🏁 Finally block: setting loading to false`);
         setLoading(false);
-        setIsChangingWeek(false);
         isTransitioning.current = false;
-        userSwitchedTab.current = false; // Reset the flag
+        // Reset userSwitched flag immediately after fetch completes
+        console.log(`[WeekControl] 🔄 Resetting userSwitched flag`);
+        userSwitchedTab.current = false;
       }
     };
 
     loadWeekEpisodes();
-  }, [activeWeek]);
+  }, [activeWeek]); // userSwitchedTab is read but NOT a dependency to avoid double-triggering
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -265,30 +298,26 @@ const WeekControl = () => {
         const isIntersecting = entries[0].isIntersecting;
         const canLoadMore = displayedCount < displayedEpisodes.length;
         
-        if (isIntersecting && !isLoadingMore && canLoadMore) {
+        if (isIntersecting && canLoadMore) {
           loadMoreEpisodes();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' } // Start loading 100px before reaching the target
+      { threshold: 0.1, rootMargin: '200px' } // Start loading earlier for seamless experience
     );
 
-    // Use a small delay to ensure the DOM is ready
-    const timeoutId = setTimeout(() => {
-      const currentTarget = observerTarget.current;
-      if (currentTarget) {
-        observer.observe(currentTarget);
-      }
-    }, 100);
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
 
     return () => {
-      clearTimeout(timeoutId);
-      observer.disconnect(); // Disconnect all observations
+      observer.disconnect();
     };
-  }, [displayedCount, displayedEpisodes.length, isLoadingMore, loadMoreEpisodes]);
+  }, [displayedCount, displayedEpisodes.length, loadMoreEpisodes]);
 
   // Auto-load more if content doesn't fill the viewport (fallback for when observer doesn't trigger)
   useEffect(() => {
-    if (loading || isLoadingMore || displayedCount >= displayedEpisodes.length) return;
+    if (loading || displayedCount >= displayedEpisodes.length) return;
     
     // Check if we need to auto-load more after a short delay
     const checkViewportId = setTimeout(() => {
@@ -297,57 +326,23 @@ const WeekControl = () => {
       if (!hasScrollbar && displayedCount < episodes.length) {
         loadMoreEpisodes();
       }
-    }, 500); // Wait for animations to complete
+    }, 300); // Reduced delay for instant feel
     
     return () => clearTimeout(checkViewportId);
-  }, [loading, displayedEpisodes.length, displayedCount, isLoadingMore, loadMoreEpisodes]);
+  }, [loading, displayedEpisodes.length, displayedCount, loadMoreEpisodes]);
 
+  // No loading screen - render directly
   if (loading) {
-    return (
-      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-          Weekly Episode Ranking
-        </h1>
-        <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
-          {weekDates && currentWeek 
-            ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, currentWeek.isCurrentWeek)
-            : currentWeek 
-            ? getFormattedPeriod(currentWeek, currentWeek.isCurrentWeek) 
-            : 'Loading period...'}
-        </p>
-
-        <div className="mb-8 text-center max-w-2xl mx-auto">
-          <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
-            {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
-          </p>
-          <div className="w-full">
-            <Progress 
-              value={loadingProgress} 
-              className="h-3"
-              style={{
-                backgroundColor: 'var(--card-background)',
-              }}
-            />
-            <p className="text-xs mt-2" style={{color: 'var(--foreground)', opacity: 0.5}}>
-              {loadingProgress}%
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <AnimeCardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
+    console.log(`[WeekControl] 🚫 Render blocked: loading is true`);
+    return null;
   }
 
   if (error) {
+    console.log(`[WeekControl] ⚠️  Rendering error state`);
     return (
       <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-          Weekly Episode Ranking
+        <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+          Weekly Anime Episodes
         </h1>
         <div className="text-center py-16">
           <p className="text-xl mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
@@ -367,9 +362,16 @@ const WeekControl = () => {
     );
   }
 
+  console.log(`[WeekControl] 🎨 Rendering main content:`, {
+    activeWeek,
+    animationKey,
+    displayedEpisodesCount: displayedEpisodes.length,
+    animationKeyMatchesActiveWeek: animationKey === activeWeek
+  });
+
   return (
     <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-      <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+      <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Weekly Anime Episodes
       </h1>
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
@@ -471,7 +473,7 @@ const WeekControl = () => {
         </div>
       </div>
 
-      {displayedEpisodes.length === 0 && !loading && !isChangingWeek ? (
+      {displayedEpisodes.length === 0 && !loading ? (
         <div className="text-center py-16">
           <p className="text-xl" style={{color: 'var(--foreground)', opacity: 0.5}}>
             No episode data available for this week yet.
@@ -487,21 +489,14 @@ const WeekControl = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              onAnimationStart={() => console.log(`[WeekControl] 🎬 Animation START for key: ${animationKey}`)}
+              onAnimationComplete={() => console.log(`[WeekControl] ✨ Animation COMPLETE for key: ${animationKey}`)}
             >
               {displayedEpisodes.slice(0, displayedCount).map((episode, index) => {
                 const rank = index + 1;
                 
-                // Convert trend string to positionChange number
-                let positionChange: number | undefined;
-                if (episode.trend) {
-                  if (episode.trend === 'NEW') {
-                    positionChange = undefined; // NEW episodes
-                  } else if (episode.trend === '=') {
-                    positionChange = 0; // Same position
-                  } else {
-                    positionChange = parseInt(episode.trend); // +2, -3, etc.
-                  }
-                }
+                // Calculate position change using previous week data
+                const positionChange = calculatePositionChange(episode, rank, previousWeekEpisodes);
                 
                 return (
                   <motion.div
@@ -537,32 +532,20 @@ const WeekControl = () => {
           {/* Infinite Scroll Observer Target + Load More Button */}
           {displayedCount < displayedEpisodes.length ? (
             <div ref={observerTarget} className="flex flex-col items-center gap-4 mt-8 py-8">
-              {isLoadingMore ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 border-3 border-t-transparent rounded-full animate-spin" 
-                       style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}></div>
-                  <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
-                    Loading more episodes...
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-xs opacity-50" style={{color: 'var(--foreground)'}}>
-                    Scroll to load more ({displayedCount}/{displayedEpisodes.length})
-                  </p>
-                  {/* Manual Load More Button as fallback */}
-                  <button
-                    onClick={loadMoreEpisodes}
-                    className="px-6 py-2 rounded-lg transition-all hover:opacity-80"
-                    style={{
-                      backgroundColor: 'var(--rank-background)',
-                      color: 'var(--rank-text)',
-                    }}
-                  >
-                    Load More Episodes
-                  </button>
-                </>
-              )}
+              <p className="text-xs opacity-50" style={{color: 'var(--foreground)'}}>
+                Scroll to load more ({displayedCount}/{displayedEpisodes.length})
+              </p>
+              {/* Manual Load More Button as fallback */}
+              <button
+                onClick={loadMoreEpisodes}
+                className="px-6 py-2 rounded-lg transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: 'var(--rank-background)',
+                  color: 'var(--rank-text)',
+                }}
+              >
+                Load More Episodes
+              </button>
             </div>
           ) : (
             <div className="text-center mt-8 py-8">

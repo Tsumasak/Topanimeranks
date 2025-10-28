@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
-import { Progress } from '../components/ui/progress';
-import { CacheInfoBanner } from '../components/CacheInfoBanner';
 
 interface HomeCardData {
   rank: number;
@@ -14,12 +13,15 @@ interface HomeCardData {
   members?: string;
   animeType?: string;
   demographics?: string[];
+  genres?: string[];
+  themes?: string[];
   url?: string;
 }
 
 function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | 'top' | 'anticipated' }) {
   const isEpisode = type === 'episode';
   const isAnticipated = type === 'anticipated';
+  const isNewLayout = type === 'top' || type === 'anticipated'; // New layout only for top & anticipated
   
   // Border and hover styling based on rank (same as BaseAnimeCard)
   let borderStyle = 'border border-gray-600';
@@ -41,8 +43,8 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
     contentGradient = 'bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent';
   }
   
-  // Image height based on card type
-  const imageHeight = isEpisode ? 'h-40' : 'h-72'; // episode = 160px (mais horizontal), anticipated = 288px (mais vertical)
+  // Image height: Episode cards use old size (160px), new layout uses 230px
+  const imageHeight = isEpisode ? 'h-40' : 'h-[230px]';
   
   // SVG Badge Components for top 3 positions (same as BaseAnimeCard)
   const GoldBadge = () => (
@@ -124,23 +126,110 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
   const CardWrapper = data.url ? 'a' : 'div';
   const cardProps = data.url ? { href: data.url, target: '_blank', rel: 'noopener noreferrer' } : {};
   
-  // Ensure all cards have same minimum height (episode cards are shorter)
-  const minHeightClass = isEpisode ? 'min-h-[320px]' : 'min-h-[450px]';
+  // OLD LAYOUT for Weekly Episodes (original design)
+  if (isEpisode) {
+    return (
+      <CardWrapper 
+        {...cardProps}
+        className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-full h-full`}
+      >
+        {/* Image Section */}
+        <div className={`relative flex-shrink-0 overflow-hidden anime-card-image ${imageHeight}`}>
+          <img 
+            alt={data.title} 
+            className="w-full h-full object-cover object-center transition-all duration-1500 ease-out group-hover:object-top" 
+            src={data.image} 
+          />
+          
+          {/* Tags Container - Top Right (only Type and Demographics) */}
+          <div className="absolute top-2 right-2 flex flex-row gap-1">
+            {/* Anime Type Tag */}
+            {data.animeType && (
+              <div className={`px-3 py-1 rounded-full text-xs ${typeTagStyle}`}>
+                {data.animeType}
+              </div>
+            )}
+            
+            {/* Demographics Tag - only show first demographic if available */}
+            {data.demographics && data.demographics.length > 0 && (
+              <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(data.demographics[0])}`}>
+                {data.demographics[0]}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Container with gradient for top 3 positions */}
+        <div className={`relative flex-grow flex flex-col justify-between ${contentGradient}`}>
+          <div className="p-4 flex items-start flex-grow">
+            {/* Rank Display - SVG badges for top 3, pill for others */}
+            <div className="flex-shrink-0 flex flex-col items-center">
+              {data.rank === 1 ? (
+                <GoldBadge />
+              ) : data.rank === 2 ? (
+                <SilverBadge />
+              ) : data.rank === 3 ? (
+                <BronzeBadge />
+              ) : (
+                <div className="w-12 h-12 flex items-center justify-center">
+                  <div className={`px-3 py-1 rounded-full text-sm ${rankStyle}`}>
+                    #{data.rank}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Title and Subtitle */}
+            <div className="relative flex flex-col ml-4 flex-grow">
+              <h3 className="font-bold text-lg line-clamp-3 leading-[1.1] mb-3" style={{ color: 'var(--foreground)' }}>
+                {data.title}
+              </h3>
+              {data.subtitle && (
+                <p className="text-sm leading-[1.1] mb-2" style={{ color: 'var(--foreground)' }}>
+                  {data.subtitle}
+                </p>
+              )}
+              
+              {/* Genres + Themes Tags - Combine and show first 3 total */}
+              {((data.genres && data.genres.length > 0) || (data.themes && data.themes.length > 0)) && (
+                <div className="flex gap-1 flex-wrap">
+                  {[...(data.genres || []), ...(data.themes || [])].slice(0, 3).map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="px-3 py-1 theme-rating text-xs rounded-full border"
+                      style={{borderColor: 'var(--card-border)'}}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Bottom text container */}
+          <div className="font-bold text-right px-4 pb-4 text-lg mt-auto" style={{ color: 'var(--rating-yellow)' }}>
+            {data.score ? `★ ${data.score}` : ''}
+          </div>
+        </div>
+      </CardWrapper>
+    );
+  }
   
+  // NEW LAYOUT for Top Animes & Most Anticipated (centered badge design)
   return (
     <CardWrapper 
       {...cardProps}
-      className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} ${minHeightClass} transition-all duration-300`}
+      className={`relative block theme-card rounded-lg overflow-visible flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-[213px] h-full`}
     >
       {/* Image Section */}
-      <div className={`relative flex-shrink-0 overflow-hidden anime-card-image ${imageHeight}`}>
+      <div className={`relative flex-shrink-0 overflow-hidden ${imageHeight} rounded-t-lg`}>
         <img 
           alt={data.title} 
           className="w-full h-full object-cover object-center transition-all duration-1500 ease-out group-hover:object-top" 
           src={data.image} 
         />
         
-        {/* Tags Container - Top Right */}
+        {/* Tags Container - Top Right (only Type and Demographics) */}
         <div className="absolute top-2 right-2 flex flex-row gap-1">
           {/* Anime Type Tag */}
           {data.animeType && (
@@ -159,40 +248,47 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
       </div>
 
       {/* Container with gradient for top 3 positions */}
-      <div className={`relative flex-grow flex flex-col ${contentGradient}`}>
-        <div className="p-3 flex items-start">
-          {/* Rank Display - SVG badges for top 3, pill for others */}
-          <div className="flex-shrink-0 flex flex-col items-center">
-            {data.rank === 1 ? (
-              <GoldBadge />
-            ) : data.rank === 2 ? (
-              <SilverBadge />
-            ) : data.rank === 3 ? (
-              <BronzeBadge />
-            ) : (
-              <div className="w-12 h-12 flex items-center justify-center">
-                <div className={`px-3 py-1 rounded-full text-sm ${rankStyle}`}>
-                  #{data.rank}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Title and Subtitle */}
-          <div className="relative flex flex-col ml-3 flex-grow">
-            <h3 className="font-bold text-lg leading-[1.1] mb-2" style={{ color: 'var(--foreground)' }}>
-              {data.title}
-            </h3>
-            {data.subtitle && (
-              <p className="text-sm leading-[1.1] mb-1" style={{ color: 'var(--foreground)' }}>
-                {data.subtitle}
-              </p>
-            )}
-          </div>
+      <div className={`relative flex-grow flex flex-col justify-between ${contentGradient}`}>
+        {/* Badge - Centered at top, overlapping image */}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-[24px] flex items-center justify-center w-12 h-12">
+          {data.rank === 1 ? (
+            <GoldBadge />
+          ) : data.rank === 2 ? (
+            <SilverBadge />
+          ) : data.rank === 3 ? (
+            <BronzeBadge />
+          ) : (
+            <div className={`px-3 py-1 rounded-full text-sm ${rankStyle}`}>
+              #{data.rank}
+            </div>
+          )}
         </div>
         
-        {/* Bottom text - pushed to bottom with mt-auto */}
-        <div className="font-bold text-right px-3 pb-3 text-lg mt-auto" style={{ color: 'var(--rating-yellow)' }}>
+        {/* Content Area */}
+        <div className="pt-[30px] pb-4 px-4 flex flex-col">
+          {/* Title */}
+          <h3 className="font-bold text-lg line-clamp-3 leading-[1.1] mb-3" style={{ color: 'var(--foreground)' }}>
+            {data.title}
+          </h3>
+          
+          {/* Genres + Themes Tags - Combine and show first 3 total */}
+          {((data.genres && data.genres.length > 0) || (data.themes && data.themes.length > 0)) && (
+            <div className="flex gap-1 flex-wrap">
+              {[...(data.genres || []), ...(data.themes || [])].slice(0, 3).map((tag, index) => (
+                <span 
+                  key={index} 
+                  className="px-3 py-1 theme-rating text-xs rounded-full border h-[26px] flex items-center"
+                  style={{borderColor: 'var(--card-border)'}}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Bottom text container */}
+        <div className="font-bold text-right px-4 pb-4 text-lg mt-auto" style={{ color: 'var(--rating-yellow)' }}>
           {isAnticipated && data.members ? data.members : data.score ? `★ ${data.score}` : ''}
         </div>
       </div>
@@ -224,7 +320,7 @@ function SectionHeader({ title, subtitle, highlightText, highlightColor }: {
   
   return (
     <div className="flex flex-col gap-[4px] items-start justify-center w-full">
-      <p className="font-['Arial'] font-bold leading-[40px] relative shrink-0 text-[28px] md:text-[36px] break-words" style={{ color: 'var(--foreground)' }}>
+      <p className="font-['Arial'] font-bold leading-[32px] relative shrink-0 text-[24px] md:text-[30px] break-words" style={{ color: 'var(--foreground)' }}>
         {renderTitle()}
       </p>
       <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
@@ -239,23 +335,21 @@ export function HomePage() {
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
   const [displayedWeekNumber, setDisplayedWeekNumber] = useState(CURRENT_WEEK_NUMBER);
+  const [weekPeriod, setWeekPeriod] = useState('');
+  
+  // Animation keys for smooth entry animations
+  const [animationKey, setAnimationKey] = useState('initial');
 
   useEffect(() => {
     const loadData = async () => {
+      console.log('[HomePage] 🔍 Starting to load home data');
       try {
         setIsLoading(true);
-        setLoadingProgress(0);
-        setLoadingMessage('Checking Supabase cache...');
 
         // Load Top Season Animes from Supabase (Fall 2025)
         const supabaseImport = await import('../services/supabase');
         const SupabaseService = supabaseImport.SupabaseService;
-        
-        setLoadingProgress(10);
-        setLoadingMessage('Loading Fall 2025 rankings...');
         
         // Fall 2025 - Order by SCORE (rating-based ranking)
         const seasonAnimes = await SupabaseService.getSeasonRankings('fall', 2025, 'score');
@@ -269,6 +363,8 @@ export function HomePage() {
             score: anime.score || 0,
             animeType: anime.type || 'TV',
             demographics: anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
+            genres: anime.genres?.map(g => typeof g === 'string' ? g : g.name) || [],
+            themes: anime.themes?.map(t => typeof t === 'string' ? t : t.name) || [],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setTopSeasonAnimes(topSeason);
@@ -278,9 +374,6 @@ export function HomePage() {
             document.documentElement.style.setProperty('--bg-image', `url(${topSeason[0].image})`);
           }
         }
-        
-        setLoadingProgress(40);
-        setLoadingMessage('Loading Winter 2026 most anticipated...');
 
         // Winter 2026 - Order by MEMBERS (popularity-based ranking)
         const winter2026Animes = await SupabaseService.getSeasonRankings('winter', 2026, 'members');
@@ -292,14 +385,13 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             members: `${(anime.members / 1000).toFixed(0)}K Members`,
             animeType: anime.type || 'TV',
-            demographics: anime.demographics?.map(d => d.name || d) || [],
+            demographics: anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
+            genres: anime.genres?.map(g => typeof g === 'string' ? g : g.name) || [],
+            themes: anime.themes?.map(t => typeof t === 'string' ? t : t.name) || [],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setAnticipated(topAnticipated);
         }
-        
-        setLoadingProgress(70);
-        setLoadingMessage('Loading weekly episodes...');
 
         // Weekly Episodes - Try current week, fallback to previous if less than 3 episodes
         let weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER);
@@ -316,28 +408,51 @@ export function HomePage() {
           const topWeekly = weeklyEpisodesData.episodes.slice(0, 3).map((episode, index) => ({
             rank: index + 1,
             title: episode.animeTitle,
-            subtitle: `EP ${episode.episodeNumber}`,
+            subtitle: episode.episodeTitle ? `EP ${episode.episodeNumber} - ${episode.episodeTitle}` : `EP ${episode.episodeNumber}`,
             image: episode.imageUrl || '',
             score: episode.episodeScore || 0,
             animeType: episode.animeType || 'TV',
             demographics: episode.demographics || [],
+            genres: episode.genres || [],
+            themes: episode.themes || [],
             url: episode.url || `https://myanimelist.net/anime/${episode.animeId}`
           }));
           setTopEpisodes(topWeekly);
           setDisplayedWeekNumber(weekToShow);
-          console.log(`[HomePage] Loaded ${topWeekly.length} episodes from Week ${weekToShow}`);
+          
+          // Format week period
+          const weekConfig = WEEKS_DATA.find(w => w.id === `week${weekToShow}`);
+          if (weekConfig) {
+            const start = new Date(weeklyEpisodesData.startDate);
+            const end = new Date(weeklyEpisodesData.endDate);
+            const startMonth = start.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+            const startDay = start.getUTCDate();
+            const endMonth = end.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+            const endDay = end.getUTCDate();
+            const year = end.getUTCFullYear();
+            const prefix = weekConfig.isCurrentWeek ? 'Airing' : 'Aired';
+            
+            if (startMonth === endMonth) {
+              setWeekPeriod(`${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`);
+            } else {
+              setWeekPeriod(`${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`);
+            }
+          }
+          
+          console.log(`[HomePage] ✅ Loaded ${topWeekly.length} episodes from Week ${weekToShow}`);
         } else {
           console.log('[HomePage] No weekly episodes found');
           setTopEpisodes([]);
         }
 
-        setLoadingProgress(100);
-        setLoadingMessage('Complete!');
-
+        // CRITICAL: Update animation key after ALL data is loaded
+        console.log('[HomePage] 🎬 CRITICAL: All data loaded, updating animationKey');
+        setAnimationKey('loaded');
+        
       } catch (error) {
-        console.error('Error loading home data:', error);
-        setLoadingMessage('Error loading data');
+        console.error('[HomePage] ❌ Error loading home data:', error);
       } finally {
+        console.log('[HomePage] 🏁 Finally block: setting loading to false');
         setIsLoading(false);
       }
     };
@@ -345,93 +460,94 @@ export function HomePage() {
     loadData();
   }, []);
 
-  // Show loading screen with progress bar
+  // No loading screen - instant render
   if (isLoading) {
+    console.log('[HomePage] 🚫 Render blocked: loading is true');
     return (
       <div className="dynamic-background min-h-screen">
-        <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-          <div className="max-w-md w-full text-center">
-            <h1 className="text-3xl mb-4" style={{ color: 'var(--foreground)' }}>
-              Loading Top Anime Ranks
-            </h1>
-            <p className="text-sm mb-2" style={{ color: 'var(--foreground)', opacity: 0.7 }}>
-              {loadingMessage || 'Fetching data from MyAnimeList...'}
-            </p>
-            {loadingProgress < 50 && (
-              <p className="text-xs mb-6" style={{ color: 'var(--rating-yellow)', opacity: 0.8 }}>
-                ⚡ Tip: Enable Supabase cache for instant loading!
-              </p>
-            )}
-            <div className="w-full mb-4">
-              <Progress 
-                value={loadingProgress} 
-                className="h-3"
-                style={{
-                  '--progress-background': 'var(--card-background)',
-                  '--progress-foreground': 'var(--rating-yellow)',
-                } as React.CSSProperties}
-              />
-            </div>
-            <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
-              {loadingProgress}% complete
-            </p>
-          </div>
+        <div className="container mx-auto px-[24px] pt-[32px] pb-[32px]">
+          {/* Content renders immediately */}
         </div>
       </div>
     );
   }
+
+  console.log('[HomePage] 🎨 Rendering main content:', {
+    animationKey,
+    topEpisodesCount: topEpisodes.length,
+    topSeasonAnimesCount: topSeasonAnimes.length,
+    anticipatedCount: anticipated.length
+  });
 
   return (
     <div className="dynamic-background min-h-screen">
       {/* Main Content */}
       <div className="container mx-auto px-[24px] pt-[32px] pb-[32px] flex flex-col gap-[32px]">
         {/* Weekly Episodes Section */}
-        <div className="relative rounded-[10px] shrink-0 w-full" style={{ backgroundColor: 'var(--card-background)' }}>
-          <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />
-          <div className="flex flex-col justify-center size-full">
-            <div className="box-border content-stretch flex flex-col gap-[24px] items-start justify-center p-[24px] relative w-full">
-              {/* Section Header */}
-              <div className="content-stretch flex flex-col md:flex-row items-start md:items-center justify-between not-italic relative shrink-0 w-full gap-4 md:gap-0">
-                <div className="content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0">
-                  <p className="font-['Arial'] font-bold leading-[40px] relative shrink-0 text-[28px] md:text-[36px]" style={{ color: 'var(--foreground)' }}>
-                    Weekly Anime Episodes
-                  </p>
-                  <p className="font-['Arial'] leading-[16px] relative shrink-0 text-[12px]" style={{ color: 'var(--rating-text)' }}>
-                    Rank the best episodes of the week
-                  </p>
-                </div>
-                <p className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px]" style={{ color: 'var(--rating-yellow)' }}>
-                  {WEEKS_DATA.find(w => w.id === `week${displayedWeekNumber}`)?.period || `Week ${displayedWeekNumber}`}
-                </p>
-              </div>
+        <div className="flex flex-col gap-[18px] w-full">
+          {/* Section Header - Outside card */}
+          <div className="flex items-center w-full">
+            <SectionHeader 
+              title={`Weekly Anime Episodes - Week ${displayedWeekNumber}`}
+              subtitle={weekPeriod || 'Loading period...'}
+              highlightText={`Week ${displayedWeekNumber}`}
+              highlightColor="var(--rating-yellow)"
+            />
+          </div>
+          
+          {/* Card Container */}
+          <div className="relative rounded-[10px] shrink-0 w-full" style={{ backgroundColor: 'var(--card-background)' }}>
+            <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />
+            <div className="flex flex-col justify-center size-full">
+              <div className="box-border content-stretch flex flex-col gap-[24px] items-start justify-center p-[24px] relative w-full">
 
-              {/* Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                {isLoading ? (
-                  [1, 2, 3].map(i => (
-                    <div key={`skeleton-episode-${i}`} className="bg-slate-700 h-[320px] w-full animate-pulse rounded-[10px]" />
-                  ))
-                ) : topEpisodes.length > 0 ? (
-                  topEpisodes.map((ep) => (
-                    <HomeAnimeCard key={`episode-${ep.rank}`} data={ep} type="episode" />
-                  ))
-                ) : (
-                  [1, 2, 3].map(i => (
-                    <div key={`placeholder-episode-${i}`} className="bg-slate-700/50 h-[320px] w-full rounded-[10px] flex items-center justify-center">
-                      <p className="text-slate-400 text-sm">Placeholder #{i}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+                {/* Cards */}
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={`episodes-${animationKey}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex gap-[24px] w-full"
+                    onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for episodes')}
+                    onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for episodes')}
+                  >
+                    {topEpisodes.length > 0 ? (
+                      topEpisodes.map((ep, index) => (
+                        <motion.div
+                          key={`episode-${ep.rank}`}
+                          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{
+                            duration: 0.3,
+                            delay: index * 0.03,
+                            ease: [0.34, 1.56, 0.64, 1]
+                          }}
+                          className="flex flex-1 w-full"
+                        >
+                          <HomeAnimeCard data={ep} type="episode" />
+                        </motion.div>
+                      ))
+                    ) : (
+                      [1, 2, 3].map(i => (
+                        <div key={`placeholder-episode-${i}`} className="bg-slate-700/50 h-[320px] flex-1 w-full rounded-[10px] flex items-center justify-center">
+                          <p className="text-slate-400 text-sm">Loading...</p>
+                        </div>
+                      ))
+                    )}
+                  </motion.div>
+                </AnimatePresence>
 
-              {/* View Complete Link */}
-              <Link 
-                to="/ranks"
-                className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--foreground)' }}
-              >
-                <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
-              </Link>
+                {/* View Complete Link */}
+                <Link 
+                  to="/ranks"
+                  className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -452,27 +568,42 @@ export function HomePage() {
               <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />
               <div className="flex flex-col items-end justify-end">
                 <div className="box-border flex flex-col gap-[24px] items-end justify-end p-[24px] w-full">
-                  {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {[1, 2, 3].map(i => (
-                        <div key={`skeleton-season-${i}`} className="bg-slate-700 h-[380px] w-full animate-pulse rounded-[10px]" />
-                      ))}
-                    </div>
-                  ) : topSeasonAnimes.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {topSeasonAnimes.map((anime) => (
-                        <HomeAnimeCard key={`season-${anime.rank}`} data={anime} type="top" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {[1, 2, 3].map(i => (
-                        <div key={`placeholder-season-${i}`} className="bg-slate-700/50 h-[380px] w-full rounded-[10px] flex items-center justify-center">
-                          <p className="text-slate-400 text-sm">Placeholder #{i}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <AnimatePresence mode="wait">
+                    <motion.div 
+                      key={`season-${animationKey}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex gap-6 w-full overflow-x-auto"
+                      onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for season animes')}
+                      onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for season animes')}
+                    >
+                      {topSeasonAnimes.length > 0 ? (
+                        topSeasonAnimes.map((anime, index) => (
+                          <motion.div
+                            key={`season-${anime.rank}`}
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{
+                              duration: 0.3,
+                              delay: index * 0.03,
+                              ease: [0.34, 1.56, 0.64, 1]
+                            }}
+                            className="flex-shrink-0 flex"
+                          >
+                            <HomeAnimeCard data={anime} type="top" />
+                          </motion.div>
+                        ))
+                      ) : (
+                        [1, 2, 3].map(i => (
+                          <div key={`placeholder-season-${i}`} className="bg-slate-700/50 h-[380px] w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
+                            <p className="text-slate-400 text-sm">Loading...</p>
+                          </div>
+                        ))
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                   <Link 
                     to="/top-season-animes"
                     className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"
@@ -499,27 +630,42 @@ export function HomePage() {
               <div aria-hidden="true" className="absolute border-solid inset-0 pointer-events-none rounded-[10px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.3)]" style={{ borderWidth: '1px', borderColor: 'var(--card-border)' }} />
               <div className="flex flex-col items-end justify-end">
                 <div className="box-border flex flex-col gap-[24px] items-end justify-end p-[24px] w-full">
-                  {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {[1, 2, 3].map(i => (
-                        <div key={`skeleton-anticipated-${i}`} className="bg-slate-700 h-[380px] w-full animate-pulse rounded-[10px]" />
-                      ))}
-                    </div>
-                  ) : anticipated.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {anticipated.map((anime) => (
-                        <HomeAnimeCard key={`anticipated-${anime.rank}`} data={anime} type="anticipated" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                      {[1, 2, 3].map(i => (
-                        <div key={`placeholder-anticipated-${i}`} className="bg-slate-700/50 h-[380px] w-full rounded-[10px] flex items-center justify-center">
-                          <p className="text-slate-400 text-sm">Placeholder #{i}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <AnimatePresence mode="wait">
+                    <motion.div 
+                      key={`anticipated-${animationKey}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex gap-6 w-full overflow-x-auto"
+                      onAnimationStart={() => console.log('[HomePage] 🎬 Animation START for anticipated animes')}
+                      onAnimationComplete={() => console.log('[HomePage] ✨ Animation COMPLETE for anticipated animes')}
+                    >
+                      {anticipated.length > 0 ? (
+                        anticipated.map((anime, index) => (
+                          <motion.div
+                            key={`anticipated-${anime.rank}`}
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{
+                              duration: 0.3,
+                              delay: index * 0.03,
+                              ease: [0.34, 1.56, 0.64, 1]
+                            }}
+                            className="flex-shrink-0 flex"
+                          >
+                            <HomeAnimeCard data={anime} type="anticipated" />
+                          </motion.div>
+                        ))
+                      ) : (
+                        [1, 2, 3].map(i => (
+                          <div key={`placeholder-anticipated-${i}`} className="bg-slate-700/50 h-[380px] w-[213px] flex-shrink-0 rounded-[10px] flex items-center justify-center">
+                            <p className="text-slate-400 text-sm">Loading...</p>
+                          </div>
+                        ))
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                   <Link 
                     to="/most-anticipated-animes"
                     className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"

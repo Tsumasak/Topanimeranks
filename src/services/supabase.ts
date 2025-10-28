@@ -61,6 +61,7 @@ export async function getWeeklyEpisodes(
 
       if (result.success && result.data && result.data.length > 0) {
         console.log(`[SupabaseService] ✅ Found ${result.data.length} episodes in Supabase cache`);
+        console.log('[SupabaseService] First episode data:', result.data[0]);
         
         onProgress?.(50, 100, 'Loading from cache...');
         
@@ -88,10 +89,40 @@ export async function getWeeklyEpisodes(
 
         // Calculate dates from first episode
         const firstEpisode = result.data[0];
+        const startDate = firstEpisode.week_start_date || firstEpisode.week_start || '';
+        const endDate = firstEpisode.week_end_date || firstEpisode.week_end || '';
+        
+        console.log('[SupabaseService] Week dates from first episode:', { 
+          week_start_date: firstEpisode.week_start_date,
+          week_end_date: firstEpisode.week_end_date,
+          week_start: firstEpisode.week_start,
+          week_end: firstEpisode.week_end,
+          finalStartDate: startDate,
+          finalEndDate: endDate
+        });
+        
+        // If dates are still empty, calculate them from week number (FALLBACK)
+        if (!startDate || !endDate) {
+          console.log(`[SupabaseService] ℹ️ Using calculated dates for week ${weekNumber} (migration pending)`);
+          
+          // Calculate dates as fallback
+          const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025 (Week 1 start)
+          const weekStart = new Date(baseDate);
+          weekStart.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+          
+          return {
+            episodes,
+            startDate: weekStart.toISOString().split('T')[0],
+            endDate: weekEnd.toISOString().split('T')[0],
+          };
+        }
+        
         return {
           episodes,
-          startDate: firstEpisode.week_start_date,
-          endDate: firstEpisode.week_end_date,
+          startDate,
+          endDate,
         };
       }
 

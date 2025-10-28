@@ -1,5 +1,13 @@
 # 🚀 Supabase Setup Guide - Top Anime Ranks
 
+## 🚨 IMPORTANTE: Migrations Necessárias
+
+Se você está vendo o erro `[WeekControl] No dates in weekData, using config fallback`, você precisa aplicar a migration mais recente.
+
+**➡️ Veja instruções completas em [APPLY_MIGRATIONS.md](./APPLY_MIGRATIONS.md)**
+
+---
+
 ## 📋 Overview
 
 This system uses Supabase as a high-performance cache for Jikan API data. Instead of fetching data directly from Jikan (which is slow and has rate limits), we:

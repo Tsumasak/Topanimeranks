@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
-import { AnticipatedCardSkeleton } from './AnimeCardSkeleton';
-import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
@@ -14,10 +12,13 @@ const SeasonControl = () => {
   
   const [activeSeason, setActiveSeason] = useState<string>('fall2025');
   const [animes, setAnimes] = useState<AnticipatedAnime[]>([]);
+  const [displayedAnimes, setDisplayedAnimes] = useState<AnticipatedAnime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userSwitched, setUserSwitched] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  
+  // CRITICAL: Animation key that only changes when NEW data is ready
+  const [animationKey, setAnimationKey] = useState(activeSeason);
   
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
@@ -37,23 +38,32 @@ const SeasonControl = () => {
   // Smooth transition function for season changes
   const handleSeasonChange = (newSeason: string) => {
     if (newSeason === activeSeason) return;
+    console.log(`[SeasonControl] 🔄 handleSeasonChange: ${activeSeason} → ${newSeason}`);
     setUserSwitched(true);
+    setActiveSeason(newSeason); // Change immediately
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
-    setTimeout(() => {
-      setActiveSeason(newSeason);
-    }, 150); // Half of the transition duration
   };
   
   // Load animes when activeSeason changes
   useEffect(() => {
-    console.log(`[SeasonControl useEffect] Triggered for activeSeason: ${activeSeason}`);
+    console.log(`[SeasonControl useEffect] ⚡ Triggered for activeSeason: ${activeSeason}, userSwitched: ${userSwitched}`);
+    console.log(`[SeasonControl useEffect] 📊 Current state:`, {
+      activeSeason,
+      userSwitched,
+      animationKey,
+      currentAnimesCount: animes.length,
+      displayedAnimesCount: displayedAnimes.length
+    });
     
     const loadSeasonAnimes = async () => {
-      console.log(`[SeasonControl] Starting to load season data for ${activeSeason}`);
+      console.log(`[SeasonControl] 🔍 Starting to load season data for ${activeSeason}`);
       
       // Only show full loading skeleton on initial load, not on season changes
       if (!userSwitched) {
+        console.log(`[SeasonControl] 🔃 Setting loading to true (initial load)`);
         setLoading(true);
+      } else {
+        console.log(`[SeasonControl] 🏃 User switched - skipping loading state`);
       }
       setError(null);
       
@@ -88,63 +98,43 @@ const SeasonControl = () => {
           url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
         }));
         
+        console.log(`[SeasonControl] ✅ Fetched ${transformedAnimes.length} animes for ${activeSeason}`);
         setAnimes(transformedAnimes);
-        setLoadingProgress(100);
+        
+        // CRITICAL FIX: Update displayed animes AND animation key together
+        // This ensures AnimatePresence only triggers when NEW data is ready
+        console.log(`[SeasonControl] 🎬 CRITICAL: Updating displayedAnimes (${transformedAnimes.length}) and animationKey (${activeSeason})`);
+        console.log(`[SeasonControl] 🎬 Previous animationKey: ${animationKey} → New: ${activeSeason}`);
+        setDisplayedAnimes(transformedAnimes);
+        setAnimationKey(activeSeason); // Only NOW change the animation key
+        console.log(`[SeasonControl] 🎬 displayedAnimes and animationKey updated!`);
       } catch (err) {
-        console.error('Error loading season data:', err);
+        console.error('[SeasonControl] ❌ Error loading season data:', err);
         setError('Failed to load anime data. Please try again later.');
+        setDisplayedAnimes([]); // Clear on error
       } finally {
+        console.log(`[SeasonControl] 🏁 Finally block: setting loading to false`);
         setLoading(false);
-        setTimeout(() => {
-          setUserSwitched(false); // Reset flag
-        }, 150);
+        // Reset userSwitched flag immediately after fetch completes
+        console.log(`[SeasonControl] 🔄 Resetting userSwitched flag`);
+        setUserSwitched(false);
       }
     };
 
     loadSeasonAnimes();
-  }, [activeSeason, userSwitched]);
+  }, [activeSeason]); // userSwitched is read but NOT a dependency to avoid double-triggering
 
+  // No loading screen - render directly
   if (loading) {
-    return (
-      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
-          Most Anticipated Animes
-        </h1>
-        <p className="text-center mb-16 text-sm" style={{color: 'var(--rating-yellow)'}}>
-          {currentSeason ? currentSeason.period : 'Loading period...'}
-        </p>
-
-        <div className="mb-8 text-center max-w-2xl mx-auto">
-          <p className="text-sm mb-4" style={{color: 'var(--foreground)', opacity: 0.7}}>
-            {loadingMessage || 'Loading data from MyAnimeList... This may take a moment on first load.'}
-          </p>
-          <div className="w-full">
-            <Progress 
-              value={loadingProgress} 
-              className="h-3"
-              style={{
-                backgroundColor: 'var(--card-background)',
-              }}
-            />
-            <p className="text-xs mt-2" style={{color: 'var(--foreground)', opacity: 0.5}}>
-              {loadingProgress}%
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <AnticipatedCardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
+    console.log(`[SeasonControl] 🚫 Render blocked: loading is true`);
+    return null;
   }
 
   if (error) {
+    console.log(`[SeasonControl] ⚠️  Rendering error state`);
     return (
       <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-        <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+        <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
           Most Anticipated Animes
         </h1>
         <div className="text-center py-16">
@@ -162,9 +152,16 @@ const SeasonControl = () => {
     );
   }
 
+  console.log(`[SeasonControl] 🎨 Rendering main content:`, {
+    activeSeason,
+    animationKey,
+    displayedAnimesCount: displayedAnimes.length,
+    animationKeyMatchesActiveSeason: animationKey === activeSeason
+  });
+
   return (
     <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
-      <h1 className="text-4xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+      <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Most Anticipated Animes
       </h1>
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
@@ -262,25 +259,33 @@ const SeasonControl = () => {
         </div>
       </div>
 
-      {animes.length === 0 ? (
+      {displayedAnimes.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-xl" style={{color: 'var(--foreground)', opacity: 0.5}}>
             No anime data available for this season yet.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <AnimatePresence mode="popLayout">
-            {animes.map((anime, index) => (
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={animationKey}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+            onAnimationStart={() => console.log(`[SeasonControl] 🎬 Animation START for key: ${animationKey}`)}
+            onAnimationComplete={() => console.log(`[SeasonControl] ✨ Animation COMPLETE for key: ${animationKey}`)}
+          >
+            {displayedAnimes.map((anime, index) => (
               <motion.div
-                key={`${activeSeason}-${anime.id}`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                key={`${anime.id}`}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{
                   duration: 0.3,
                   delay: index * 0.03,
-                  ease: "easeOut"
+                  ease: [0.34, 1.56, 0.64, 1]
                 }}
                 className="h-full"
               >
@@ -300,8 +305,8 @@ const SeasonControl = () => {
                 />
               </motion.div>
             ))}
-          </AnimatePresence>
-        </div>
+          </motion.div>
+        </AnimatePresence>
       )}
     </div>
   );

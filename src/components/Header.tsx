@@ -61,25 +61,21 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
-            <div className="space-x-4">
-              <button 
-                onClick={() => onPageChange?.('home')}
-                className="theme-nav-link transition-colors"
-              >
-                Home
-              </button>
+            <div className="flex items-center space-x-4">
               <button 
                 onClick={() => onPageChange?.('ranks')}
                 className="theme-nav-link transition-colors"
               >
                 Weekly Anime Episodes
               </button>
+              <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 
                 onClick={() => onPageChange?.('season')}
                 className="theme-nav-link transition-colors"
               >
                 Top Season Animes
               </button>
+              <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 
                 onClick={() => onPageChange?.('anticipated')}
                 className="theme-nav-link transition-colors"
@@ -134,15 +130,6 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
         </div>
         
         <nav className="mobile-menu-nav">
-          <button 
-            onClick={() => {
-              onPageChange?.('home');
-              closeMobileMenu();
-            }}
-            className={`mobile-menu-link ${currentPage === 'home' ? 'font-bold' : ''}`}
-          >
-            🏠 Home
-          </button>
           <button 
             onClick={() => {
               onPageChange?.('ranks');

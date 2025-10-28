@@ -27,11 +27,107 @@ app.get("/make-server-c1d1bfd8/health", (c) => {
   return c.json({ status: "ok" });
 });
 
+// Migration status endpoint - returns SQL to run manually
+app.get("/make-server-c1d1bfd8/migration-status", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials",
+        migrationNeeded: true
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Try to check if we have any episodes with dates
+    // If columns don't exist, this will throw error code 42703
+    const { data: episodesWithDates, error } = await supabase
+      .from('weekly_episodes')
+      .select('week_start_date, week_end_date')
+      .limit(1);
+
+    // If error code is 42703, columns don't exist - migration needed
+    if (error) {
+      if (error.code === '42703') {
+        console.log('[Migration] ℹ️ Columns do not exist - migration needed');
+        return c.json({ 
+          success: true,
+          migrationNeeded: true,
+          message: 'Migration needed: week_start_date and week_end_date columns do not exist',
+          sqlToRun: `
+ALTER TABLE weekly_episodes
+ADD COLUMN IF NOT EXISTS week_start_date DATE,
+ADD COLUMN IF NOT EXISTS week_end_date DATE;
+
+UPDATE weekly_episodes
+SET 
+  week_start_date = DATE '2025-09-29' + ((week_number - 1) * 7),
+  week_end_date = DATE '2025-09-29' + ((week_number - 1) * 7) + 6
+WHERE week_start_date IS NULL OR week_end_date IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_start_date, week_end_date);
+          `.trim()
+        });
+      }
+      
+      console.error('[Migration] Unexpected error checking dates:', error);
+      return c.json({ 
+        success: false, 
+        error: error.message,
+        migrationNeeded: true
+      }, 500);
+    }
+
+    // Columns exist, check if they have data
+    const hasDates = episodesWithDates && 
+                     episodesWithDates.length > 0 && 
+                     episodesWithDates[0].week_start_date !== null &&
+                     episodesWithDates[0].week_end_date !== null;
+
+    if (!hasDates) {
+      console.log('[Migration] ℹ️ Columns exist but are empty - migration needed');
+      return c.json({ 
+        success: true,
+        migrationNeeded: true,
+        message: 'Migration needed: date columns are empty',
+        sqlToRun: `
+UPDATE weekly_episodes
+SET 
+  week_start_date = DATE '2025-09-29' + ((week_number - 1) * 7),
+  week_end_date = DATE '2025-09-29' + ((week_number - 1) * 7) + 6
+WHERE week_start_date IS NULL OR week_end_date IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_start_date, week_end_date);
+        `.trim()
+      });
+    }
+
+    console.log('[Migration] ✅ Migration already applied');
+    return c.json({ 
+      success: true,
+      migrationNeeded: false,
+      message: 'Migration already applied - all good!'
+    });
+
+  } catch (error) {
+    console.error("❌ Migration status error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      migrationNeeded: true
+    }, 500);
+  }
+});
+
 // ============================================
 // DATA ENDPOINTS
 // ============================================
 
-// Get available weeks (weeks with at least 1 episode)
+// Get available weeks (weeks with at least 5 episodes)
 app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -49,7 +145,7 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
     // Current week is 5 (October 28, 2025)
     const CURRENT_WEEK = 5;
 
-    // Get distinct week numbers that have episodes
+    // Get all episodes grouped by week number
     // Only return weeks up to the current week (no future weeks)
     const { data, error } = await supabase
       .from('weekly_episodes')
@@ -58,21 +154,32 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       .order('week_number', { ascending: true });
 
     if (error) {
-      console.error("Error fetching available weeks:", error);
+      console.error("❌ Error fetching available weeks:", error);
       return c.json({
         success: false,
         error: error.message
       }, 500);
     }
 
-    // Get unique week numbers
-    const uniqueWeeks = [...new Set(data?.map(row => row.week_number) || [])];
+    // Count episodes per week
+    const weekCounts = new Map<number, number>();
+    data?.forEach(row => {
+      const count = weekCounts.get(row.week_number) || 0;
+      weekCounts.set(row.week_number, count + 1);
+    });
+
+    // Filter weeks with 5+ episodes
+    const validWeeks = Array.from(weekCounts.entries())
+      .filter(([week, count]) => count >= 5)
+      .map(([week]) => week)
+      .sort((a, b) => a - b);
     
-    console.log(`[Server] Available weeks (up to week ${CURRENT_WEEK}): ${uniqueWeeks.join(', ')}`);
+    console.log(`[Server] 📊 Weeks with episode counts:`, Array.from(weekCounts.entries()).map(([w, c]) => `Week ${w}: ${c} episodes`).join(', '));
+    console.log(`[Server] ✅ Available weeks (5+ episodes, up to week ${CURRENT_WEEK}): ${validWeeks.join(', ')}`);
 
     return c.json({
       success: true,
-      weeks: uniqueWeeks
+      weeks: validWeeks
     });
 
   } catch (error) {
@@ -119,6 +226,16 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
     }
 
     console.log(`[Server] Week ${weekNumber}: ${episodes?.length || 0} episodes with scores (N/A episodes hidden)`);
+    
+    // Debug: Log date fields from first episode
+    if (episodes && episodes.length > 0) {
+      const firstEp = episodes[0];
+      console.log(`[Server] First episode date fields:`, {
+        week_start_date: firstEp.week_start_date,
+        week_end_date: firstEp.week_end_date,
+        week_number: firstEp.week_number
+      });
+    }
 
     return c.json({
       success: true,

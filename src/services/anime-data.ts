@@ -20,18 +20,19 @@ export class AnimeDataService {
       animeTitle: dbEpisode.anime_title_english || dbEpisode.anime_title,
       episodeNumber: dbEpisode.episode_number,
       episodeTitle: `Episode ${dbEpisode.episode_number}`,
-      score: dbEpisode.score || 0,
+      episodeUrl: dbEpisode.episode_url || `https://myanimelist.net/anime/${dbEpisode.anime_id}`,
+      episodeScore: dbEpisode.episode_score || dbEpisode.score || 0,
       imageUrl: dbEpisode.anime_image_url || '',
       aired: dbEpisode.aired_at || new Date().toISOString(),
       animeType: dbEpisode.type || 'TV',
       demographics: Array.isArray(dbEpisode.demographics) 
-        ? dbEpisode.demographics.map((d: any) => d.name || d) 
+        ? dbEpisode.demographics.map((d: any) => typeof d === 'string' ? d : d.name) 
         : [],
       genres: Array.isArray(dbEpisode.genres) 
-        ? dbEpisode.genres.map((g: any) => g.name || g) 
+        ? dbEpisode.genres.map((g: any) => typeof g === 'string' ? g : g.name) 
         : [],
       themes: Array.isArray(dbEpisode.themes) 
-        ? dbEpisode.themes.map((t: any) => t.name || t) 
+        ? dbEpisode.themes.map((t: any) => typeof t === 'string' ? t : t.name) 
         : [],
       url: dbEpisode.forum_url || `https://myanimelist.net/anime/${dbEpisode.anime_id}`,
       isManual: dbEpisode.is_manual || false,
@@ -44,23 +45,23 @@ export class AnimeDataService {
       id: dbAnime.anime_id,
       title: dbAnime.title_english || dbAnime.title,
       imageUrl: dbAnime.image_url || '',
-      score: dbAnime.score || 0,
+      animeScore: dbAnime.score || 0,
       members: dbAnime.members || 0,
       synopsis: dbAnime.synopsis || '',
       animeType: dbAnime.type || 'TV',
       season: dbAnime.season || 'unknown',
       year: dbAnime.year || 2025,
       demographics: Array.isArray(dbAnime.demographics) 
-        ? dbAnime.demographics.map((d: any) => d.name || d) 
+        ? dbAnime.demographics.map((d: any) => typeof d === 'string' ? d : d.name) 
         : [],
       genres: Array.isArray(dbAnime.genres) 
-        ? dbAnime.genres.map((g: any) => g.name || g) 
+        ? dbAnime.genres.map((g: any) => typeof g === 'string' ? g : g.name) 
         : [],
       themes: Array.isArray(dbAnime.themes) 
-        ? dbAnime.themes.map((t: any) => t.name || t) 
+        ? dbAnime.themes.map((t: any) => typeof t === 'string' ? t : t.name) 
         : [],
       studios: Array.isArray(dbAnime.studios) 
-        ? dbAnime.studios.map((s: any) => s.name || s) 
+        ? dbAnime.studios.map((s: any) => typeof s === 'string' ? s : s.name) 
         : [],
       url: `https://myanimelist.net/anime/${dbAnime.anime_id}`,
     };
@@ -198,7 +199,6 @@ export class AnimeDataService {
         
         return {
           season,
-          year,
           animes: [],
         };
       }
@@ -215,7 +215,6 @@ export class AnimeDataService {
 
       return {
         season,
-        year,
         animes,
       };
     } catch (error) {
@@ -225,7 +224,6 @@ export class AnimeDataService {
       
       return {
         season,
-        year,
         animes: [],
       };
     }

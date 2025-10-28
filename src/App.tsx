@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Header } from "./components/Header";
+import { MigrationAlert } from "./components/MigrationAlert";
 import { HomePage } from "./pages/HomePage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
@@ -212,7 +213,6 @@ function AppContent() {
       </div>
 
       <FloatingButtons />
-      <Toaster theme={theme as "light" | "dark"} />
     </div>
   );
 }
@@ -223,6 +223,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppContent />
+      <MigrationAlert />
+      <Toaster />
     </BrowserRouter>
   );
 }

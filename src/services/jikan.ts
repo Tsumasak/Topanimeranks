@@ -247,13 +247,14 @@ export class JikanService {
     
     // IMPORTANT: episode.mal_id is the EPISODE NUMBER, not a unique episode ID
     // This means if the same episode airs in different weeks, it will have the same ID
-    const episodeData = {
+    const episodeData: Episode = {
       id: episode.mal_id,
       animeId: anime.mal_id,
       animeTitle: anime.title_english || anime.title,
       episodeNumber: episode.mal_id,
       episodeTitle: episode.title,
-      score: episodeScore,
+      episodeUrl: episode.url,
+      episodeScore: episodeScore,
       imageUrl: anime.images.webp.large_image_url || anime.images.jpg.large_image_url,
       aired: episode.aired,
       animeType: anime.type || 'TV',

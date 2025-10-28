@@ -470,10 +470,10 @@ const WeekControl = () => {
                     <AnimeCard 
                       rank={rank}
                       title={episode.animeTitle}
-                      subtitle={`EP ${episode.episodeNumber} - ${episode.episodeTitle}`}
+                      subtitle={`EP ${episode.episodeNumber}${episode.episodeTitle ? ` - ${episode.episodeTitle}` : ''}`}
                       imageUrl={episode.imageUrl}
                       linkUrl={episode.episodeUrl}
-                      bottomText={episode.episodeScore > 0 ? `★ ${episode.episodeScore.toFixed(2)}` : '★ N/A'}
+                      bottomText={episode.episodeScore && episode.episodeScore > 0 ? `★ ${episode.episodeScore.toFixed(2)}` : '★ N/A'}
                       animeType={episode.animeType}
                       demographics={episode.demographics}
                       genres={episode.genres}

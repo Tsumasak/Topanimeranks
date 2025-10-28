@@ -15,11 +15,15 @@ interface JikanAnime {
 
 interface JikanEpisode {
   mal_id: number;
+  url: string;
   title: string;
+  title_japanese: string | null;
+  title_romanji: string | null;
+  aired: string | null;
+  score: number | null;
   filler: boolean;
   recap: boolean;
   forum_url: string;
-  aired?: string;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -136,38 +140,28 @@ Deno.serve(async (_req) => {
             
             // Inserir cada episódio
             for (const episode of episodes) {
+              const episodeNumber = episode.mal_id; // mal_id É o número do episódio
+              
               // Calcular semana baseado na data de exibição
               let weekNumber = 1;
               if (episode.aired) {
                 weekNumber = calculateWeekNumber(episode.aired, seasonStartDate);
               } else {
                 // Se não tem data, usar o número do episódio como aproximação
-                weekNumber = Math.ceil(episode.mal_id / 1);
+                weekNumber = Math.min(Math.ceil(episodeNumber / 1), 13);
               }
               
-              // Buscar rating individual do episódio (1.00-5.00)
-              let episodeRating = null;
-              try {
-                await sleep(333); // Rate limit
-                const episodeDetailUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/episodes/${episode.mal_id}`;
-                const episodeDetailResponse = await fetch(episodeDetailUrl);
-                
-                if (episodeDetailResponse.ok) {
-                  const episodeDetail = await episodeDetailResponse.json();
-                  // O rating do episódio vem como um número de 1-5
-                  episodeRating = episodeDetail.data?.score || null;
-                }
-              } catch (error) {
-                console.log(`⚠️ Não foi possível buscar rating do episódio ${episode.mal_id}`);
-              }
+              // Score vem DIRETO do endpoint /episodes
+              const episodeRating = episode.score || null;
               
               const episodeData = {
                 ...animeData,
-                episode_number: episode.mal_id,
-                episode_name: episode.title || `Episode ${episode.mal_id}`,
+                episode_number: episodeNumber,
+                episode_name: episode.title || `Episode ${episodeNumber}`,
                 episode_score: episodeRating,
                 week_number: weekNumber,
                 aired_at: episode.aired || null,
+                from_url: episode.url || anime.url, // URL do episódio específico
                 is_manual: false
               };
               
@@ -180,10 +174,14 @@ Deno.serve(async (_req) => {
                 });
               
               if (upsertError) {
-                console.error(`❌ Erro ao inserir episódio ${episode.mal_id}:`, upsertError.message);
+                console.error(`❌ Erro ao inserir episódio ${episodeNumber}:`, upsertError.message);
                 errors++;
               } else {
                 totalEpisodes++;
+                if (episodeNumber <= 3 || episodeRating) {
+                  const scoreText = episodeRating ? `★ ${episodeRating}` : 'no score yet';
+                  console.log(`   └─ EP${episodeNumber}: "${episode.title}" (${scoreText}, Week ${weekNumber})`);
+                }
               }
             }
             

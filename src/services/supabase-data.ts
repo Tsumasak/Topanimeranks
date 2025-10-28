@@ -1,5 +1,5 @@
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { Episode, AnticipatedAnime, WeekData, SeasonData } from '../types/anime';
+import { Episode, AnticipatedAnime } from '../types/anime';
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8`;
 

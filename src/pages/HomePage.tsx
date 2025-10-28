@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
 
@@ -21,7 +21,6 @@ interface HomeCardData {
 function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | 'top' | 'anticipated' }) {
   const isEpisode = type === 'episode';
   const isAnticipated = type === 'anticipated';
-  const isNewLayout = type === 'top' || type === 'anticipated'; // New layout only for top & anticipated
   
   // Border and hover styling based on rank (same as BaseAnimeCard)
   let borderStyle = 'border border-gray-600';

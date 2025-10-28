@@ -41,7 +41,6 @@
           "hono": "*",
           "input-otp": "*",
           "lucide-react": "*",
-          "motion": "*",
           "next-themes": "*",
           "path": "*",
           "react": "^18.3.1",

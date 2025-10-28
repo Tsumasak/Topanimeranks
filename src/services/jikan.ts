@@ -273,7 +273,7 @@ export class JikanService {
       id: anime.mal_id,
       title: anime.title_english || anime.title,
       imageUrl: anime.images.webp.large_image_url || anime.images.jpg.large_image_url,
-      score: anime.score,
+      animeScore: anime.score,
       members: anime.members,
       synopsis: anime.synopsis || '',
       animeType: anime.type || 'TV',
@@ -317,7 +317,7 @@ export class JikanService {
         animeTitle: anime.title_english || anime.title,
         episodeNumber: config.episodeNumber,
         episodeTitle: config.episodeTitle,
-        score: config.score,
+        episodeScore: config.score,
         imageUrl: anime.images.webp.large_image_url || anime.images.jpg.large_image_url,
         aired: airedDate,
         animeType: anime.type || 'TV',
@@ -325,10 +325,11 @@ export class JikanService {
         genres: anime.genres.map(g => g.name),
         themes: anime.themes.map(t => t.name),
         url: episodePageUrl,
+        episodeUrl: episodePageUrl,
         isManual: true, // Mark as manually added
       };
       
-      console.log(`[ManualEpisode] ✓ Created manual episode: ${episode.animeTitle} EP${episode.episodeNumber} (${episode.score})`);
+      console.log(`[ManualEpisode] ✓ Created manual episode: ${episode.animeTitle} EP${episode.episodeNumber} (${episode.episodeScore})`);
       console.log(`[ManualEpisode]   → Anime has ${anime.members.toLocaleString()} members (manual episodes bypass 20k+ filter)`);
       return episode;
     } catch (error) {
@@ -498,16 +499,16 @@ export class JikanService {
       if (!existingEpisode) {
         // First episode from this anime
         animeMap.set(episode.animeId, episode);
-        console.log(`[Dedup] Adding ${episode.animeTitle} EP${episode.episodeNumber} (Score: ${episode.score}, Aired: ${new Date(episode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })})`);
+        console.log(`[Dedup] Adding ${episode.animeTitle} EP${episode.episodeNumber} (Score: ${episode.episodeScore}, Aired: ${new Date(episode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })})`);
       } else {
         // Compare scores and keep the highest
-        if (episode.score > existingEpisode.score) {
-          console.log(`[Dedup] ⚠️ REPLACING ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.score}) with EP${episode.episodeNumber} (${episode.score}) - HIGHER SCORE`);
+        if (episode.episodeScore > existingEpisode.episodeScore) {
+          console.log(`[Dedup] ⚠️ REPLACING ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.episodeScore}) with EP${episode.episodeNumber} (${episode.episodeScore}) - HIGHER SCORE`);
           console.log(`  → Old aired: ${new Date(existingEpisode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })}`);
           console.log(`  → New aired: ${new Date(episode.aired).toLocaleDateString('en-US', { timeZone: 'UTC' })}`);
           animeMap.set(episode.animeId, episode);
         } else {
-          console.log(`[Dedup] Skipping ${episode.animeTitle} EP${episode.episodeNumber} (${episode.score}) - already have EP${existingEpisode.episodeNumber} (${existingEpisode.score})`);
+          console.log(`[Dedup] Skipping ${episode.animeTitle} EP${episode.episodeNumber} (${episode.episodeScore}) - already have EP${existingEpisode.episodeNumber} (${existingEpisode.episodeScore})`);
         }
       }
     }
@@ -536,13 +537,13 @@ export class JikanService {
       } else {
         // API has a different episode from this anime
         // Keep the one with higher score
-        if (manualEp.score > existingEpisode.score) {
+        if (manualEp.episodeScore > existingEpisode.episodeScore) {
           animeMap.set(manualEp.animeId, manualEp);
           const index = uniqueEpisodes.findIndex(ep => ep.animeId === manualEp.animeId);
           if (index !== -1) {
             uniqueEpisodes[index] = manualEp;
           }
-          console.log(`[ManualEpisode] ✓ REPLACED ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.score}) with manual EP${manualEp.episodeNumber} (${manualEp.score})`);
+          console.log(`[ManualEpisode] ✓ REPLACED ${existingEpisode.animeTitle} EP${existingEpisode.episodeNumber} (${existingEpisode.episodeScore}) with manual EP${manualEp.episodeNumber} (${manualEp.episodeScore})`);
         } else {
           console.log(`[ManualEpisode] ⚠️ SKIPPED ${manualEp.animeTitle} EP${manualEp.episodeNumber} - API version has higher score`);
         }
@@ -553,10 +554,10 @@ export class JikanService {
 
     // Sort by score (highest first), episodes without score go to the end
     uniqueEpisodes.sort((a, b) => {
-      if (!a.score && !b.score) return 0;
-      if (!a.score) return 1;
-      if (!b.score) return -1;
-      return b.score - a.score;
+      if (!a.episodeScore && !b.episodeScore) return 0;
+      if (!a.episodeScore) return 1;
+      if (!b.episodeScore) return -1;
+      return b.episodeScore - a.episodeScore;
     });
 
     const weekData: WeekData = {

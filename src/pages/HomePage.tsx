@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Episode, AnticipatedAnime } from '../types/anime';
 import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
 
 interface HomeCardData {

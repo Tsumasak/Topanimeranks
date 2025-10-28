@@ -158,15 +158,15 @@ export async function getWeeklyEpisodes(
  * This function is here for consistency but manual episodes from config
  * should ideally be handled by the sync function, not the frontend
  */
-async function mergeManualEpisodes(
-  apiEpisodes: Episode[],
-  weekNumber: number
-): Promise<Episode[]> {
-  // For now, just return the API episodes
-  // Manual episodes should be synced to Supabase by the Edge Function
-  // If needed, we could fetch and convert them here using JikanService
-  return apiEpisodes;
-}
+// async function mergeManualEpisodes(
+//   apiEpisodes: Episode[],
+//   weekNumber: number
+// ): Promise<Episode[]> {
+//   // For now, just return the API episodes
+//   // Manual episodes should be synced to Supabase by the Edge Function
+//   // If needed, we could fetch and convert them here using JikanService
+//   return apiEpisodes;
+// }
 
 // ============================================
 // SEASON RANKINGS
@@ -397,31 +397,20 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
         
         // Transform Supabase data to AnticipatedAnime format
         const animes: AnticipatedAnime[] = data.map(row => ({
-          mal_id: row.anime_id,
-          title: row.title,
-          title_english: row.title_english,
-          images: {
-            jpg: {
-              large_image_url: row.image_url,
-            },
-          },
-          score: row.score,
-          scored_by: row.scored_by,
+          id: row.anime_id,
+          title: row.title_english || row.title,
+          imageUrl: row.image_url,
+          animeScore: row.score,
           members: row.members,
-          favorites: row.favorites,
-          type: row.type,
-          status: row.status,
-          rating: row.rating,
-          source: row.source,
-          episodes: row.episodes,
-          aired: {
-            from: row.aired_from,
-          },
-          synopsis: row.synopsis,
-          demographics: row.demographics,
-          genres: row.genres,
-          themes: row.themes,
-          studios: row.studios,
+          synopsis: row.synopsis || '',
+          animeType: row.type || 'TV',
+          season: row.season || 'unknown',
+          year: row.year || 2025,
+          demographics: row.demographics || [],
+          genres: row.genres || [],
+          themes: row.themes || [],
+          studios: row.studios || [],
+          url: `https://myanimelist.net/anime/${row.anime_id}`,
         }));
 
         return animes;

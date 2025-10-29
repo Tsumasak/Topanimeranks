@@ -124,33 +124,21 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
       const episode = {
         anime_id: anime.mal_id,
+        anime_title_english: anime.title_english || anime.title,
+        anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
+        from_url: weekEpisode.url || anime.url,
         episode_number: weekEpisode.mal_id,
-        episode_id: episodeId,
-        episode_title: weekEpisode.title,
-        episode_url: weekEpisode.url,
-        anime_title: anime.title,
-        anime_title_english: anime.title_english,
-        anime_image_url: anime.images?.jpg?.large_image_url,
-        aired_at: weekEpisode.aired,
-        duration: anime.duration ? parseInt(anime.duration) : null,
-        filler: weekEpisode.filler || false,
-        recap: weekEpisode.recap || false,
-        forum_url: weekEpisode.forum_url || anime.url,
-        episode_score: weekEpisode.score || null, // ✅ EPISODE SCORE (not anime score!)
-        scored_by: anime.scored_by,
-        members: anime.members,
-        favorites: anime.favorites,
+        episode_name: weekEpisode.title || `Episode ${weekEpisode.mal_id}`,
+        episode_score: weekEpisode.score || null,
+        week_number: weekNumber,
+        position_in_week: 0, // Will be set later
+        is_manual: false,
         type: anime.type,
         status: anime.status,
-        rating: anime.rating,
-        source: anime.source,
-        demographics: anime.demographics || [],
-        genres: anime.genres || [],
-        themes: anime.themes || [],
-        week_number: weekNumber,
-        week_start_date: startDate.toISOString().split('T')[0],
-        week_end_date: endDate.toISOString().split('T')[0],
-        is_manual: false,
+        demographic: anime.demographics || [],
+        genre: anime.genres || [],
+        theme: anime.themes || [],
+        aired_at: weekEpisode.aired,
       };
 
       episodes.push(episode);
@@ -207,33 +195,37 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`\n💾 Starting database upsert for ${episodes.length} episodes...`);
     
     for (const episode of episodes) {
+      // Check if episode already exists
+      const { data: existing, error: checkError } = await supabase
+        .from('weekly_episodes')
+        .select('id')
+        .eq('anime_id', episode.anime_id)
+        .eq('episode_number', episode.episode_number)
+        .eq('week_number', episode.week_number)
+        .maybeSingle();
+
+      const isUpdate = existing !== null && !checkError;
+
       const { data, error } = await supabase
         .from('weekly_episodes')
         .upsert(episode, {
-          onConflict: 'episode_id,week_number',
+          onConflict: 'anime_id,episode_number,week_number',
           ignoreDuplicates: false,
         })
         .select();
 
       if (error) {
-        console.error(`❌ Upsert error for ${episode.anime_title}:`, error);
+        console.error(`❌ Upsert error for ${episode.anime_title_english}:`, error);
         continue;
       }
       
-      console.log(`✅ Upserted: ${episode.anime_title}`);
+      console.log(`✅ Upserted: ${episode.anime_title_english}`);
 
       if (data && data.length > 0) {
-        // Check if it was created or updated
-        const existing = await supabase
-          .from('weekly_episodes')
-          .select('created_at, updated_at')
-          .eq('id', data[0].id)
-          .single();
-
-        if (existing.data.created_at === existing.data.updated_at) {
-          itemsCreated++;
-        } else {
+        if (isUpdate) {
           itemsUpdated++;
+        } else {
+          itemsCreated++;
         }
       }
     }

@@ -137,13 +137,13 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (
             <div className={`px-3 py-1 rounded-full text-xs ${
-              demographics[0].toLowerCase() === 'seinen' ? 'tag-seinen' :
-              demographics[0].toLowerCase() === 'shounen' ? 'tag-shounen' :
-              demographics[0].toLowerCase() === 'shoujo' ? 'tag-shoujo' :
-              demographics[0].toLowerCase() === 'josei' ? 'tag-josei' :
+              (typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name).toLowerCase() === 'seinen' ? 'tag-seinen' :
+              (typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name).toLowerCase() === 'shounen' ? 'tag-shounen' :
+              (typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name).toLowerCase() === 'shoujo' ? 'tag-shoujo' :
+              (typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name).toLowerCase() === 'josei' ? 'tag-josei' :
               'tag-demo-default'
             }`}>
-              {demographics[0]}
+              {typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name}
             </div>
           )}
         </div>
@@ -184,7 +184,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
                     className="px-3 py-1 theme-rating text-xs rounded-full border"
                     style={{borderColor: 'var(--card-border)'}}
                   >
-                    {tag}
+                    {typeof tag === 'string' ? tag : tag.name}
                   </span>
                 ))}
               </div>

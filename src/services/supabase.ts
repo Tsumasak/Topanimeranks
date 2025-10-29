@@ -77,9 +77,9 @@ export async function getWeeklyEpisodes(
           imageUrl: row.anime_image_url || '',
           aired: row.aired_at || '',
           animeType: row.type || 'TV',
-          demographics: Array.isArray(row.demographic) ? row.demographic : [],
-          genres: Array.isArray(row.genre) ? row.genre : [],
-          themes: Array.isArray(row.theme) ? row.theme : [],
+          demographics: Array.isArray(row.demographic) ? row.demographic.map((d: any) => typeof d === 'string' ? d : d.name) : [],
+          genres: Array.isArray(row.genre) ? row.genre.map((g: any) => typeof g === 'string' ? g : g.name) : [],
+          themes: Array.isArray(row.theme) ? row.theme.map((t: any) => typeof t === 'string' ? t : t.name) : [],
           url: row.from_url || `https://myanimelist.net/anime/${row.anime_id}`,
           isManual: row.is_manual || false,
         }));

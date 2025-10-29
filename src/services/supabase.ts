@@ -24,6 +24,15 @@ export const isSupabaseConfigured = () => {
 };
 
 // ============================================
+// Helper function to convert string arrays to object arrays
+// ============================================
+const convertToObjectArray = (arr: any[]): Array<{ mal_id: number; name: string }> => {
+  return (arr || []).map((item: any) => 
+    typeof item === 'string' ? { mal_id: 0, name: item } : item
+  );
+};
+
+// ============================================
 // WEEKLY EPISODES
 // ============================================
 
@@ -250,10 +259,10 @@ export async function getSeasonRankings(
           season: row.season,
           year: row.year,
           synopsis: row.synopsis,
-          demographics: row.demographics || [],
-          genres: row.genres || [],
-          themes: row.themes || [],
-          studios: row.studios || [],
+          demographics: convertToObjectArray(row.demographics),
+          genres: convertToObjectArray(row.genres),
+          themes: convertToObjectArray(row.themes),
+          studios: convertToObjectArray(row.studios),
         }));
 
         return animes;
@@ -351,10 +360,10 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
           season: row.season,
           year: row.year,
           synopsis: row.synopsis,
-          demographics: row.demographics || [],
-          genres: row.genres || [],
-          themes: row.themes || [],
-          studios: row.studios || [],
+          demographics: convertToObjectArray(row.demographics),
+          genres: convertToObjectArray(row.genres),
+          themes: convertToObjectArray(row.themes),
+          studios: convertToObjectArray(row.studios),
         }));
 
         return animes;

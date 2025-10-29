@@ -360,9 +360,9 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             score: anime.score || 0,
             animeType: anime.type || 'TV',
-            demographics: (anime.demographics || []) as string[],
-            genres: (anime.genres || []) as string[],
-            themes: (anime.themes || []) as string[],
+            demographics: anime.demographics?.map(d => d.name) || [],
+            genres: anime.genres?.map(g => g.name) || [],
+            themes: anime.themes?.map(t => t.name) || [],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setTopSeasonAnimes(topSeason);
@@ -383,9 +383,9 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             members: `${(anime.members / 1000).toFixed(0)}K Members`,
             animeType: anime.type || 'TV',
-            demographics: (anime.demographics || []) as string[],
-            genres: (anime.genres || []) as string[],
-            themes: (anime.themes || []) as string[],
+            demographics: anime.demographics?.map(d => d.name) || [],
+            genres: anime.genres?.map(g => g.name) || [],
+            themes: anime.themes?.map(t => t.name) || [],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setAnticipated(topAnticipated);
@@ -410,9 +410,9 @@ export function HomePage() {
             image: episode.imageUrl || '',
             score: episode.episodeScore || 0,
             animeType: episode.animeType || 'TV',
-            demographics: (episode.demographics || []) as string[],
-            genres: (episode.genres || []) as string[],
-            themes: (episode.themes || []) as string[],
+            demographics: episode.demographics || [],
+            genres: episode.genres || [],
+            themes: episode.themes || [],
             url: episode.url || `https://myanimelist.net/anime/${episode.animeId}`
           }));
           setTopEpisodes(topWeekly);

@@ -161,8 +161,8 @@ export default function BaseAnimeCard({
           
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (
-            <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name)}`}>
-              {typeof demographics[0] === 'string' ? demographics[0] : demographics[0].name}
+            <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(demographics[0])}`}>
+              {demographics[0]}
             </div>
           )}
         </div>
@@ -212,7 +212,7 @@ export default function BaseAnimeCard({
                     className="px-3 py-1 theme-rating text-xs rounded-full border"
                     style={{borderColor: 'var(--card-border)'}}
                   >
-                    {typeof tag === 'string' ? tag : tag.name}
+                    {tag}
                   </span>
                 ))}
               </div>

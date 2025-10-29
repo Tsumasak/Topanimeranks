@@ -150,8 +150,8 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
             
             {/* Demographics Tag - only show first demographic if available */}
             {data.demographics && data.demographics.length > 0 && (
-              <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(typeof data.demographics[0] === 'string' ? data.demographics[0] : data.demographics[0].name)}`}>
-                {typeof data.demographics[0] === 'string' ? data.demographics[0] : data.demographics[0].name}
+              <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(data.demographics[0])}`}>
+                {data.demographics[0]}
               </div>
             )}
           </div>
@@ -197,7 +197,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
                       className="px-3 py-1 theme-rating text-xs rounded-full border"
                       style={{borderColor: 'var(--card-border)'}}
                     >
-                      {typeof tag === 'string' ? tag : tag.name}
+                      {tag}
                     </span>
                   ))}
                 </div>
@@ -278,7 +278,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
                   className="px-3 py-1 theme-rating text-xs rounded-full border h-[26px] flex items-center"
                   style={{borderColor: 'var(--card-border)'}}
                 >
-                  {typeof tag === 'string' ? tag : tag.name}
+                  {tag}
                 </span>
               ))}
             </div>
@@ -360,9 +360,9 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             score: anime.score || 0,
             animeType: anime.type || 'TV',
-            demographics: anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
-            genres: anime.genres?.map(g => typeof g === 'string' ? g : g.name) || [],
-            themes: anime.themes?.map(t => typeof t === 'string' ? t : t.name) || [],
+            demographics: (anime.demographics || []) as string[],
+            genres: (anime.genres || []) as string[],
+            themes: (anime.themes || []) as string[],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setTopSeasonAnimes(topSeason);
@@ -383,9 +383,9 @@ export function HomePage() {
             image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             members: `${(anime.members / 1000).toFixed(0)}K Members`,
             animeType: anime.type || 'TV',
-            demographics: anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
-            genres: anime.genres?.map(g => typeof g === 'string' ? g : g.name) || [],
-            themes: anime.themes?.map(t => typeof t === 'string' ? t : t.name) || [],
+            demographics: (anime.demographics || []) as string[],
+            genres: (anime.genres || []) as string[],
+            themes: (anime.themes || []) as string[],
             url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
           }));
           setAnticipated(topAnticipated);
@@ -410,9 +410,9 @@ export function HomePage() {
             image: episode.imageUrl || '',
             score: episode.episodeScore || 0,
             animeType: episode.animeType || 'TV',
-            demographics: episode.demographics?.map(d => typeof d === 'string' ? d : d.name) || [],
-            genres: episode.genres?.map(g => typeof g === 'string' ? g : g.name) || [],
-            themes: episode.themes?.map(t => typeof t === 'string' ? t : t.name) || [],
+            demographics: (episode.demographics || []) as string[],
+            genres: (episode.genres || []) as string[],
+            themes: (episode.themes || []) as string[],
             url: episode.url || `https://myanimelist.net/anime/${episode.animeId}`
           }));
           setTopEpisodes(topWeekly);

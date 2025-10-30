@@ -77,7 +77,7 @@ export class SupabaseDataService {
       
       // Triple safety: Sort by score DESC as final safeguard
       // This ensures correct order even if position_in_week is incorrect
-      episodes.sort((a, b) => {
+      episodes.sort((a: Episode, b: Episode) => {
         const scoreA = a.episodeScore !== null ? a.episodeScore : -1;
         const scoreB = b.episodeScore !== null ? b.episodeScore : -1;
         return scoreB - scoreA;

@@ -1,7 +1,7 @@
 // ============================================
 // Supabase Edge Function: sync-anime-data
 // Purpose: Fetch data from Jikan API and store in Supabase
-// Runs every 10 minutes via pg_cron
+// Runs every 1 hour via pg_cron
 // ============================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

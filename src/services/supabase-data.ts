@@ -74,6 +74,15 @@ export class SupabaseDataService {
       }
 
       const episodes = result.data.map((dbEp: any) => this.convertDbEpisodeToEpisode(dbEp));
+      
+      // Triple safety: Sort by score DESC as final safeguard
+      // This ensures correct order even if position_in_week is incorrect
+      episodes.sort((a, b) => {
+        const scoreA = a.episodeScore !== null ? a.episodeScore : -1;
+        const scoreB = b.episodeScore !== null ? b.episodeScore : -1;
+        return scoreB - scoreA;
+      });
+      
       console.log(`[SupabaseData] ✓ Found ${episodes.length} episodes in Supabase for week ${weekNumber}`);
 
       return { success: true, data: episodes };

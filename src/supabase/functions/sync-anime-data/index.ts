@@ -230,6 +230,73 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       }
     }
 
+    // 🔄 RECALCULATE POSITIONS: After all upserts, re-fetch and re-rank episodes
+    console.log(`\n🔄 Recalculating positions for week ${weekNumber}...`);
+    
+    const { data: allWeekEpisodes, error: fetchError } = await supabase
+      .from('weekly_episodes')
+      .select('*')
+      .eq('week_number', weekNumber);
+
+    if (fetchError) {
+      console.error(`❌ Error fetching episodes for recalculation:`, fetchError);
+    } else if (allWeekEpisodes) {
+      // Sort episodes by score (descending), with nulls at the end
+      const sorted = allWeekEpisodes.sort((a, b) => {
+        const scoreA = a.episode_score !== null ? a.episode_score : -1;
+        const scoreB = b.episode_score !== null ? b.episode_score : -1;
+        return scoreB - scoreA;
+      });
+
+      // Update positions and recalculate trends
+      for (let i = 0; i < sorted.length; i++) {
+        const episode = sorted[i];
+        const newPosition = i + 1;
+        const oldPosition = episode.position_in_week;
+
+        // Only update if position changed
+        if (newPosition !== oldPosition) {
+          // Recalculate trend based on previous week
+          let newTrend = episode.trend;
+          if (weekNumber > 1) {
+            const { data: prevEpisode } = await supabase
+              .from('weekly_episodes')
+              .select('position_in_week')
+              .eq('anime_id', episode.anime_id)
+              .eq('week_number', weekNumber - 1)
+              .single();
+
+            if (prevEpisode) {
+              const positionChange = prevEpisode.position_in_week - newPosition;
+              if (positionChange > 0) {
+                newTrend = `+${positionChange}`;
+              } else if (positionChange < 0) {
+                newTrend = `${positionChange}`;
+              } else {
+                newTrend = '=';
+              }
+            }
+          }
+
+          const { error: updateError } = await supabase
+            .from('weekly_episodes')
+            .update({ 
+              position_in_week: newPosition,
+              trend: newTrend
+            })
+            .eq('id', episode.id);
+
+          if (updateError) {
+            console.error(`❌ Error updating position for ${episode.anime_title_english}:`, updateError);
+          } else {
+            console.log(`📊 Reranked ${episode.anime_title_english}: #${oldPosition} → #${newPosition}`);
+          }
+        }
+      }
+      
+      console.log(`✅ Position recalculation complete for week ${weekNumber}`);
+    }
+
     const duration = Date.now() - startTime;
 
     // Log sync

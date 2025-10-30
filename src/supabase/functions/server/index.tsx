@@ -207,13 +207,14 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Get episodes for the week, ordered by position
+    // Get episodes for the week, ordered by score (primary) and position (fallback)
     // FILTER: Only show episodes with a valid score (NOT NULL)
     const { data: episodes, error } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
       .not('episode_score', 'is', null)
+      .order('episode_score', { ascending: false })
       .order('position_in_week', { ascending: true });
 
     if (error) {

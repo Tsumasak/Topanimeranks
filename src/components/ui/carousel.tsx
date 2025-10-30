@@ -134,6 +134,9 @@ function Carousel({
 
 function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
   const { carouselRef, orientation } = useCarousel();
+  
+  // Check if gap is being used instead of margin/padding approach
+  const useGap = className?.includes('gap-');
 
   return (
     <div
@@ -144,7 +147,8 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
       <div
         className={cn(
           "flex",
-          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+          !useGap && (orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col"),
+          orientation === "vertical" && "flex-col",
           className,
         )}
         {...props}
@@ -155,6 +159,9 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
 
 function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
   const { orientation } = useCarousel();
+  
+  // Check if pl-0 or pt-0 is being used (indicating gap-based layout)
+  const noPadding = className?.includes('pl-0') || className?.includes('pt-0');
 
   return (
     <div
@@ -163,7 +170,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="carousel-item"
       className={cn(
         "min-w-0 shrink-0 grow-0 basis-full",
-        orientation === "horizontal" ? "pl-4" : "pt-4",
+        !noPadding && (orientation === "horizontal" ? "pl-4" : "pt-4"),
         className,
       )}
       {...props}

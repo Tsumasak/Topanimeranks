@@ -83,6 +83,7 @@
     --color-black: #000;
     --color-white: #fff;
     --spacing: .25rem;
+    --breakpoint-2xl: 96rem;
     --container-md: 28rem;
     --container-6xl: 72rem;
     --text-xs: .75rem;
@@ -373,6 +374,18 @@
     visibility: hidden;
   }
 
+  .sr-only {
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    position: absolute;
+    overflow: hidden;
+  }
+
   .absolute {
     position: absolute;
   }
@@ -397,6 +410,10 @@
     inset: calc(var(--spacing) * 0);
   }
 
+  .-top-12 {
+    top: calc(var(--spacing) * -12);
+  }
+
   .-top-\[24px\] {
     top: -24px;
   }
@@ -405,12 +422,20 @@
     top: calc(var(--spacing) * 0);
   }
 
+  .top-1\/2 {
+    top: 50%;
+  }
+
   .top-2 {
     top: calc(var(--spacing) * 2);
   }
 
   .top-\[88px\] {
     top: 88px;
+  }
+
+  .-right-12 {
+    right: calc(var(--spacing) * -12);
   }
 
   .right-0 {
@@ -425,8 +450,16 @@
     right: calc(var(--spacing) * 6);
   }
 
+  .-bottom-12 {
+    bottom: calc(var(--spacing) * -12);
+  }
+
   .bottom-6 {
     bottom: calc(var(--spacing) * 6);
+  }
+
+  .-left-12 {
+    left: calc(var(--spacing) * -12);
   }
 
   .left-0 {
@@ -487,6 +520,10 @@
     margin-inline: calc(var(--spacing) * -1);
   }
 
+  .-mx-\[18px\] {
+    margin-inline: -18px;
+  }
+
   .-mx-\[40px\] {
     margin-inline: -40px;
   }
@@ -501,6 +538,10 @@
 
   .my-1 {
     margin-block: calc(var(--spacing) * 1);
+  }
+
+  .-mt-4 {
+    margin-top: calc(var(--spacing) * -4);
   }
 
   .mt-1 {
@@ -529,6 +570,10 @@
 
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
+  }
+
+  .-ml-4 {
+    margin-left: calc(var(--spacing) * -4);
   }
 
   .ml-4 {
@@ -589,6 +634,11 @@
   .size-4 {
     width: calc(var(--spacing) * 4);
     height: calc(var(--spacing) * 4);
+  }
+
+  .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
   }
 
   .size-9 {
@@ -734,8 +784,8 @@
     width: calc(var(--spacing) * 14);
   }
 
-  .w-\[213px\] {
-    width: 213px;
+  .w-\[280px\] {
+    width: 280px;
   }
 
   .w-auto {
@@ -762,6 +812,10 @@
     max-width: var(--container-md);
   }
 
+  .max-w-screen-2xl {
+    max-width: var(--breakpoint-2xl);
+  }
+
   .min-w-0 {
     min-width: calc(var(--spacing) * 0);
   }
@@ -786,12 +840,29 @@
     flex-grow: 1;
   }
 
+  .grow-0 {
+    flex-grow: 0;
+  }
+
+  .basis-\[280px\] {
+    flex-basis: 280px;
+  }
+
+  .basis-full {
+    flex-basis: 100%;
+  }
+
   .origin-\(--radix-select-content-transform-origin\) {
     transform-origin: var(--radix-select-content-transform-origin);
   }
 
   .-translate-x-1\/2 {
     --tw-translate-x: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+
+  .-translate-y-1\/2 {
+    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
 
@@ -803,6 +874,10 @@
   .translate-y-4 {
     --tw-translate-y: calc(var(--spacing) * 4);
     translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+
+  .rotate-90 {
+    rotate: 90deg;
   }
 
   .transform {
@@ -1279,6 +1354,10 @@
     padding-inline: calc(var(--spacing) * 6);
   }
 
+  .px-\[18px\] {
+    padding-inline: 18px;
+  }
+
   .px-\[24px\] {
     padding-inline: 24px;
   }
@@ -1323,8 +1402,16 @@
     padding-block: 32px;
   }
 
+  .pt-0 {
+    padding-top: calc(var(--spacing) * 0);
+  }
+
   .pt-3 {
     padding-top: calc(var(--spacing) * 3);
+  }
+
+  .pt-4 {
+    padding-top: calc(var(--spacing) * 4);
   }
 
   .pt-20 {
@@ -1355,8 +1442,16 @@
     padding-bottom: 32px;
   }
 
+  .pl-0 {
+    padding-left: calc(var(--spacing) * 0);
+  }
+
   .pl-2 {
     padding-left: calc(var(--spacing) * 2);
+  }
+
+  .pl-4 {
+    padding-left: calc(var(--spacing) * 4);
   }
 
   .text-center {
@@ -1925,6 +2020,12 @@
   }
 
   @media (width >= 48rem) {
+    .md\:block {
+      display: block;
+    }
+  }
+
+  @media (width >= 48rem) {
     .md\:flex {
       display: flex;
     }
@@ -1949,8 +2050,14 @@
   }
 
   @media (width >= 48rem) {
-    .md\:flex-1 {
-      flex: 1;
+    .md\:h-full {
+      height: 100%;
+    }
+  }
+
+  @media (width >= 48rem) {
+    .md\:w-full {
+      width: 100%;
     }
   }
 
@@ -1963,18 +2070,6 @@
   @media (width >= 48rem) {
     .md\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  @media (width >= 48rem) {
-    .md\:flex-row {
-      flex-direction: row;
-    }
-  }
-
-  @media (width >= 48rem) {
-    .md\:overflow-x-auto {
-      overflow-x: auto;
     }
   }
 

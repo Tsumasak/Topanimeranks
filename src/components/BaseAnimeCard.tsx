@@ -47,11 +47,14 @@ export default function BaseAnimeCard({
     hoverClass = 'rank-hover-3';
   }
 
+  // Generate unique ID for gradients to avoid conflicts with multiple cards
+  const uniqueId = `${rank}-${Math.random().toString(36).substr(2, 9)}`;
+  
   // SVG Badge Components for top 3 positions
   const GoldBadge = () => (
     <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
       <defs>
-        <linearGradient id="gold-base" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`gold-base-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFD700" />
           <stop offset="50%" stopColor="#FFA500" />
           <stop offset="100%" stopColor="#FF8C00" />
@@ -59,7 +62,7 @@ export default function BaseAnimeCard({
       </defs>
       <g transform="scale(0.0038)">
         <path d="M4152 12409 c-262 -32 -449 -288 -980 -1344 -317 -630 -429 -836 -517 -953 -118 -157 -255 -249 -1033 -696 -862 -495 -1174 -721 -1272 -920 -110 -223 -15 -540 497 -1651 293 -636 370 -823 399 -972 33 -173 19 -319 -120 -1234 -115 -756 -148 -1164 -112 -1371 46 -253 181 -360 656 -516 239 -79 358 -111 1059 -287 782 -196 908 -239 1066 -360 74 -57 345 -327 556 -555 562 -606 845 -892 1034 -1043 128 -102 259 -172 350 -186 234 -35 523 130 1375 784 832 638 911 689 1162 739 104 21 404 51 818 81 1030 75 1388 126 1605 230 287 138 339 388 365 1770 11 588 23 831 46 962 30 176 102 313 376 717 619 913 768 1146 886 1383 134 268 150 398 69 568 -86 179 -359 450 -942 935 -597 495 -689 574 -794 675 -241 232 -265 286 -542 1185 -380 1233 -515 1520 -755 1609 -30 12 -97 26 -148 33 -177 22 -608 -34 -1176 -152 -932 -195 -1128 -230 -1290 -230 -182 0 -330 43 -845 245 -390 154 -446 176 -580 228 -167 65 -438 162 -590 211 -315 101 -483 132 -623 115z" 
-              fill="url(#gold-base)" stroke="#B8860B" strokeWidth="100"/>
+              fill={`url(#gold-base-${uniqueId})`} stroke="#B8860B" strokeWidth="100"/>
       </g>
       <text x="24" y="29" textAnchor="middle" className="text-sm fill-black">
         <tspan className="font-bold">#1</tspan>
@@ -70,7 +73,7 @@ export default function BaseAnimeCard({
   const SilverBadge = () => (
     <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
       <defs>
-        <linearGradient id="silver-base" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`silver-base-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#E5E5E5" />
           <stop offset="50%" stopColor="#C0C0C0" />
           <stop offset="100%" stopColor="#A0A0A0" />
@@ -78,7 +81,7 @@ export default function BaseAnimeCard({
       </defs>
       <g transform="scale(0.0038)">
         <path d="M4152 12409 c-262 -32 -449 -288 -980 -1344 -317 -630 -429 -836 -517 -953 -118 -157 -255 -249 -1033 -696 -862 -495 -1174 -721 -1272 -920 -110 -223 -15 -540 497 -1651 293 -636 370 -823 399 -972 33 -173 19 -319 -120 -1234 -115 -756 -148 -1164 -112 -1371 46 -253 181 -360 656 -516 239 -79 358 -111 1059 -287 782 -196 908 -239 1066 -360 74 -57 345 -327 556 -555 562 -606 845 -892 1034 -1043 128 -102 259 -172 350 -186 234 -35 523 130 1375 784 832 638 911 689 1162 739 104 21 404 51 818 81 1030 75 1388 126 1605 230 287 138 339 388 365 1770 11 588 23 831 46 962 30 176 102 313 376 717 619 913 768 1146 886 1383 134 268 150 398 69 568 -86 179 -359 450 -942 935 -597 495 -689 574 -794 675 -241 232 -265 286 -542 1185 -380 1233 -515 1520 -755 1609 -30 12 -97 26 -148 33 -177 22 -608 -34 -1176 -152 -932 -195 -1128 -230 -1290 -230 -182 0 -330 43 -845 245 -390 154 -446 176 -580 228 -167 65 -438 162 -590 211 -315 101 -483 132 -623 115z" 
-              fill="url(#silver-base)" stroke="#808080" strokeWidth="100"/>
+              fill={`url(#silver-base-${uniqueId})`} stroke="#808080" strokeWidth="100"/>
       </g>
       <text x="24" y="29" textAnchor="middle" className="text-sm fill-black">
         <tspan className="font-bold">#2</tspan>
@@ -89,7 +92,7 @@ export default function BaseAnimeCard({
   const BronzeBadge = () => (
     <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
       <defs>
-        <linearGradient id="bronze-base" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`bronze-base-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#CD7F32" />
           <stop offset="50%" stopColor="#B87333" />
           <stop offset="100%" stopColor="#A0522D" />
@@ -97,7 +100,7 @@ export default function BaseAnimeCard({
       </defs>
       <g transform="scale(0.0038)">
         <path d="M4152 12409 c-262 -32 -449 -288 -980 -1344 -317 -630 -429 -836 -517 -953 -118 -157 -255 -249 -1033 -696 -862 -495 -1174 -721 -1272 -920 -110 -223 -15 -540 497 -1651 293 -636 370 -823 399 -972 33 -173 19 -319 -120 -1234 -115 -756 -148 -1164 -112 -1371 46 -253 181 -360 656 -516 239 -79 358 -111 1059 -287 782 -196 908 -239 1066 -360 74 -57 345 -327 556 -555 562 -606 845 -892 1034 -1043 128 -102 259 -172 350 -186 234 -35 523 130 1375 784 832 638 911 689 1162 739 104 21 404 51 818 81 1030 75 1388 126 1605 230 287 138 339 388 365 1770 11 588 23 831 46 962 30 176 102 313 376 717 619 913 768 1146 886 1383 134 268 150 398 69 568 -86 179 -359 450 -942 935 -597 495 -689 574 -794 675 -241 232 -265 286 -542 1185 -380 1233 -515 1520 -755 1609 -30 12 -97 26 -148 33 -177 22 -608 -34 -1176 -152 -932 -195 -1128 -230 -1290 -230 -182 0 -330 43 -845 245 -390 154 -446 176 -580 228 -167 65 -438 162 -590 211 -315 101 -483 132 -623 115z" 
-              fill="url(#bronze-base)" stroke="#8B4513" strokeWidth="100"/>
+              fill={`url(#bronze-base-${uniqueId})`} stroke="#8B4513" strokeWidth="100"/>
       </g>
       <text x="24" y="29" textAnchor="middle" className="text-sm fill-black">
         <tspan className="font-bold">#3</tspan>

@@ -97,14 +97,14 @@ const WeekControl = () => {
   const userSwitchedTab = useRef(false);
   // Track if we're transitioning between weeks (to avoid showing empty state)
   const isTransitioning = useRef(false);
-  const [activeWeek, setActiveWeek] = useState<string>(`week${CURRENT_WEEK_NUMBER}`);
+  const [activeWeek, setActiveWeek] = useState<string | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [displayedEpisodes, setDisplayedEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // CRITICAL: Animation key that only changes when NEW data is ready
-  const [animationKey, setAnimationKey] = useState(activeWeek);
+  const [animationKey, setAnimationKey] = useState<string | null>(null);
   const [weekDates, setWeekDates] = useState<{ startDate: string; endDate: string } | null>(null);
   const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 episodes
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
@@ -119,7 +119,7 @@ const WeekControl = () => {
   const currentWeek = WEEKS_DATA.find(week => week.id === activeWeek);
   
   // Determine if the active week is the "current" week (latest with 5+ scored episodes)
-  const activeWeekNumber = parseInt(activeWeek.replace('week', ''));
+  const activeWeekNumber = activeWeek ? parseInt(activeWeek.replace('week', '')) : 0;
   const isActiveWeekCurrent = activeWeekNumber === latestWeekNumber;
 
   // Smooth transition function for week changes
@@ -199,6 +199,12 @@ const WeekControl = () => {
   
   // Load episodes when activeWeek changes
   useEffect(() => {
+    // Don't load if activeWeek is not set yet (waiting for available weeks fetch)
+    if (!activeWeek) {
+      console.log('[WeekControl useEffect] ⏳ Waiting for activeWeek to be set...');
+      return;
+    }
+    
     console.log(`[WeekControl useEffect] ⚡ Triggered for activeWeek: ${activeWeek}, userSwitched: ${userSwitchedTab.current}`);
     console.log(`[WeekControl useEffect] 📊 Current state:`, {
       activeWeek,
@@ -341,8 +347,8 @@ const WeekControl = () => {
   }, [loading, displayedEpisodes.length, displayedCount, loadMoreEpisodes]);
 
   // No loading screen - render directly
-  if (loading) {
-    console.log(`[WeekControl] 🚫 Render blocked: loading is true`);
+  if (loading || !activeWeek) {
+    console.log(`[WeekControl] 🚫 Render blocked: loading=${loading}, activeWeek=${activeWeek}`);
     return null;
   }
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CURRENT_WEEK_NUMBER, WEEKS_DATA } from '../config/weeks';
+import { WEEKS_DATA } from '../config/weeks';
+import { projectId, publicAnonKey } from '../utils/supabase/info';
 import {
   Carousel,
   CarouselContent,
@@ -341,7 +342,7 @@ export function HomePage() {
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [displayedWeekNumber, setDisplayedWeekNumber] = useState(CURRENT_WEEK_NUMBER);
+  const [displayedWeekNumber, setDisplayedWeekNumber] = useState(1);
   const [weekPeriod, setWeekPeriod] = useState('');
   
   // Animation keys for smooth entry animations
@@ -399,16 +400,33 @@ export function HomePage() {
           setAnticipated(topAnticipated);
         }
 
-        // Weekly Episodes - Try current week, fallback to previous if less than 3 episodes
-        let weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER);
-        let weekToShow = CURRENT_WEEK_NUMBER;
+        // Weekly Episodes - Auto-detect latest week with 5+ scored episodes
+        let weekToShow = 1;
         
-        // If current week has less than 3 episodes, try previous week
-        if (weeklyEpisodesData.episodes.length < 3 && CURRENT_WEEK_NUMBER > 1) {
-          console.log(`[HomePage] Week ${CURRENT_WEEK_NUMBER} has less than 3 episodes, trying Week ${CURRENT_WEEK_NUMBER - 1}...`);
-          weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(CURRENT_WEEK_NUMBER - 1);
-          weekToShow = CURRENT_WEEK_NUMBER - 1;
+        try {
+          const response = await fetch(
+            `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
+            {
+              headers: {
+                'Authorization': `Bearer ${publicAnonKey}`,
+              },
+            }
+          );
+          
+          const result = await response.json();
+          
+          if (result.success && result.latestWeek) {
+            weekToShow = result.latestWeek;
+            console.log(`[HomePage] 🎯 Using latest week: Week ${weekToShow} (auto-detected)`);
+          } else {
+            console.log(`[HomePage] ⚠️ Could not detect latest week, falling back to Week 1`);
+          }
+        } catch (error) {
+          console.error('[HomePage] ❌ Error detecting latest week:', error);
+          console.log(`[HomePage] ⚠️ Falling back to Week 1`);
         }
+        
+        let weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(weekToShow);
         
         if (weeklyEpisodesData.episodes.length > 0) {
           const topWeekly = weeklyEpisodesData.episodes.slice(0, 3).map((episode, index) => ({

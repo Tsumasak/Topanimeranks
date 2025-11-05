@@ -109,6 +109,7 @@ const WeekControl = () => {
   const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 episodes
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
   const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]); // For trend calculation
+  const [latestWeekNumber, setLatestWeekNumber] = useState<number>(CURRENT_WEEK_NUMBER); // Latest week with 5+ scored episodes
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -116,6 +117,10 @@ const WeekControl = () => {
   // Filter weeks to show only those with episodes
   const visibleWeeks = WEEKS_DATA.filter(week => availableWeeks.includes(week.id));
   const currentWeek = WEEKS_DATA.find(week => week.id === activeWeek);
+  
+  // Determine if the active week is the "current" week (latest with 5+ scored episodes)
+  const activeWeekNumber = parseInt(activeWeek.replace('week', ''));
+  const isActiveWeekCurrent = activeWeekNumber === latestWeekNumber;
 
   // Smooth transition function for week changes
   const handleWeekChange = (newWeek: string) => {
@@ -134,14 +139,14 @@ const WeekControl = () => {
     setDisplayedCount(prev => Math.min(prev + 12, episodes.length));
   }, [displayedCount, episodes.length]);
   
-  // Load available weeks on mount (check which weeks have 5+ episodes)
+  // Load available weeks on mount (check which weeks have 5+ episodes WITH SCORE)
   useEffect(() => {
     const loadAvailableWeeks = async () => {
-      console.log('[WeekControl] 🔍 Starting to load available weeks (5+ episodes filter)...');
-      console.log('[WeekControl] 📅 Current week number:', CURRENT_WEEK_NUMBER);
+      console.log('[WeekControl] 🔍 Starting to load available weeks (5+ scored episodes filter)...');
+      console.log('[WeekControl] 📅 Config week number:', CURRENT_WEEK_NUMBER);
       
       try {
-        // Call server endpoint to get weeks summary (already filtered to 5+ episodes)
+        // Call server endpoint to get weeks summary (already filtered to 5+ episodes WITH SCORE)
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
           {
@@ -153,19 +158,21 @@ const WeekControl = () => {
         
         const result = await response.json();
         
-        if (result.success && result.weeks) {
-          // Server already filters to weeks with 5+ episodes and up to current week
+        if (result.success && result.weeks && result.latestWeek) {
+          // Server filters to weeks with 5+ episodes WITH SCORE
           const weeksWithData = result.weeks.map((w: number) => `week${w}`);
+          const detectedLatestWeek = result.latestWeek;
           
-          console.log(`[WeekControl] ✅ Received ${weeksWithData.length} weeks with 5+ episodes:`, weeksWithData);
+          console.log(`[WeekControl] ✅ Received ${weeksWithData.length} weeks with 5+ scored episodes:`, weeksWithData);
+          console.log(`[WeekControl] 🎯 Latest week detected: Week ${detectedLatestWeek}`);
+          console.log(`[WeekControl] 📊 Week counts:`, result.weekCounts);
+          
           setAvailableWeeks(weeksWithData);
+          setLatestWeekNumber(detectedLatestWeek);
           
-          // If current week is not in available weeks (less than 5 episodes), use last available week
-          if (weeksWithData.length > 0 && !weeksWithData.includes(`week${CURRENT_WEEK_NUMBER}`)) {
-            const lastAvailableWeek = weeksWithData[weeksWithData.length - 1];
-            console.log(`[WeekControl] 📌 Week ${CURRENT_WEEK_NUMBER} has less than 5 episodes, defaulting to ${lastAvailableWeek}`);
-            setActiveWeek(lastAvailableWeek);
-          }
+          // Default to latest week with 5+ scored episodes
+          setActiveWeek(`week${detectedLatestWeek}`);
+          console.log(`[WeekControl] 📌 Defaulting to Week ${detectedLatestWeek} (latest with 5+ scored episodes)`);
         } else {
           // Fallback: show only weeks up to current week (no filtering by episode count)
           const pastWeeks = WEEKS_DATA
@@ -173,6 +180,7 @@ const WeekControl = () => {
             .map(w => w.id);
           console.log(`[WeekControl] ⚠️  Server returned no weeks - using fallback:`, pastWeeks);
           setAvailableWeeks(pastWeeks);
+          setLatestWeekNumber(CURRENT_WEEK_NUMBER);
         }
       } catch (error) {
         console.error('[WeekControl] ❌ Error loading available weeks:', error);
@@ -182,6 +190,7 @@ const WeekControl = () => {
           .map(w => w.id);
         console.log(`[WeekControl] ⚠️  Using fallback - showing all weeks up to ${CURRENT_WEEK_NUMBER}:`, pastWeeks);
         setAvailableWeeks(pastWeeks);
+        setLatestWeekNumber(CURRENT_WEEK_NUMBER);
       }
     };
     
@@ -376,9 +385,9 @@ const WeekControl = () => {
       </h1>
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {weekDates && currentWeek 
-          ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, currentWeek.isCurrentWeek)
+          ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, isActiveWeekCurrent)
           : currentWeek 
-          ? getFormattedPeriod(currentWeek, currentWeek.isCurrentWeek) 
+          ? getFormattedPeriod(currentWeek, isActiveWeekCurrent) 
           : 'Loading period...'}
       </p>
       
@@ -456,7 +465,7 @@ const WeekControl = () => {
           {/* Next Week Button */}
           {(() => {
             const currentIndex = visibleWeeks.findIndex(w => w.id === activeWeek);
-            const hasNext = currentIndex < visibleWeeks.length - 1 && !currentWeek?.isCurrentWeek;
+            const hasNext = currentIndex < visibleWeeks.length - 1 && !isActiveWeekCurrent;
             const nextWeek = hasNext ? visibleWeeks[currentIndex + 1] : null;
             
             return (

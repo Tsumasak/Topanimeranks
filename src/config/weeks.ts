@@ -11,6 +11,8 @@ export interface WeekData {
 // Week 1 started on September 29, 2025 (Monday)
 // Today is October 27, 2025 (Monday) - Week 5 Day 1
 // A full season has 12-13 weeks
+// NOTE: CURRENT_WEEK_NUMBER is only used as a fallback.
+// The actual "current week" is auto-detected by the server based on which week has 5+ episodes with scores.
 export const CURRENT_WEEK_NUMBER = 5;
 export const TOTAL_WEEKS = 13; // Full anime season
 

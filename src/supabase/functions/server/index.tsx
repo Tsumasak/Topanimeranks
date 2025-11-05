@@ -127,7 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_sta
 // DATA ENDPOINTS
 // ============================================
 
-// Get available weeks (weeks with at least 5 episodes)
+// Get available weeks (weeks with at least 5 episodes WITH SCORE)
 app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -142,15 +142,12 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Current week is 5 (October 28, 2025)
-    const CURRENT_WEEK = 5;
-
-    // Get all episodes grouped by week number
-    // Only return weeks up to the current week (no future weeks)
+    // Get ALL episodes WITH SCORE (episode_score IS NOT NULL)
+    // No hardcoded limit - auto-detect based on data
     const { data, error } = await supabase
       .from('weekly_episodes')
-      .select('week_number')
-      .lte('week_number', CURRENT_WEEK)
+      .select('week_number, episode_score')
+      .not('episode_score', 'is', null)
       .order('week_number', { ascending: true });
 
     if (error) {
@@ -161,25 +158,31 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       }, 500);
     }
 
-    // Count episodes per week
+    // Count episodes WITH SCORE per week
     const weekCounts = new Map<number, number>();
     data?.forEach(row => {
       const count = weekCounts.get(row.week_number) || 0;
       weekCounts.set(row.week_number, count + 1);
     });
 
-    // Filter weeks with 5+ episodes
+    // Filter weeks with 5+ episodes WITH SCORE
     const validWeeks = Array.from(weekCounts.entries())
       .filter(([week, count]) => count >= 5)
       .map(([week]) => week)
       .sort((a, b) => a - b);
     
-    console.log(`[Server] 📊 Weeks with episode counts:`, Array.from(weekCounts.entries()).map(([w, c]) => `Week ${w}: ${c} episodes`).join(', '));
-    console.log(`[Server] ✅ Available weeks (5+ episodes, up to week ${CURRENT_WEEK}): ${validWeeks.join(', ')}`);
+    // Determine the latest week (highest week number with 5+ scored episodes)
+    const latestWeek = validWeeks.length > 0 ? Math.max(...validWeeks) : 1;
+    
+    console.log(`[Server] 📊 Weeks with scored episodes:`, Array.from(weekCounts.entries()).map(([w, c]) => `Week ${w}: ${c} episodes`).join(', '));
+    console.log(`[Server] ✅ Available weeks (5+ episodes with score): ${validWeeks.join(', ')}`);
+    console.log(`[Server] 🎯 Latest week with 5+ scored episodes: Week ${latestWeek}`);
 
     return c.json({
       success: true,
-      weeks: validWeeks
+      weeks: validWeeks,
+      latestWeek: latestWeek,
+      weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count }))
     });
 
   } catch (error) {

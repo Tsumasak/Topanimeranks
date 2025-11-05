@@ -85,10 +85,13 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     const episodes: any[] = [];
     const processedAnimeIds = new Set<number>(); // Track to ensure 1 episode per anime
     
+    console.log(`\n🔄 Starting to process ${airingAnimes.length} airing animes for week ${weekNumber}...`);
+    console.log(`📅 Week dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
     for (const anime of airingAnimes) {
       await delay(RATE_LIMIT_DELAY);
 
-      console.log(`🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
+      console.log(`\n🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
 
       // Get anime episodes
       const episodesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes`;
@@ -100,14 +103,27 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       }
 
       // Find episode that aired in this week
+      console.log(`  📺 Found ${episodesData.data.length} episodes for ${anime.title}`);
+      
+      // Log all episodes with their aired dates for debugging
+      episodesData.data.forEach((ep: any, idx: number) => {
+        if (idx < 3) { // Only log first 3 to avoid spam
+          console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'}`);
+        }
+      });
+      
       const weekEpisode = episodesData.data.find((ep: any) => {
         if (!ep.aired) return false;
         const airedDate = new Date(ep.aired);
-        return airedDate >= startDate && airedDate <= endDate;
+        const isInWeek = airedDate >= startDate && airedDate <= endDate;
+        if (isInWeek) {
+          console.log(`  ✅ MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
+        }
+        return isInWeek;
       });
 
       if (!weekEpisode) {
-        console.log(`⏭️ No episode aired in week ${weekNumber} for ${anime.title}`);
+        console.log(`  ⏭️ No episode aired in week ${weekNumber} range for ${anime.title}`);
         continue;
       }
 
@@ -144,7 +160,11 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       episodes.push(episode);
     }
 
-    console.log(`📊 Found ${episodes.length} episodes for week ${weekNumber}`);
+    console.log(`\n📊 ============================================`);
+    console.log(`📊 Week ${weekNumber} Processing Summary:`);
+    console.log(`📊 Total airing animes checked: ${airingAnimes.length}`);
+    console.log(`📊 Episodes found for this week: ${episodes.length}`);
+    console.log(`📊 ============================================`);
 
     // Sort episodes: First by episode_score (N/A at end), then by members
     episodes.sort((a, b) => {
@@ -206,6 +226,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
       const isUpdate = existing !== null && !checkError;
 
+      console.log(`  ${isUpdate ? '🔄 UPDATING' : '➕ CREATING'} ${episode.anime_title_english} (anime_id: ${episode.anime_id}, ep: ${episode.episode_number}, week: ${episode.week_number})`);
+
       const { data, error } = await supabase
         .from('weekly_episodes')
         .upsert(episode, {
@@ -215,11 +237,11 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         .select();
 
       if (error) {
-        console.error(`❌ Upsert error for ${episode.anime_title_english}:`, error);
+        console.error(`  ❌ Upsert error for ${episode.anime_title_english}:`, JSON.stringify(error));
         continue;
       }
       
-      console.log(`✅ Upserted: ${episode.anime_title_english}`);
+      console.log(`  ✅ ${isUpdate ? 'Updated' : 'Created'}: ${episode.anime_title_english}`);
 
       if (data && data.length > 0) {
         if (isUpdate) {
@@ -310,7 +332,13 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       duration_ms: duration,
     });
 
-    console.log(`✅ Week ${weekNumber} synced: ${itemsCreated} created, ${itemsUpdated} updated (${duration}ms)`);
+    console.log(`\n✅ ============================================`);
+    console.log(`✅ Week ${weekNumber} sync completed!`);
+    console.log(`✅ Total episodes in list: ${episodes.length}`);
+    console.log(`✅ NEW episodes created: ${itemsCreated}`);
+    console.log(`✅ Existing episodes updated: ${itemsUpdated}`);
+    console.log(`✅ Duration: ${duration}ms`);
+    console.log(`✅ ============================================`);
     
     return { success: true, itemsCreated, itemsUpdated };
   } catch (error: any) {
@@ -754,8 +782,24 @@ serve(async (req) => {
 
     switch (sync_type) {
       case 'weekly_episodes':
-        // Sync current week (default to week 1 if not specified)
-        const weekToSync = week_number || 1;
+        // Auto-detect current week if not specified
+        let weekToSync = week_number;
+        
+        if (!weekToSync) {
+          // Calculate current week based on today's date
+          // Week 1 started on September 29, 2025 (Monday)
+          const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+          const today = new Date();
+          const diffTime = today.getTime() - baseDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          weekToSync = Math.floor(diffDays / 7) + 1;
+          
+          // Clamp to valid week range (1-13)
+          weekToSync = Math.max(1, Math.min(13, weekToSync));
+          
+          console.log(`📅 Auto-detected current week: ${weekToSync} (based on date: ${today.toISOString().split('T')[0]})`);
+        }
+        
         result = await syncWeeklyEpisodes(supabase, weekToSync);
         break;
 

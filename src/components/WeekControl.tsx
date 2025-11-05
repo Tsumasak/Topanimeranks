@@ -398,7 +398,7 @@ const WeekControl = () => {
       </p>
       
       {/* Desktop: Week tabs with sliding indicator */}
-      <div className="hidden md:flex justify-center mb-8 sticky top-[88px] z-40 -mx-[40px] px-[40px]">
+      <div className="hidden md:flex justify-center mb-4 sticky top-[82px] z-40 -mx-[40px] px-[40px]">
         <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
           {visibleWeeks.map((week) => (
             <button
@@ -426,7 +426,7 @@ const WeekControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-8 sticky top-[88px] z-40">
+      <div className="md:hidden flex justify-center mb-4 sticky top-[72px] z-40">
         <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
           {/* Previous Week Button */}
           {(() => {

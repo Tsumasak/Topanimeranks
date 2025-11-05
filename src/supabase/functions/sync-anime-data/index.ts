@@ -541,7 +541,7 @@ async function syncUpcomingAnimes(supabase: any) {
         title: anime.title,
         title_english: anime.title_english,
         image_url: anime.images?.jpg?.large_image_url,
-        score: anime.score,
+        anime_score: anime.score, // ✅ FIXED: Changed from 'score' to 'anime_score'
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,

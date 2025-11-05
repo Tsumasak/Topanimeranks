@@ -10,7 +10,7 @@ import { AnticipatedAnime } from '../types/anime';
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");
   
-  const [activeSeason, setActiveSeason] = useState<string>('fall2025');
+  const [activeSeason, setActiveSeason] = useState<string>('winter2026');
   const [animes, setAnimes] = useState<AnticipatedAnime[]>([]);
   const [displayedAnimes, setDisplayedAnimes] = useState<AnticipatedAnime[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,12 +27,12 @@ const SeasonControl = () => {
     if (seasonId === 'later') {
       return { season: 'summer', year: 2026, isLater: true };
     }
-    // Extract season and year from ID like "fall2025"
+    // Extract season and year from ID like "winter2026"
     const match = seasonId.match(/([a-z]+)(\d+)/);
     if (match) {
       return { season: match[1], year: parseInt(match[2]) };
     }
-    return { season: 'fall', year: 2025 };
+    return { season: 'winter', year: 2026 };
   };
 
   // Smooth transition function for season changes

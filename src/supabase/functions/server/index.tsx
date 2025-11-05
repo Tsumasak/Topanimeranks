@@ -4,6 +4,7 @@ import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { enrichEpisodes } from "./enrich.tsx";
 import { syncFall2025 } from "./sync-fall-2024.tsx";
+import { syncUpcoming } from "./sync-upcoming.tsx";
 
 const app = new Hono();
 
@@ -382,6 +383,48 @@ app.post("/make-server-c1d1bfd8/sync-fall-2025", async (c) => {
 
   } catch (error) {
     console.error("❌ Sync Fall 2025 error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// ============================================
+// SYNC UPCOMING ENDPOINT (MANUAL)
+// ============================================
+// Sincroniza animes "upcoming" (2026+, 2027+, "Not available")
+// Para aparecer na aba "Later" do Most Anticipated
+app.post("/make-server-c1d1bfd8/sync-upcoming", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log("🚀 Iniciando sync UPCOMING animes...");
+    
+    const result = await syncUpcoming(supabase);
+
+    return c.json({
+      success: result.success,
+      total: result.total,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      errors: result.errors,
+      message: `Sync completed: ${result.inserted} animes inserted/updated`
+    });
+
+  } catch (error) {
+    console.error("❌ Sync UPCOMING error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

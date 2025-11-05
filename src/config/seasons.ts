@@ -8,13 +8,6 @@ export interface SeasonData {
 
 export const SEASONS_DATA: SeasonData[] = [
   {
-    id: 'fall2025',
-    label: 'Fall 2025',
-    title: 'Fall 2025',
-    period: 'October - December 2025',
-    year: 2025,
-  },
-  {
     id: 'winter2026',
     label: 'Winter 2026',
     title: 'Winter 2026',

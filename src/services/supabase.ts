@@ -298,10 +298,13 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
       // Filter out ONLY Fall 2025, Winter 2026, Spring 2026
       // Keep everything else including 'upcoming' animes
       // IMPORTANT: Only show "Not yet aired" animes
+      // INCLUDE: Summer 2026+, year 2026+ without season, 2027+, future dates, "Not available"
       const filteredData = allData?.filter(row => {
         const season = row.season?.toLowerCase();
         const year = row.year;
         const status = row.status;
+        const airedFrom = row.aired_from ? new Date(row.aired_from) : null;
+        const now = new Date();
         
         // Only include "Not yet aired" animes
         if (status !== 'Not yet aired') return false;
@@ -311,7 +314,24 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
         if (season === 'winter' && year === 2026) return false;
         if (season === 'spring' && year === 2026) return false;
         
-        return true;
+        // INCLUDE all of these cases:
+        // 1. Summer 2026 and beyond (explicit season/year)
+        if (season && year >= 2026) return true;
+        
+        // 2. Year 2026+ without specific season (e.g., "2026 to ?")
+        if (!season && year >= 2026) return true;
+        
+        // 3. Year 2027+ (any case)
+        if (year >= 2027) return true;
+        
+        // 4. Future aired_from date (e.g., "Aired: Not available" but has future date)
+        if (airedFrom && airedFrom > now) return true;
+        
+        // 5. No aired_from and no season (e.g., "Aired: Not available")
+        // Include if it's marked as "Not yet aired"
+        if (!airedFrom && !season) return true;
+        
+        return false;
       }) || [];
 
       // Sort by members first, then score
@@ -324,6 +344,16 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
 
       if (sortedData.length > 0) {
         console.log(`[SupabaseService] ✅ Found ${sortedData.length} Later animes`);
+        
+        // Log breakdown of types
+        const breakdown = {
+          withSeason: sortedData.filter(r => r.season).length,
+          withoutSeason: sortedData.filter(r => !r.season).length,
+          year2026: sortedData.filter(r => r.year === 2026).length,
+          year2027Plus: sortedData.filter(r => r.year >= 2027).length,
+          noAiredFrom: sortedData.filter(r => !r.aired_from).length,
+        };
+        console.log(`[SupabaseService] 📊 Breakdown:`, breakdown);
         
         // Transform to JikanAnimeData format (same as getSeasonRankings)
         const animes: JikanAnimeData[] = sortedData.map(row => ({

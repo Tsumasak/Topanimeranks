@@ -2336,6 +2336,8 @@ body {
   background: var(--card-background);
   border-color: var(--card-border);
   box-shadow: 0 4px 6px -1px var(--shadow);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .theme-header {
@@ -2654,10 +2656,16 @@ p, span, div {
   z-index: 1;
   background: none;
   position: relative;
+  overflow: visible;
 }
 
 .period-subtitle {
   color: var(--rating-yellow);
+}
+
+.container {
+  position: relative;
+  overflow: visible;
 }
 
 html {
@@ -2972,7 +2980,7 @@ html {
   }
 
   body {
-    overflow-x: hidden;
+    overflow: hidden auto;
   }
 }
 

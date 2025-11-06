@@ -426,7 +426,7 @@ const WeekControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-4 sticky top-[72px] z-40">
+      <div className="md:hidden flex justify-center my-[16px] sticky top-[72px] z-40 mx-[0px] py-[16px] pt-[16px] pr-[0px] pb-[0px] pl-[0px]">
         <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
           {/* Previous Week Button */}
           {(() => {

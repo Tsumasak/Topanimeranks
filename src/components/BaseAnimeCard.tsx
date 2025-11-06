@@ -190,14 +190,16 @@ export default function BaseAnimeCard({
               </div>
             )}
             
-            {/* Trend Indicator - Below rank - Always show */}
-            <div 
-              className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
-              style={{ color: trendInfo.color }}
-            >
-              <span>{trendInfo.symbol}</span>
-              <span className="text-[12px]">{trendInfo.text}</span>
-            </div>
+            {/* Trend Indicator - Below rank - Only show if positionChange is provided */}
+            {positionChange !== undefined && (
+              <div 
+                className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
+                style={{ color: trendInfo.color }}
+              >
+                <span>{trendInfo.symbol}</span>
+                <span className="text-[12px]">{trendInfo.text}</span>
+              </div>
+            )}
           </div>
           
           <div className="relative flex flex-col ml-4 flex-grow">

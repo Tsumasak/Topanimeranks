@@ -122,7 +122,7 @@ export default function TopSeasonAnimesPage() {
           Top Animes - Fall 2025
         </h1>
         <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
-          Highest rated animes of Fall 2025 season - sorted by MAL score and popularity
+          Highest rated animes of Fall 2025 season
         </p>
 
         {/* Animes Grid */}

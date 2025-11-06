@@ -369,14 +369,37 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
   let itemsUpdated = 0;
 
   try {
-    const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
-    const data = await fetchWithRetry(url);
+    // Fetch ALL pages from the API
+    let allAnimes: any[] = [];
+    let currentPage = 1;
+    let hasNextPage = true;
+    
+    console.log(`🌐 Fetching all pages for ${season} ${year}...`);
+    
+    while (hasNextPage) {
+      const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
+      console.log(`📄 Fetching page ${currentPage}: ${url}`);
+      
+      const data = await fetchWithRetry(url);
 
-    if (!data.data) {
-      throw new Error('No season data received');
+      if (!data || !data.data) {
+        throw new Error(`No season data received for page ${currentPage}`);
+      }
+
+      allAnimes = allAnimes.concat(data.data);
+      hasNextPage = data.pagination?.has_next_page || false;
+      currentPage++;
+      
+      console.log(`📄 Page ${currentPage - 1}: Added ${data.data.length} animes. Total so far: ${allAnimes.length}`);
+      
+      if (hasNextPage) {
+        await delay(RATE_LIMIT_DELAY);
+      }
     }
 
-    const animes = data.data
+    console.log(`📺 Total animes fetched: ${allAnimes.length}`);
+
+    const animes = allAnimes
       .filter((anime: any) => anime.members >= 20000)
       .sort((a: any, b: any) => {
         // Sort by members first (descending), then by score
@@ -386,7 +409,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
         return (b.score || 0) - (a.score || 0);
       });
 
-    console.log(`Found ${animes.length} animes for ${season} ${year}`);
+    console.log(`✅ After filtering (20k+ members): ${animes.length} animes for ${season} ${year}`);
 
     for (const anime of animes) {
       const seasonAnime = {

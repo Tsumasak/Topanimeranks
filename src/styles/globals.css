@@ -108,6 +108,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 101vh; /* Force scrollbar to always be present, preventing layout shift */
+  /* Critical for sticky to work */
+  overflow: visible;
+}
+
+/* Ensure #root and all direct children allow sticky */
+#root {
+  overflow: visible;
+  min-height: 100vh;
 }
 
 
@@ -438,6 +446,9 @@ button:focus {
 .dynamic-background {
   position: relative;
   min-height: 100vh;
+  /* Critical: ensure sticky positioning works */
+  overflow: visible;
+  contain: none;
 }
 
 .dynamic-background::before {
@@ -478,6 +489,9 @@ button:focus {
   position: relative;
   z-index: 1;
   background: transparent;
+  /* Critical: ensure sticky positioning works */
+  overflow: visible;
+  contain: none;
 }
 
 /* Subtitle styling for period information */
@@ -821,11 +835,5 @@ html {
   /* Smooth scrolling on iOS */
   html {
     -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Prevent horizontal overflow on mobile - but keep vertical as auto for sticky to work */
-  body {
-    overflow-x: hidden;
-    overflow-y: auto;
   }
 }

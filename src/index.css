@@ -374,10 +374,6 @@
     visibility: hidden;
   }
 
-  .visible {
-    visibility: visible;
-  }
-
   .sr-only {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
@@ -2321,6 +2317,12 @@ body {
   min-height: 101vh;
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color .3s, color .3s;
+  overflow: visible;
+}
+
+#root {
+  min-height: 100vh;
+  overflow: visible;
 }
 
 .theme-card {
@@ -2622,8 +2624,10 @@ p, span, div {
 }
 
 .dynamic-background {
+  contain: none;
   min-height: 100vh;
   position: relative;
+  overflow: visible;
 }
 
 .dynamic-background:before {
@@ -2656,8 +2660,10 @@ p, span, div {
 
 .dynamic-background-content {
   z-index: 1;
+  contain: none;
   background: none;
   position: relative;
+  overflow: visible;
 }
 
 .period-subtitle {
@@ -2977,10 +2983,6 @@ html {
 @media (width <= 767px) {
   html {
     -webkit-overflow-scrolling: touch;
-  }
-
-  body {
-    overflow: hidden auto;
   }
 }
 

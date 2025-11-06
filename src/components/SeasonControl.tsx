@@ -169,7 +169,7 @@ const SeasonControl = () => {
       </p>
       
       {/* Desktop: Season tabs with sliding indicator */}
-      <div className="hidden md:flex justify-center mb-4 sticky top-[82px] z-40 -mx-[40px] px-[40px] py-2" style={{ position: 'sticky', WebkitPosition: 'sticky' } as React.CSSProperties}>
+      <div className="hidden md:flex justify-center mb-4 sticky top-[82px] z-40 -mx-[40px] px-[40px] py-2">
         <div className="flex space-x-2 theme-controller rounded-lg p-1 relative">
           {SEASONS_DATA.map((season) => (
             <button
@@ -197,7 +197,7 @@ const SeasonControl = () => {
       </div>
 
       {/* Mobile: Unified Controller Bar */}
-      <div className="md:hidden flex justify-center mb-4 sticky top-[72px] z-40" style={{ position: 'sticky', WebkitPosition: 'sticky' } as React.CSSProperties}>
+      <div className="md:hidden flex justify-center mb-4 sticky top-[72px] z-40">
         <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
           {/* Previous Season Button */}
           {(() => {

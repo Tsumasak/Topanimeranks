@@ -192,7 +192,7 @@ function AppContent() {
   ]; */
 
   return (
-    <div className="dynamic-background min-h-screen" style={{ overflow: 'visible' }}>
+    <div className="dynamic-background min-h-screen">
       <Header 
         onThemeToggle={toggleTheme} 
         theme={theme} 
@@ -200,7 +200,7 @@ function AppContent() {
         onPageChange={handlePageChange}
       />
 
-      <div className="dynamic-background-content pt-[72px] md:pt-[82px]" style={{ overflow: 'visible' }}>
+      <div className="dynamic-background-content pt-[72px] md:pt-[82px]">
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomePage />} />

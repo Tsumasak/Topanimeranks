@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime } from '../types/anime';

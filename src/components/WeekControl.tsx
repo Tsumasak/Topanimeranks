@@ -7,7 +7,6 @@ import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../conf
 import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { lockViewportWidth, unlockViewportWidth } from '../utils/preventLayoutShift';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix
 const getFormattedPeriod = (week: WeekConfig, isCurrentWeek: boolean): string => {
@@ -428,7 +427,7 @@ const WeekControl = () => {
 
       {/* Mobile: Unified Controller Bar */}
       <div className="md:hidden flex justify-center my-[16px] sticky top-[72px] z-40 mx-[0px] py-[16px] pt-[16px] pr-[0px] pb-[0px] pl-[0px]">
-        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
+        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-2 w-full max-w-md mx-[8px]">
           {/* Previous Week Button */}
           {(() => {
             const currentIndex = visibleWeeks.findIndex(w => w.id === activeWeek);
@@ -447,42 +446,17 @@ const WeekControl = () => {
             );
           })()}
 
-          {/* Dropdown (Active State) - Centered and compact */}
-          <div className="flex-shrink-0">
-            <Select 
-              value={activeWeek} 
-              onValueChange={handleWeekChange} 
-              modal={false}
-              onOpenChange={(open) => {
-                if (open) {
-                  lockViewportWidth();
-                } else {
-                  unlockViewportWidth();
-                }
+          {/* Current Week Label - Centered (No dropdown on mobile) */}
+          <div className="flex-1 flex items-center justify-center px-2">
+            <span 
+              className="px-3 py-2 rounded-md text-sm whitespace-nowrap"
+              style={{
+                backgroundColor: 'var(--rank-background)',
+                color: 'var(--rank-text)'
               }}
             >
-              <SelectTrigger 
-                className="border-0 px-3 py-2 rounded-md text-sm flex items-center gap-1.5 w-auto [&_svg]:!text-white [&_svg]:!opacity-100"
-                style={{
-                  backgroundColor: 'var(--rank-background)',
-                  color: 'var(--rank-text)'
-                }}
-              >
-                <SelectValue className="text-center" />
-              </SelectTrigger>
-              <SelectContent 
-                className="theme-card border z-[9999]" 
-                style={{borderColor: 'var(--card-border)', zIndex: 9999}}
-                position="popper"
-                sideOffset={5}
-              >
-                {visibleWeeks.map((week) => (
-                  <SelectItem key={week.id} value={week.id} className="theme-nav-link">
-                    {week.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {visibleWeeks.find(w => w.id === activeWeek)?.label || 'Loading...'}
+            </span>
           </div>
 
           {/* Next Week Button */}

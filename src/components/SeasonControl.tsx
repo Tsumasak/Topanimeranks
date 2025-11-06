@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime } from '../types/anime';
-import { lockViewportWidth, unlockViewportWidth } from '../utils/preventLayoutShift';
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");
@@ -199,7 +198,7 @@ const SeasonControl = () => {
 
       {/* Mobile: Unified Controller Bar */}
       <div className="md:hidden flex justify-center mb-4 sticky top-[72px] z-40">
-        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-1 w-full max-w-md mx-[8px]">
+        <div className="theme-controller rounded-lg p-1 relative flex items-center justify-between gap-2 w-full max-w-md mx-[8px]">
           {/* Previous Season Button */}
           {(() => {
             const currentIndex = SEASONS_DATA.findIndex(s => s.id === activeSeason);
@@ -218,42 +217,17 @@ const SeasonControl = () => {
             );
           })()}
 
-          {/* Dropdown (Active State) - Centered and compact */}
-          <div className="flex-shrink-0">
-            <Select 
-              value={activeSeason} 
-              onValueChange={handleSeasonChange} 
-              modal={false}
-              onOpenChange={(open) => {
-                if (open) {
-                  lockViewportWidth();
-                } else {
-                  unlockViewportWidth();
-                }
+          {/* Current Season Label - Centered (No dropdown on mobile) */}
+          <div className="flex-1 flex items-center justify-center px-2">
+            <span 
+              className="px-3 py-2 rounded-md text-sm whitespace-nowrap"
+              style={{
+                backgroundColor: 'var(--rank-background)',
+                color: 'var(--rank-text)'
               }}
             >
-              <SelectTrigger 
-                className="border-0 px-3 py-2 rounded-md text-sm flex items-center gap-1.5 w-auto [&_svg]:!text-white [&_svg]:!opacity-100"
-                style={{
-                  backgroundColor: 'var(--rank-background)',
-                  color: 'var(--rank-text)'
-                }}
-              >
-                <SelectValue className="text-center" />
-              </SelectTrigger>
-              <SelectContent 
-                className="theme-card border z-[9999]" 
-                style={{borderColor: 'var(--card-border)', zIndex: 9999}}
-                position="popper"
-                sideOffset={5}
-              >
-                {SEASONS_DATA.map((season) => (
-                  <SelectItem key={season.id} value={season.id} className="theme-nav-link">
-                    {season.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {SEASONS_DATA.find(s => s.id === activeSeason)?.label || 'Loading...'}
+            </span>
           </div>
 
           {/* Next Season Button */}

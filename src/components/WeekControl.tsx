@@ -7,6 +7,7 @@ import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../conf
 import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { lockViewportWidth, unlockViewportWidth } from '../utils/preventLayoutShift';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix
 const getFormattedPeriod = (week: WeekConfig, isCurrentWeek: boolean): string => {
@@ -448,7 +449,18 @@ const WeekControl = () => {
 
           {/* Dropdown (Active State) - Centered and compact */}
           <div className="flex-shrink-0">
-            <Select value={activeWeek} onValueChange={handleWeekChange}>
+            <Select 
+              value={activeWeek} 
+              onValueChange={handleWeekChange} 
+              modal={false}
+              onOpenChange={(open) => {
+                if (open) {
+                  lockViewportWidth();
+                } else {
+                  unlockViewportWidth();
+                }
+              }}
+            >
               <SelectTrigger 
                 className="border-0 px-3 py-2 rounded-md text-sm flex items-center gap-1.5 w-auto [&_svg]:!text-white [&_svg]:!opacity-100"
                 style={{
@@ -458,7 +470,12 @@ const WeekControl = () => {
               >
                 <SelectValue className="text-center" />
               </SelectTrigger>
-              <SelectContent className="theme-card border" style={{borderColor: 'var(--card-border)'}}>
+              <SelectContent 
+                className="theme-card border z-[9999]" 
+                style={{borderColor: 'var(--card-border)', zIndex: 9999}}
+                position="popper"
+                sideOffset={5}
+              >
                 {visibleWeeks.map((week) => (
                   <SelectItem key={week.id} value={week.id} className="theme-nav-link">
                     {week.label}

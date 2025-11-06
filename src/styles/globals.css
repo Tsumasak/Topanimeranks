@@ -100,6 +100,10 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   overflow-y: scroll; /* Always show vertical scrollbar to prevent layout shift */
+  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+  /* Prevent width changes */
+  width: 100vw;
+  overflow-x: hidden;
 }
 
 body {
@@ -110,6 +114,11 @@ body {
   min-height: 101vh; /* Force scrollbar to always be present, preventing layout shift */
   /* Critical for sticky to work */
   overflow: visible;
+  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+  /* Prevent width changes and layout shift */
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
 }
 
 /* Ensure #root and all direct children allow sticky */
@@ -503,6 +512,101 @@ button:focus {
 .sticky {
   position: -webkit-sticky;
   position: sticky;
+}
+
+/* Fix Select dropdown z-index when inside sticky containers */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Ensure Select dropdown appears above everything */
+[data-slot="select-content"] {
+  z-index: 9999 !important;
+}
+
+/* Prevent body scroll lock issues with Radix Portal */
+body:has([data-state="open"][role="listbox"]) {
+  overflow: visible !important;
+  padding-right: 0 !important; /* Prevent padding added by scroll lock */
+}
+
+/* Prevent all scroll locking behavior from Radix */
+body[data-scroll-locked] {
+  overflow: visible !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Prevent fixed elements from being affected by scroll lock */
+.theme-header[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Keep header width stable when Select opens */
+.theme-header {
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* Override Radix's injected styles */
+html:has([data-state="open"][role="listbox"]) {
+  overflow: visible !important;
+  scrollbar-gutter: stable !important;
+  width: 100vw !important;
+}
+
+/* Prevent any width changes when Select is open */
+body:has([data-state="open"][role="listbox"]),
+html:has([data-state="open"][role="listbox"]) body {
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+/* Lock the main container width */
+#root:has([data-state="open"][role="listbox"]) {
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+/* Prevent container from shifting */
+.container:has([data-state="open"][role="listbox"]) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Additional fix for mobile devices */
+@media (max-width: 768px) {
+  /* Lock viewport when dropdown opens */
+  html:has([data-state="open"][role="listbox"]) {
+    overflow: visible !important;
+    width: 100vw !important;
+  }
+  
+  body:has([data-state="open"][role="listbox"]) {
+    overflow: visible !important;
+    width: 100% !important;
+    position: relative !important;
+  }
+}
+
+/* Ensure Select portal doesn't cause layout shifts */
+[data-radix-select-viewport] {
+  overscroll-behavior: contain;
+}
+
+/* Fix sticky container not interfering with portal positioning */
+.sticky:has([data-state="open"]) {
+  z-index: 41;
+}
+
+/* Ensure proper positioning for Select in sticky containers */
+.sticky [data-radix-select-trigger] {
+  position: relative;
+  z-index: 1;
 }
 
 /* Override any default browser styles that might interfere */

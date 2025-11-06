@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime } from '../types/anime';
+import { lockViewportWidth, unlockViewportWidth } from '../utils/preventLayoutShift';
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");
@@ -219,7 +220,18 @@ const SeasonControl = () => {
 
           {/* Dropdown (Active State) - Centered and compact */}
           <div className="flex-shrink-0">
-            <Select value={activeSeason} onValueChange={handleSeasonChange}>
+            <Select 
+              value={activeSeason} 
+              onValueChange={handleSeasonChange} 
+              modal={false}
+              onOpenChange={(open) => {
+                if (open) {
+                  lockViewportWidth();
+                } else {
+                  unlockViewportWidth();
+                }
+              }}
+            >
               <SelectTrigger 
                 className="border-0 px-3 py-2 rounded-md text-sm flex items-center gap-1.5 w-auto [&_svg]:!text-white [&_svg]:!opacity-100"
                 style={{
@@ -229,7 +241,12 @@ const SeasonControl = () => {
               >
                 <SelectValue className="text-center" />
               </SelectTrigger>
-              <SelectContent className="theme-card border" style={{borderColor: 'var(--card-border)'}}>
+              <SelectContent 
+                className="theme-card border z-[9999]" 
+                style={{borderColor: 'var(--card-border)', zIndex: 9999}}
+                position="popper"
+                sideOffset={5}
+              >
                 {SEASONS_DATA.map((season) => (
                   <SelectItem key={season.id} value={season.id} className="theme-nav-link">
                     {season.label}

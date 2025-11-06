@@ -131,9 +131,6 @@ body {
   background: var(--card-background);
   border-color: var(--card-border);
   box-shadow: 0 4px 6px -1px var(--shadow);
-  /* Ensure sticky works properly */
-  will-change: transform;
-  backface-visibility: hidden;
 }
 
 .theme-header {
@@ -481,8 +478,6 @@ button:focus {
   position: relative;
   z-index: 1;
   background: transparent;
-  /* Ensure sticky positioning works correctly */
-  overflow: visible;
 }
 
 /* Subtitle styling for period information */
@@ -490,11 +485,10 @@ button:focus {
   color: var(--rating-yellow);
 }
 
-/* Ensure sticky positioning works for controllers */
-.container {
-  position: relative;
-  /* Ensure no overflow hidden that would break sticky */
-  overflow: visible;
+/* Ensure sticky positioning works properly across all browsers */
+.sticky {
+  position: -webkit-sticky;
+  position: sticky;
 }
 
 /* Override any default browser styles that might interfere */

@@ -59,8 +59,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
     const endDate = new Date(startDate);
     endDate.setUTCDate(startDate.getUTCDate() + 6); // Sunday
+    endDate.setUTCHours(23, 59, 59, 999); // End of Sunday
     
-    console.log(`📅 Week ${weekNumber}: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+    console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     // Fetch Fall 2025 season anime (current airing season)
     const seasonUrl = `${JIKAN_BASE_URL}/seasons/2025/fall`;
@@ -73,6 +74,17 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     const allAnimes = seasonData.data;
     console.log(`📺 Found ${allAnimes.length} Fall 2025 animes`);
+
+    // 🔍 DEBUG: Check if anime 62405 exists in Fall 2025
+    const anime62405 = allAnimes.find((a: any) => a.mal_id === 62405);
+    if (anime62405) {
+      console.log(`🔍 DEBUG: Found anime 62405 - ${anime62405.title}`);
+      console.log(`   Status: ${anime62405.status}`);
+      console.log(`   Members: ${anime62405.members}`);
+      console.log(`   Aired from: ${anime62405.aired?.from}`);
+    } else {
+      console.log(`❌ DEBUG: Anime 62405 NOT FOUND in Fall 2025 season data`);
+    }
 
     // Filter by members >= 5000 and airing status (Currently Airing OR Finished Airing)
     // We include Finished Airing because animes that released all episodes in one week
@@ -123,8 +135,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       console.log(`  📺 Found ${episodesData.data.length} episodes for ${anime.title}`);
       
       // Log all episodes with their aired dates for debugging
+      const maxEpsToLog = anime.mal_id === 62405 ? episodesData.data.length : 5; // Log ALL episodes for anime 62405
       episodesData.data.forEach((ep: any, idx: number) => {
-        if (idx < 5) { // Log first 5 to see more episodes
+        if (idx < maxEpsToLog) {
           console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'} - Score: ${ep.score || 'N/A'}`);
         }
       });
@@ -145,9 +158,19 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       
       // STEP 2: Find NEW episodes that aired in this week
       const newEpisodes = episodesData.data.filter((ep: any) => {
-        if (!ep.aired) return false;
+        if (!ep.aired) {
+          if (anime.mal_id === 62405) {
+            console.log(`  🔍 DEBUG 62405: EP${ep.mal_id} has no aired date`);
+          }
+          return false;
+        }
         const airedDate = new Date(ep.aired);
         const isInWeek = airedDate >= startDate && airedDate <= endDate;
+        
+        if (anime.mal_id === 62405) {
+          console.log(`  🔍 DEBUG 62405: EP${ep.mal_id} aired ${ep.aired} | airedDate: ${airedDate.toISOString()} | isInWeek: ${isInWeek}`);
+          console.log(`     startDate: ${startDate.toISOString()} | endDate: ${endDate.toISOString()}`);
+        }
         
         // Check if this episode is already in the weekEpisodes (from existing)
         const alreadyAdded = weekEpisodes.some(we => we.mal_id === ep.mal_id);

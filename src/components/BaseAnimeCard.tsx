@@ -196,8 +196,8 @@ export default function BaseAnimeCard({
                 className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
                 style={{ color: trendInfo.color }}
               >
-                <span>{trendInfo.symbol}</span>
-                <span className="text-[12px]">{trendInfo.text}</span>
+                <span className="font-bold text-[14px] text-[13px]">{trendInfo.symbol}</span>
+                <span className="text-[14px] font-bold">{trendInfo.text}</span>
               </div>
             )}
           </div>

@@ -74,12 +74,14 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     const allAnimes = seasonData.data;
     console.log(`📺 Found ${allAnimes.length} Fall 2025 animes`);
 
-    // Filter by members >= 5000 and currently airing
+    // Filter by members >= 5000 and airing status (Currently Airing OR Finished Airing)
+    // We include Finished Airing because animes that released all episodes in one week
+    // (like Tatsuki Fujimoto 17-26) change status immediately but still need to be synced
     const airingAnimes = allAnimes.filter((anime: any) => 
       anime.members >= 5000 && 
-      anime.status === 'Currently Airing'
+      (anime.status === 'Currently Airing' || anime.status === 'Finished Airing')
     );
-    console.log(`✅ After filter (5k+ members, airing): ${airingAnimes.length} animes`);
+    console.log(`✅ After filter (5k+ members, airing/finished): ${airingAnimes.length} animes`);
 
     // 🆕 STEP 1: Get existing episodes from database for this week
     console.log(`\n🔍 Fetching existing episodes from database for week ${weekNumber}...`);

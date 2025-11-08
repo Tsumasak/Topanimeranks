@@ -83,14 +83,14 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // 🆕 STEP 1: Get existing episodes from database for this week
     console.log(`\n🔍 Fetching existing episodes from database for week ${weekNumber}...`);
-    const { data: existingEpisodes, error: fetchError } = await supabase
+    const { data: existingEpisodes, error: existingFetchError } = await supabase
       .from('weekly_episodes')
       .select('anime_id, episode_number')
       .eq('week_number', weekNumber)
       .eq('is_manual', false); // Only update auto-synced episodes
 
-    if (fetchError) {
-      console.error(`❌ Error fetching existing episodes:`, fetchError);
+    if (existingFetchError) {
+      console.error(`❌ Error fetching existing episodes:`, existingFetchError);
     }
 
     const existingAnimeIds = new Set(existingEpisodes?.map(ep => ep.anime_id) || []);

@@ -402,7 +402,10 @@ const WeekControl = () => {
           {visibleWeeks.map((week) => (
             <button
               key={week.id}
-              onClick={() => handleWeekChange(week.id)}
+              onClick={() => {
+                handleWeekChange(week.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className={`px-4 py-2 rounded-md text-sm relative overflow-hidden whitespace-nowrap ${
                 activeWeek === week.id 
                   ? '' 
@@ -435,7 +438,12 @@ const WeekControl = () => {
             
             return (
               <button
-                onClick={() => prevWeek && handleWeekChange(prevWeek.id)}
+                onClick={() => {
+                  if (prevWeek) {
+                    handleWeekChange(prevWeek.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 disabled={!hasPrev}
                 className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -466,7 +474,12 @@ const WeekControl = () => {
             
             return (
               <button
-                onClick={() => nextWeek && handleWeekChange(nextWeek.id)}
+                onClick={() => {
+                  if (nextWeek) {
+                    handleWeekChange(nextWeek.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 disabled={!hasNext}
                 className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
               >

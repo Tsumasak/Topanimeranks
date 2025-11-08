@@ -81,6 +81,21 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     );
     console.log(`✅ After filter (5k+ members, airing): ${airingAnimes.length} animes`);
 
+    // 🆕 STEP 1: Get existing episodes from database for this week
+    console.log(`\n🔍 Fetching existing episodes from database for week ${weekNumber}...`);
+    const { data: existingEpisodes, error: fetchError } = await supabase
+      .from('weekly_episodes')
+      .select('anime_id, episode_number')
+      .eq('week_number', weekNumber)
+      .eq('is_manual', false); // Only update auto-synced episodes
+
+    if (fetchError) {
+      console.error(`❌ Error fetching existing episodes:`, fetchError);
+    }
+
+    const existingAnimeIds = new Set(existingEpisodes?.map(ep => ep.anime_id) || []);
+    console.log(`📊 Found ${existingAnimeIds.size} existing episodes in database for week ${weekNumber}`);
+
     // Process episodes for this week
     const episodes: any[] = [];
     const processedAnimeIds = new Set<number>(); // Track to ensure 1 episode per anime
@@ -102,28 +117,46 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         continue;
       }
 
-      // Find episode that aired in this week
+      // Find episode that aired in this week OR exists in database for this week
       console.log(`  📺 Found ${episodesData.data.length} episodes for ${anime.title}`);
       
       // Log all episodes with their aired dates for debugging
       episodesData.data.forEach((ep: any, idx: number) => {
         if (idx < 3) { // Only log first 3 to avoid spam
-          console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'}`);
+          console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'} - Score: ${ep.score || 'N/A'}`);
         }
       });
       
-      const weekEpisode = episodesData.data.find((ep: any) => {
-        if (!ep.aired) return false;
-        const airedDate = new Date(ep.aired);
-        const isInWeek = airedDate >= startDate && airedDate <= endDate;
-        if (isInWeek) {
-          console.log(`  ✅ MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
+      let weekEpisode = null;
+      
+      // 🆕 PRIORITY 1: If this anime already has an episode in the database for this week, update it
+      if (existingAnimeIds.has(anime.mal_id)) {
+        // Find the existing episode in the database
+        const existingEp = existingEpisodes?.find(ep => ep.anime_id === anime.mal_id);
+        if (existingEp) {
+          // Find this episode in the API data to get updated score
+          weekEpisode = episodesData.data.find((ep: any) => ep.mal_id === existingEp.episode_number);
+          if (weekEpisode) {
+            console.log(`  🔄 UPDATING existing episode: EP${weekEpisode.mal_id} (Score: ${weekEpisode.score || 'N/A'})`);
+          }
         }
-        return isInWeek;
-      });
+      }
+      
+      // PRIORITY 2: If no existing episode, find episode that aired in this week
+      if (!weekEpisode) {
+        weekEpisode = episodesData.data.find((ep: any) => {
+          if (!ep.aired) return false;
+          const airedDate = new Date(ep.aired);
+          const isInWeek = airedDate >= startDate && airedDate <= endDate;
+          if (isInWeek) {
+            console.log(`  ✅ NEW MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
+          }
+          return isInWeek;
+        });
+      }
 
       if (!weekEpisode) {
-        console.log(`  ⏭️ No episode aired in week ${weekNumber} range for ${anime.title}`);
+        console.log(`  ⏭️ No episode aired in week ${weekNumber} range for ${anime.title} and no existing episode to update`);
         continue;
       }
 
@@ -806,24 +839,51 @@ serve(async (req) => {
     switch (sync_type) {
       case 'weekly_episodes':
         // Auto-detect current week if not specified
-        let weekToSync = week_number;
+        let currentWeek = week_number;
         
-        if (!weekToSync) {
+        if (!currentWeek) {
           // Calculate current week based on today's date
           // Week 1 started on September 29, 2025 (Monday)
           const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
           const today = new Date();
           const diffTime = today.getTime() - baseDate.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          weekToSync = Math.floor(diffDays / 7) + 1;
+          currentWeek = Math.floor(diffDays / 7) + 1;
           
           // Clamp to valid week range (1-13)
-          weekToSync = Math.max(1, Math.min(13, weekToSync));
+          currentWeek = Math.max(1, Math.min(13, currentWeek));
           
-          console.log(`📅 Auto-detected current week: ${weekToSync} (based on date: ${today.toISOString().split('T')[0]})`);
+          console.log(`📅 Auto-detected current week: ${currentWeek} (based on date: ${today.toISOString().split('T')[0]})`);
         }
         
-        result = await syncWeeklyEpisodes(supabase, weekToSync);
+        // 🆕 Sync current week and previous 2 weeks to keep scores updated
+        const weeksToSync = [];
+        for (let i = Math.max(1, currentWeek - 2); i <= currentWeek; i++) {
+          weeksToSync.push(i);
+        }
+        
+        console.log(`📅 Syncing weeks: ${weeksToSync.join(', ')}`);
+        
+        const results = [];
+        for (const week of weeksToSync) {
+          console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📅 Starting sync for week ${week}...`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          const weekResult = await syncWeeklyEpisodes(supabase, week);
+          results.push({ week, ...weekResult });
+          
+          // Small delay between weeks to avoid rate limiting
+          if (week !== weeksToSync[weeksToSync.length - 1]) {
+            await delay(2000);
+          }
+        }
+        
+        result = {
+          success: true,
+          weeks_synced: weeksToSync,
+          results: results
+        };
         break;
 
       case 'season_rankings':

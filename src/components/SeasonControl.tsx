@@ -173,7 +173,10 @@ const SeasonControl = () => {
           {SEASONS_DATA.map((season) => (
             <button
               key={season.id}
-              onClick={() => handleSeasonChange(season.id)}
+              onClick={() => {
+                handleSeasonChange(season.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className={`px-4 py-2 rounded-md text-sm relative overflow-hidden whitespace-nowrap ${
                 activeSeason === season.id 
                   ? '' 
@@ -206,7 +209,12 @@ const SeasonControl = () => {
             
             return (
               <button
-                onClick={() => prevSeason && handleSeasonChange(prevSeason.id)}
+                onClick={() => {
+                  if (prevSeason) {
+                    handleSeasonChange(prevSeason.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 disabled={!hasPrev}
                 className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -237,7 +245,12 @@ const SeasonControl = () => {
             
             return (
               <button
-                onClick={() => nextSeason && handleSeasonChange(nextSeason.id)}
+                onClick={() => {
+                  if (nextSeason) {
+                    handleSeasonChange(nextSeason.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 disabled={!hasNext}
                 className="flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm theme-nav-link transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
               >

@@ -98,7 +98,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // Process episodes for this week
     const episodes: any[] = [];
-    const processedAnimeIds = new Set<number>(); // Track to ensure 1 episode per anime
+    const processedEpisodeKeys = new Set<string>(); // Track anime_id + episode_number to avoid duplicates
     
     console.log(`\n🔄 Starting to process ${airingAnimes.length} airing animes for week ${weekNumber}...`);
     console.log(`📅 Week dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
@@ -117,80 +117,90 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         continue;
       }
 
-      // Find episode that aired in this week OR exists in database for this week
+      // Find ALL episodes that aired in this week OR exist in database for this week
       console.log(`  📺 Found ${episodesData.data.length} episodes for ${anime.title}`);
       
       // Log all episodes with their aired dates for debugging
       episodesData.data.forEach((ep: any, idx: number) => {
-        if (idx < 3) { // Only log first 3 to avoid spam
+        if (idx < 5) { // Log first 5 to see more episodes
           console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'} - Score: ${ep.score || 'N/A'}`);
         }
       });
       
-      let weekEpisode = null;
+      const weekEpisodes: any[] = [];
       
-      // 🆕 PRIORITY 1: If this anime already has an episode in the database for this week, update it
-      if (existingAnimeIds.has(anime.mal_id)) {
-        // Find the existing episode in the database
-        const existingEp = existingEpisodes?.find(ep => ep.anime_id === anime.mal_id);
-        if (existingEp) {
-          // Find this episode in the API data to get updated score
-          weekEpisode = episodesData.data.find((ep: any) => ep.mal_id === existingEp.episode_number);
-          if (weekEpisode) {
-            console.log(`  🔄 UPDATING existing episode: EP${weekEpisode.mal_id} (Score: ${weekEpisode.score || 'N/A'})`);
-          }
+      // 🆕 STEP 1: Find existing episodes in database for this anime in this week
+      const existingEpsForAnime = existingEpisodes?.filter(ep => ep.anime_id === anime.mal_id) || [];
+      
+      for (const existingEp of existingEpsForAnime) {
+        // Find this episode in the API data to get updated score
+        const apiEpisode = episodesData.data.find((ep: any) => ep.mal_id === existingEp.episode_number);
+        if (apiEpisode) {
+          console.log(`  🔄 UPDATING existing episode: EP${apiEpisode.mal_id} (Score: ${apiEpisode.score || 'N/A'})`);
+          weekEpisodes.push(apiEpisode);
         }
       }
       
-      // PRIORITY 2: If no existing episode, find episode that aired in this week
-      if (!weekEpisode) {
-        weekEpisode = episodesData.data.find((ep: any) => {
-          if (!ep.aired) return false;
-          const airedDate = new Date(ep.aired);
-          const isInWeek = airedDate >= startDate && airedDate <= endDate;
-          if (isInWeek) {
-            console.log(`  ✅ NEW MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
-          }
-          return isInWeek;
-        });
-      }
+      // STEP 2: Find NEW episodes that aired in this week
+      const newEpisodes = episodesData.data.filter((ep: any) => {
+        if (!ep.aired) return false;
+        const airedDate = new Date(ep.aired);
+        const isInWeek = airedDate >= startDate && airedDate <= endDate;
+        
+        // Check if this episode is already in the weekEpisodes (from existing)
+        const alreadyAdded = weekEpisodes.some(we => we.mal_id === ep.mal_id);
+        
+        if (isInWeek && !alreadyAdded) {
+          console.log(`  ✅ NEW MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
+          return true;
+        }
+        return false;
+      });
+      
+      weekEpisodes.push(...newEpisodes);
 
-      if (!weekEpisode) {
-        console.log(`  ⏭️ No episode aired in week ${weekNumber} range for ${anime.title} and no existing episode to update`);
+      if (weekEpisodes.length === 0) {
+        console.log(`  ⏭️ No episodes aired in week ${weekNumber} range for ${anime.title} and no existing episodes to update`);
         continue;
       }
 
-      // Skip if we already have an episode from this anime for this week
-      if (processedAnimeIds.has(anime.mal_id)) {
-        console.log(`⏭️ Already processed anime ${anime.title}, skipping duplicate`);
-        continue;
+      console.log(`  📋 Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
+
+      // Process each episode found
+      for (const weekEpisode of weekEpisodes) {
+        const episodeKey = `${anime.mal_id}_${weekEpisode.mal_id}`;
+        
+        // Skip if we already processed this exact episode
+        if (processedEpisodeKeys.has(episodeKey)) {
+          console.log(`  ⏭️ Already processed ${anime.title} EP${weekEpisode.mal_id}, skipping duplicate`);
+          continue;
+        }
+
+        processedEpisodeKeys.add(episodeKey);
+
+        console.log(`  ✅ Adding episode: ${anime.title} EP${weekEpisode.mal_id} "${weekEpisode.title}" (Aired: ${weekEpisode.aired}, Score: ${weekEpisode.score || 'N/A'})`);
+
+        const episode = {
+          anime_id: anime.mal_id,
+          anime_title_english: anime.title_english || anime.title,
+          anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
+          from_url: weekEpisode.url || anime.url,
+          episode_number: weekEpisode.mal_id,
+          episode_name: weekEpisode.title || `Episode ${weekEpisode.mal_id}`,
+          episode_score: weekEpisode.score || null,
+          week_number: weekNumber,
+          position_in_week: 0, // Will be set later
+          is_manual: false,
+          type: anime.type,
+          status: anime.status,
+          demographic: anime.demographics || [],
+          genre: anime.genres || [],
+          theme: anime.themes || [],
+          aired_at: weekEpisode.aired,
+        };
+
+        episodes.push(episode);
       }
-
-      processedAnimeIds.add(anime.mal_id);
-
-      const episodeId = `${anime.mal_id}_${weekEpisode.mal_id}`;
-      console.log(`✅ Adding episode: ${anime.title} EP${weekEpisode.mal_id} "${weekEpisode.title}" (Aired: ${weekEpisode.aired}, Score: ${weekEpisode.score || 'N/A'})`);
-
-      const episode = {
-        anime_id: anime.mal_id,
-        anime_title_english: anime.title_english || anime.title,
-        anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
-        from_url: weekEpisode.url || anime.url,
-        episode_number: weekEpisode.mal_id,
-        episode_name: weekEpisode.title || `Episode ${weekEpisode.mal_id}`,
-        episode_score: weekEpisode.score || null,
-        week_number: weekNumber,
-        position_in_week: 0, // Will be set later
-        is_manual: false,
-        type: anime.type,
-        status: anime.status,
-        demographic: anime.demographics || [],
-        genre: anime.genres || [],
-        theme: anime.themes || [],
-        aired_at: weekEpisode.aired,
-      };
-
-      episodes.push(episode);
     }
 
     console.log(`\n📊 ============================================`);

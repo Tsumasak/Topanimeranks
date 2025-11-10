@@ -92,16 +92,43 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     
     console.log(`📺 Total animes from all seasons: ${allAnimes.length}`);
 
-    // 🔍 DEBUG: Check if anime 62405 exists in Fall 2025
-    const anime62405 = allAnimes.find((a: any) => a.mal_id === 62405);
-    if (anime62405) {
-      console.log(`🔍 DEBUG: Found anime 62405 - ${anime62405.title}`);
-      console.log(`   Status: ${anime62405.status}`);
-      console.log(`   Members: ${anime62405.members}`);
-      console.log(`   Aired from: ${anime62405.aired?.from}`);
-    } else {
-      console.log(`❌ DEBUG: Anime 62405 NOT FOUND in Fall 2025 season data`);
+    // ⭐ HARDCODED EXCEPTIONS: Animes to ALWAYS check, even if not in the season list
+    // Add anime IDs here if they're missing from season API but should be synced
+    const HARDCODED_ANIME_IDS = [62405, 59062];
+    
+    console.log(`\\n⭐ Checking ${HARDCODED_ANIME_IDS.length} hardcoded exception animes...`);
+    
+    for (const animeId of HARDCODED_ANIME_IDS) {
+      // Check if already in list
+      const alreadyExists = allAnimes.some((a: any) => a.mal_id === animeId);
+      
+      if (alreadyExists) {
+        console.log(`✅ Anime ${animeId} already in season list`);
+        continue;
+      }
+      
+      console.log(`🔄 Fetching hardcoded anime ${animeId} directly from API...`);
+      
+      try {
+        const animeUrl = `${JIKAN_BASE_URL}/anime/${animeId}`;
+        const animeData = await fetchWithRetry(animeUrl);
+        
+        if (animeData && animeData.data) {
+          console.log(`✅ Added hardcoded anime: ${animeData.data.title} (ID: ${animeId})`);
+          console.log(`   Status: ${animeData.data.status}`);
+          console.log(`   Members: ${animeData.data.members}`);
+          allAnimes.push(animeData.data);
+        } else {
+          console.error(`❌ Failed to fetch anime ${animeId}`);
+        }
+        
+        await delay(RATE_LIMIT_DELAY);
+      } catch (error) {
+        console.error(`❌ Error fetching hardcoded anime ${animeId}:`, error);
+      }
     }
+    
+    console.log(`📺 Total animes after hardcoded additions: ${allAnimes.length}`);
 
     // Filter by members >= 5000 and airing status (Currently Airing OR Finished Airing)
     // We include Finished Airing because animes that released all episodes in one week

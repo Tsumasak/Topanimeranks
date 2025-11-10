@@ -63,17 +63,34 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-    // Fetch Fall 2025 season anime (current airing season)
-    const seasonUrl = `${JIKAN_BASE_URL}/seasons/2025/fall`;
-    console.log(`🌐 Fetching Fall 2025 season: ${seasonUrl}`);
-    const seasonData = await fetchWithRetry(seasonUrl);
+    // 🆕 Fetch MULTIPLE seasons to catch all airing animes
+    // (Some animes may be listed under different seasons)
+    const seasonsToCheck = [
+      { season: 'fall', year: 2025 },
+      { season: 'fall', year: 2024 },
+    ];
     
-    if (!seasonData || !seasonData.data) {
-      throw new Error(`No season data received. Response: ${JSON.stringify(seasonData)}`);
+    const allAnimes: any[] = [];
+    
+    for (const { season, year } of seasonsToCheck) {
+      const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
+      console.log(`🌐 Fetching ${season} ${year} season: ${seasonUrl}`);
+      
+      try {
+        const seasonData = await fetchWithRetry(seasonUrl);
+        
+        if (seasonData && seasonData.data) {
+          console.log(`📺 Found ${seasonData.data.length} animes in ${season} ${year}`);
+          allAnimes.push(...seasonData.data);
+        }
+      } catch (error) {
+        console.error(`⚠️  Error fetching ${season} ${year}:`, error);
+      }
+      
+      await delay(RATE_LIMIT_DELAY);
     }
-
-    const allAnimes = seasonData.data;
-    console.log(`📺 Found ${allAnimes.length} Fall 2025 animes`);
+    
+    console.log(`📺 Total animes from all seasons: ${allAnimes.length}`);
 
     // 🔍 DEBUG: Check if anime 62405 exists in Fall 2025
     const anime62405 = allAnimes.find((a: any) => a.mal_id === 62405);

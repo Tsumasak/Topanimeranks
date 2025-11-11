@@ -75,7 +75,7 @@ const SeasonControl = () => {
           // For "Later" tab, get all upcoming animes from Summer 2026 onwards
           jikanAnimesList = await SupabaseService.getLaterAnimes();
         } else {
-          // For regular seasons, use getSeasonRankings (ordered by members for anticipated ranking)
+          // For regular seasons, use getSeasonRankings (ordered by Plan to Watch count)
           jikanAnimesList = await SupabaseService.getSeasonRankings(season, year, 'members');
         }
         

@@ -5,7 +5,7 @@ interface AnticipatedAnimeCardProps {
   title: string;
   imageUrl: string;
   score: number | null;
-  members: number;
+  members: number; // Plan to Watch count from MAL
   synopsis: string;
   animeType: string;
   demographics: string[];
@@ -120,7 +120,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
       className={`theme-card rounded-lg overflow-hidden ${borderStyle} ${hoverClass} transition-all duration-300 h-full flex flex-col group`}
     >
       {/* Image Section with Tags */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden flex-shrink-0 anime-card-image">
+      <div className="relative aspect-square w-full overflow-hidden flex-shrink-0 anime-card-image">
         <img 
           src={imageUrl} 
           alt={title}
@@ -195,9 +195,9 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           </div>
         </div>
 
-        {/* Members Count - Bottom */}
+        {/* Plan to Watch Count - Bottom */}
         <div className="font-bold text-right px-4 pb-4 text-lg mt-auto" style={{color: 'var(--rating-yellow)'}}>
-          {members.toLocaleString()} Members
+          {members.toLocaleString()} Plan to Watch
         </div>
       </div>
     </a>

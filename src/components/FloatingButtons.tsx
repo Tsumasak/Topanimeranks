@@ -37,7 +37,7 @@ export function FloatingButtons() {
 
       {/* Instagram Button */}
       <a
-        href="https://instagram.com/topanimeranks"
+        href="https://www.instagram.com/topanimeranks"
         target="_blank"
         rel="noopener noreferrer"
         className="instagram-button flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform hover:scale-110"

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { MigrationAlert } from "./components/MigrationAlert";
 import { HomePage } from "./pages/HomePage";
@@ -225,6 +226,7 @@ export default function App() {
       <AppContent />
       <MigrationAlert />
       <Toaster />
+      <Analytics />
     </BrowserRouter>
   );
 }

@@ -771,8 +771,8 @@ async function syncAnticipatedAnimes(supabase: any) {
 
   try {
     const seasons = [
-      { season: 'winter', year: 2025 },
-      { season: 'spring', year: 2025 },
+      { season: 'winter', year: 2026 },
+      { season: 'spring', year: 2026 },
     ];
 
     const allAnimes: any[] = [];

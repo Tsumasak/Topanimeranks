@@ -806,7 +806,7 @@ async function syncAnticipatedAnimes(supabase: any) {
         title: anime.title,
         title_english: anime.title_english,
         image_url: anime.images?.jpg?.large_image_url,
-        anime_score: anime.score, // Using 'anime_score' to match database schema
+        score: anime.score, // Using 'score' to match anticipated_animes schema
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,

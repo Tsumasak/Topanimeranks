@@ -203,11 +203,11 @@ export async function getSeasonRankings(
       if (orderBy === 'members') {
         query = query
           .order('members', { ascending: false, nullsFirst: false })
-          .order('anime_score', { ascending: false });
+          .order('score', { ascending: false });
       } else {
         // Order by score (rating) for "Top Animes"
         query = query
-          .order('anime_score', { ascending: false, nullsFirst: false })
+          .order('score', { ascending: false, nullsFirst: false })
           .order('scored_by', { ascending: false });
       }
 
@@ -240,7 +240,7 @@ export async function getSeasonRankings(
               large_image_url: row.image_url || '',
             },
           },
-          score: row.anime_score,
+          score: row.score,
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,
@@ -336,7 +336,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
         const membersA = a.members || 0;
         const membersB = b.members || 0;
         if (membersB !== membersA) return membersB - membersA;
-        return (b.anime_score || 0) - (a.anime_score || 0);
+        return (b.score || 0) - (a.score || 0);
       });
 
       if (sortedData.length > 0) {
@@ -371,7 +371,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
               large_image_url: row.image_url || '',
             },
           },
-          score: row.anime_score,
+          score: row.score,
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,

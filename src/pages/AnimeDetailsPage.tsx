@@ -9,96 +9,19 @@ import { AnimeEpisodes } from '../components/anime/AnimeEpisodes';
 import { AnimeExternalLinks } from '../components/anime/AnimeExternalLinks';
 
 interface Episode {
-  episode_id: number;
+  id: string;
+  anime_id: number;
   episode_number: number;
-  episode_title_english: string;
-  episode_title_romaji?: string;
+  episode_name: string;
+  episode_score: number | null;
   aired_at: string;
-  anime_image_url: string;
-}
-
-// Fetch anime data from Supabase tables
-async function getAnimeData(animeId: number) {
-  // Try to get data from season_rankings first (most complete data)
-  const { data: seasonData, error: seasonError } = await supabase
-    .from('season_rankings')
-    .select('*')
-    .eq('anime_id', animeId)
-    .maybeSingle();
-
-  if (seasonData) {
-    console.log('✅ Found anime in season_rankings:', seasonData);
-    return {
-      ...seasonData,
-      source: 'season',
-    };
-  }
-
-  // If not found, try to get from weekly_episodes (get the most recent episode data)
-  const { data: episodeData, error: episodeError } = await supabase
-    .from('weekly_episodes')
-    .select('*')
-    .eq('anime_id', animeId)
-    .order('aired_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (episodeData) {
-    console.log('✅ Found anime in weekly_episodes:', episodeData);
-    // Transform weekly_episodes data to match season_rankings structure
-    return {
-      anime_id: episodeData.anime_id,
-      title: episodeData.anime_title_english,
-      title_english: episodeData.anime_title_english,
-      image_url: episodeData.anime_image_url,
-      type: episodeData.type,
-      status: episodeData.status,
-      demographics: episodeData.demographic || [],
-      genres: episodeData.genre || [],
-      themes: episodeData.theme || [],
-      source: 'weekly',
-      // These fields might not be available in weekly_episodes
-      score: null,
-      scored_by: null,
-      members: null,
-      synopsis: null,
-    };
-  }
-
-  // If not found, try anticipated_animes
-  const { data: anticipatedData, error: anticipatedError } = await supabase
-    .from('anticipated_animes')
-    .select('*')
-    .eq('anime_id', animeId)
-    .maybeSingle();
-
-  if (anticipatedData) {
-    console.log('✅ Found anime in anticipated_animes:', anticipatedData);
-    return {
-      ...anticipatedData,
-      source: 'anticipated',
-    };
-  }
-
-  console.error('❌ Anime not found in any table:', { seasonError, episodeError, anticipatedError });
-  return null;
-}
-
-// Fetch episodes from weekly_episodes table
-async function getAnimeEpisodes(animeId: number) {
-  const { data: episodes, error } = await supabase
-    .from('weekly_episodes')
-    .select('*')
-    .eq('anime_id', animeId)
-    .order('aired_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching episodes:', error);
-    return [];
-  }
-
-  console.log(`✅ Found ${episodes?.length || 0} episodes`);
-  return episodes || [];
+  anime_image_url?: string;
+  anime_title?: string;
+  type?: string;
+  status?: string;
+  demographic?: string[];
+  genre?: string[];
+  theme?: string[];
 }
 
 export default function AnimeDetailsPage() {

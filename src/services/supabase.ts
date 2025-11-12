@@ -19,7 +19,7 @@ interface SeasonRankingRow {
   title: string;
   title_english: string;
   image_url: string;
-  score: number | null;
+  anime_score: number | null; // FIXED: Changed from 'score' to 'anime_score'
   scored_by: number | null;
   members: number;
   favorites: number;
@@ -44,7 +44,7 @@ interface AnticipatedAnimeRow {
   title: string;
   title_english: string;
   image_url: string;
-  score: number | null;
+  anime_score: number | null; // FIXED: Changed from 'score' to 'anime_score'
   members: number;
   synopsis: string;
   type: string;
@@ -255,11 +255,11 @@ export async function getSeasonRankings(
       if (orderBy === 'members') {
         query = query
           .order('members', { ascending: false, nullsFirst: false })
-          .order('score', { ascending: false });
+          .order('anime_score', { ascending: false }); // FIXED: Changed from 'score' to 'anime_score'
       } else {
         // Order by score (rating) for "Top Animes"
         query = query
-          .order('score', { ascending: false, nullsFirst: false })
+          .order('anime_score', { ascending: false, nullsFirst: false }) // FIXED: Changed from 'score' to 'anime_score'
           .order('scored_by', { ascending: false });
       }
 
@@ -292,7 +292,7 @@ export async function getSeasonRankings(
               large_image_url: row.image_url || '',
             },
           },
-          score: row.score,
+          score: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,
@@ -388,7 +388,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
         const membersA = a.members || 0;
         const membersB = b.members || 0;
         if (membersB !== membersA) return membersB - membersA;
-        return (b.score || 0) - (a.score || 0);
+        return (b.anime_score || 0) - (a.anime_score || 0); // FIXED: Changed from 'score' to 'anime_score'
       });
 
       if (sortedData.length > 0) {
@@ -423,7 +423,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
               large_image_url: row.image_url || '',
             },
           },
-          score: row.score,
+          score: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
           scored_by: row.scored_by,
           members: row.members,
           favorites: row.favorites,
@@ -488,7 +488,7 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
           id: row.anime_id,
           title: row.title_english || row.title,
           imageUrl: row.image_url,
-          animeScore: row.score,
+          animeScore: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
           members: row.members,
           synopsis: row.synopsis || '',
           animeType: row.type || 'TV',

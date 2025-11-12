@@ -44,10 +44,17 @@ interface AnticipatedAnimeRow {
   title: string;
   title_english: string;
   image_url: string;
-  anime_score: number | null; // FIXED: Changed from 'score' to 'anime_score'
+  score: number | null; // FIXED: Match the anticipated_animes table column name
+  scored_by: number | null;
   members: number;
+  favorites: number | null;
   synopsis: string;
   type: string;
+  status: string;
+  rating: string | null;
+  source: string | null;
+  episodes: number | null;
+  aired_from: string | null;
   season: string;
   year: number;
   demographics: any[];
@@ -488,7 +495,7 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
           id: row.anime_id,
           title: row.title_english || row.title,
           imageUrl: row.image_url,
-          animeScore: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
+          animeScore: row.score, // FIXED: Changed from 'anime_score' to 'score'
           members: row.members,
           synopsis: row.synopsis || '',
           animeType: row.type || 'TV',
@@ -514,6 +521,58 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
   // NO FALLBACK TO JIKAN - Data must be in Supabase
   console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
   return [];
+}
+
+/**
+ * Get anticipated animes filtered by season and year from Supabase
+ */
+export async function getAnticipatedAnimesBySeason(season: string, year: number): Promise<AnticipatedAnime[]> {
+  console.log(`[SupabaseService] Fetching anticipated animes for ${season} ${year}...`);
+
+  // Get all anticipated animes and filter client-side
+  // (season/year columns don't exist in the table, data is parsed from MAL API seasonally)
+  const allAnimes = await getAnticipatedAnimes();
+  
+  // Filter by season and year in the anime data
+  const filtered = allAnimes.filter(anime => {
+    const animeSeason = anime.season?.toLowerCase();
+    const animeYear = anime.year;
+    return animeSeason === season.toLowerCase() && animeYear === year;
+  });
+
+  console.log(`[SupabaseService] ✅ Filtered ${filtered.length} animes for ${season} ${year}`);
+  return filtered;
+}
+
+/**
+ * Get "later" anticipated animes (Summer 2026 onwards) from Supabase
+ */
+export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
+  console.log('[SupabaseService] Fetching later anticipated animes...');
+
+  // Get all anticipated animes and filter client-side
+  const allAnimes = await getAnticipatedAnimes();
+  
+  // Filter for Summer 2026 onwards
+  const filtered = allAnimes.filter(anime => {
+    const animeSeason = anime.season?.toLowerCase();
+    const animeYear = anime.year;
+    
+    if (!animeYear || !animeSeason) return false;
+    
+    // Include if year > 2026
+    if (animeYear > 2026) return true;
+    
+    // Include if year === 2026 and season is summer or fall
+    if (animeYear === 2026 && (animeSeason === 'summer' || animeSeason === 'fall')) {
+      return true;
+    }
+    
+    return false;
+  });
+
+  console.log(`[SupabaseService] ✅ Filtered ${filtered.length} later anticipated animes`);
+  return filtered;
 }
 
 // ============================================
@@ -596,6 +655,8 @@ export const SupabaseService = {
   getSeasonRankings,
   getLaterAnimes,
   getAnticipatedAnimes,
+  getAnticipatedAnimesBySeason,
+  getAnticipatedAnimesLater,
   getSyncStatus,
   triggerManualSync,
   isConfigured: isSupabaseConfigured,

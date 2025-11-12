@@ -816,6 +816,8 @@ async function syncAnticipatedAnimes(supabase: any) {
         source: anime.source,
         episodes: anime.episodes,
         aired_from: anime.aired?.from,
+        season: anime.season, // Add season field
+        year: anime.year,     // Add year field
         synopsis: anime.synopsis,
         demographics: anime.demographics || [],
         genres: anime.genres || [],

@@ -137,17 +137,20 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           )}
           
           {/* Demographics Tag - only show first demographic if available */}
-          {demographics && demographics.length > 0 && (
-            <div className={`px-3 py-1 rounded-full text-xs ${
-              demographics[0].toLowerCase() === 'seinen' ? 'tag-seinen' :
-              demographics[0].toLowerCase() === 'shounen' ? 'tag-shounen' :
-              demographics[0].toLowerCase() === 'shoujo' ? 'tag-shoujo' :
-              demographics[0].toLowerCase() === 'josei' ? 'tag-josei' :
-              'tag-demo-default'
-            }`}>
-              {demographics[0]}
-            </div>
-          )}
+          {demographics && demographics.length > 0 && (() => {
+            const demographic = typeof demographics[0] === 'string' ? demographics[0] : demographics[0]?.name;
+            return demographic ? (
+              <div className={`px-3 py-1 rounded-full text-xs ${
+                demographic.toLowerCase() === 'seinen' ? 'tag-seinen' :
+                demographic.toLowerCase() === 'shounen' ? 'tag-shounen' :
+                demographic.toLowerCase() === 'shoujo' ? 'tag-shoujo' :
+                demographic.toLowerCase() === 'josei' ? 'tag-josei' :
+                'tag-demo-default'
+              }`}>
+                {demographic}
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 
@@ -178,23 +181,30 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
             </h3>
 
             {/* Genres + Themes Tags - Combine and show first 3 total */}
-            {((genres && genres.length > 0) || (themes && themes.length > 0)) && (
-              <div className="flex gap-1 flex-wrap">
-                {[...genres, ...themes].slice(0, 3).map((tag, index) => (
-                  <span 
-                    key={index} 
-                    className="px-2.5 py-1 text-xs rounded-full border"
-                    style={{
-                      borderColor: 'var(--card-border)',
-                      background: 'var(--card-background)',
-                      color: 'var(--foreground)'
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
+            {((genres && genres.length > 0) || (themes && themes.length > 0)) && (() => {
+              // Extract string values from genres and themes (handle both string arrays and object arrays)
+              const genreStrings = genres.map(g => typeof g === 'string' ? g : g?.name).filter(Boolean);
+              const themeStrings = themes.map(t => typeof t === 'string' ? t : t?.name).filter(Boolean);
+              const allTags = [...genreStrings, ...themeStrings].slice(0, 3);
+              
+              return allTags.length > 0 ? (
+                <div className="flex gap-1 flex-wrap">
+                  {allTags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="px-2.5 py-1 text-xs rounded-full border"
+                      style={{
+                        borderColor: 'var(--card-border)',
+                        background: 'var(--card-background)',
+                        color: 'var(--foreground)'
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
 

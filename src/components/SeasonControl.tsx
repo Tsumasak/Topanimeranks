@@ -69,17 +69,54 @@ const SeasonControl = () => {
       try {
         const { season, year, isLater } = parseSeasonId(activeSeason);
         
-        // Use Supabase service (with Jikan fallback)
+        // Use Supabase service - ANTICIPATED ANIMES table
         let jikanAnimesList;
         if (isLater) {
           // For "Later" tab, get all upcoming animes from Summer 2026 onwards
-          jikanAnimesList = await SupabaseService.getLaterAnimes();
+          jikanAnimesList = await SupabaseService.getAnticipatedAnimesLater();
         } else {
-          // For regular seasons, use getSeasonRankings (ordered by Plan to Watch count)
-          jikanAnimesList = await SupabaseService.getSeasonRankings(season, year, 'members');
+          // For regular seasons, use getAnticipatedAnimesBySeason (ordered by Plan to Watch count)
+          const anticipatedList = await SupabaseService.getAnticipatedAnimesBySeason(season, year);
+          
+          // Transform AnticipatedAnime to JikanAnimeData format for compatibility
+          jikanAnimesList = anticipatedList.map(anime => ({
+            mal_id: anime.id,
+            title: anime.title,
+            title_english: anime.title,
+            title_japanese: null,
+            images: {
+              jpg: {
+                image_url: anime.imageUrl,
+                small_image_url: anime.imageUrl,
+                large_image_url: anime.imageUrl,
+              },
+              webp: {
+                image_url: anime.imageUrl,
+                small_image_url: anime.imageUrl,
+                large_image_url: anime.imageUrl,
+              },
+            },
+            score: anime.animeScore,
+            scored_by: null,
+            members: anime.members,
+            favorites: null,
+            popularity: null,
+            rank: null,
+            type: anime.animeType,
+            status: 'Not yet aired',
+            episodes: null,
+            aired: { from: '', to: null },
+            season: anime.season,
+            year: anime.year,
+            synopsis: anime.synopsis,
+            demographics: anime.demographics,
+            genres: anime.genres,
+            themes: anime.themes,
+            studios: anime.studios,
+          }));
         }
         
-        // Transform JikanAnimeData to AnticipatedAnime
+        // Transform to AnticipatedAnime format for display
         const transformedAnimes: AnticipatedAnime[] = jikanAnimesList.map(anime => ({
           id: anime.mal_id,
           title: anime.title_english || anime.title,

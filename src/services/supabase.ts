@@ -348,7 +348,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
       // Keep everything else including 'upcoming' animes
       // IMPORTANT: Only show "Not yet aired" animes
       // INCLUDE: Summer 2026+, year 2026+ without season, 2027+, future dates, "Not available"
-      const filteredData = allData?.filter(row => {
+      const filteredData = (allData as SeasonRankingRow[])?.filter(row => {
         const season = row.season?.toLowerCase();
         const year = row.year;
         const status = row.status;

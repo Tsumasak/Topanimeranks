@@ -1,7 +1,6 @@
 'use client';
 
 import { ExternalLink } from 'lucide-react';
-import { Button } from '../ui/button';
 
 interface AnimeExternalLinksProps {
   anime: any;
@@ -18,8 +17,17 @@ export function AnimeExternalLinks({ anime }: AnimeExternalLinksProps) {
   const streamingLinks = anime.streaming || [];
 
   return (
-    <div className="theme-card rounded-lg p-6 border">
-      <h2 className="text-2xl mb-4" style={{ color: 'var(--foreground)' }}>External Links</h2>
+    <div 
+      className="rounded-lg p-6 border shadow-md"
+      style={{
+        background: "var(--card-background)",
+        borderColor: "var(--card-border)",
+      }}
+    >
+      <h2 className="text-2xl mb-4 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+        <span>🔗</span>
+        External Links
+      </h2>
 
       <div className="space-y-3">
         {/* MyAnimeList */}
@@ -29,11 +37,18 @@ export function AnimeExternalLinks({ anime }: AnimeExternalLinksProps) {
           rel="noopener noreferrer"
           className="block"
         >
-          <Button variant="outline" className="w-full justify-start">
+          <div 
+            className="w-full flex items-center justify-start rounded-md border px-4 py-2.5 text-sm hover:shadow-[0_10px_15px_-3px_var(--shadow-hover)] hover:-translate-y-[2px]"
+            style={{
+              borderColor: "var(--card-border)",
+              color: "var(--foreground)",
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
             <span className="mr-2">🌐</span>
             MyAnimeList
             <ExternalLink className="ml-auto h-4 w-4" />
-          </Button>
+          </div>
         </a>
 
         {/* Official Site */}
@@ -45,11 +60,18 @@ export function AnimeExternalLinks({ anime }: AnimeExternalLinksProps) {
             rel="noopener noreferrer"
             className="block"
           >
-            <Button variant="outline" className="w-full justify-start">
+            <div 
+              className="w-full flex items-center justify-start rounded-md border px-4 py-2.5 text-sm hover:shadow-[0_10px_15px_-3px_var(--shadow-hover)] hover:-translate-y-[2px]"
+              style={{
+                borderColor: "var(--card-border)",
+                color: "var(--foreground)",
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
               <span className="mr-2">📺</span>
               Official Site
               <ExternalLink className="ml-auto h-4 w-4" />
-            </Button>
+            </div>
           </a>
         ))}
 
@@ -62,11 +84,18 @@ export function AnimeExternalLinks({ anime }: AnimeExternalLinksProps) {
             rel="noopener noreferrer"
             className="block"
           >
-            <Button variant="outline" className="w-full justify-start">
+            <div 
+              className="w-full flex items-center justify-start rounded-md border px-4 py-2.5 text-sm hover:shadow-[0_10px_15px_-3px_var(--shadow-hover)] hover:-translate-y-[2px]"
+              style={{
+                borderColor: "var(--card-border)",
+                color: "var(--foreground)",
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
               <span className="mr-2">▶️</span>
               {link.name}
               <ExternalLink className="ml-auto h-4 w-4" />
-            </Button>
+            </div>
           </a>
         ))}
       </div>

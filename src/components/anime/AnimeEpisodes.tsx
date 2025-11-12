@@ -38,7 +38,13 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
 
   if (episodes.length === 0) {
     return (
-      <div className="theme-card rounded-lg p-6 border">
+      <div 
+        className="rounded-lg p-6 border shadow-md"
+        style={{
+          background: "var(--card-background)",
+          borderColor: "var(--card-border)",
+        }}
+      >
         <h2 className="text-2xl mb-4 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
           <span>🎬</span>
           Episodes
@@ -49,7 +55,13 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
   }
 
   return (
-    <div className="theme-card rounded-lg p-6 border">
+    <div 
+      className="rounded-lg p-6 border shadow-md"
+      style={{
+        background: "var(--card-background)",
+        borderColor: "var(--card-border)",
+      }}
+    >
       <h2 className="text-2xl mb-4 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
         <span>🎬</span>
         Episodes ({episodes.length})
@@ -62,19 +74,14 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
             href={getMalEpisodeLink(episode.episode_number)}
             target="_blank"
             rel="noopener noreferrer"
-            className="block group"
+            className="block"
           >
             <div 
-              className="rounded-lg p-4 border transition-all"
+              className="rounded-lg p-4 border hover:shadow-[0_10px_15px_-3px_var(--shadow-hover)] hover:-translate-y-[2px]"
               style={{ 
                 background: 'var(--background)',
                 borderColor: 'var(--card-border)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--nav-hover)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--card-border)';
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               {/* Episode Header */}
@@ -82,9 +89,9 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold" style={{ color: 'var(--foreground)' }}>EP {episode.episode_number}</span>
-                    <ExternalLink className="h-3 w-3 group-hover:opacity-100 opacity-50 transition-opacity" style={{ color: 'var(--rating-text)' }} />
+                    <ExternalLink className="h-3 w-3 opacity-50" style={{ color: 'var(--rating-text)' }} />
                   </div>
-                  <h3 className="text-sm transition-colors" style={{ color: 'var(--foreground)' }}>
+                  <h3 className="text-sm" style={{ color: 'var(--foreground)' }}>
                     {episode.episode_name}
                   </h3>
                 </div>

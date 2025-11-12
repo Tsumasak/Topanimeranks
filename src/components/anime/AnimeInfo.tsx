@@ -53,8 +53,17 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
   };
 
   return (
-    <div className="theme-card rounded-lg p-6 border">
-      <h2 className="text-2xl mb-4" style={{ color: 'var(--foreground)' }}>Information</h2>
+    <div 
+      className="rounded-lg p-6 border shadow-md"
+      style={{
+        background: "var(--card-background)",
+        borderColor: "var(--card-border)",
+      }}
+    >
+      <h2 className="text-2xl mb-4 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+        <span>ℹ️</span>
+        Information
+      </h2>
 
       <div className="space-y-4">
         {/* Type with Tag */}

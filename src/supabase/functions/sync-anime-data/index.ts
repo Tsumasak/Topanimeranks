@@ -65,11 +65,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-    // 🆕 Fetch MULTIPLE seasons to catch all airing animes
-    // (Some animes may be listed under different seasons)
+    // 🆕 Fetch current season to catch all airing animes
     const seasonsToCheck = [
       { season: 'fall', year: 2025 },
-      { season: 'fall', year: 2024 },
     ];
     
     const allAnimes: any[] = [];

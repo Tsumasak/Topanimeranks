@@ -19,12 +19,12 @@ export const TOTAL_WEEKS = 13; // Full anime season
 // Helper to calculate Monday of a week
 const getWeekDates = (weekNumber: number) => {
   // Week 1 starts on September 29, 2025 (Monday)
-  const baseDate = new Date(2025, 8, 29); // Month is 0-indexed (8 = September)
+  const baseDate = new Date(Date.UTC(2025, 8, 29)); // Month is 0-indexed (8 = September), using UTC
   const startDate = new Date(baseDate);
-  startDate.setDate(baseDate.getDate() + (weekNumber - 1) * 7);
+  startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
   
   const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6); // Sunday
+  endDate.setUTCDate(startDate.getUTCDate() + 6); // Sunday
   
   return { startDate, endDate };
 };
@@ -59,7 +59,7 @@ export const getCurrentWeek = (): WeekData | undefined => {
 
 // Get week number from a date
 export const getWeekNumberFromDate = (date: Date): number => {
-  const baseDate = new Date(2025, 8, 29); // Week 1 start
+  const baseDate = new Date(Date.UTC(2025, 8, 29)); // Week 1 start, using UTC
   const diffTime = date.getTime() - baseDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return Math.floor(diffDays / 7) + 1;

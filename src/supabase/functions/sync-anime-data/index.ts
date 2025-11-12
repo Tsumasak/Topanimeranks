@@ -1,13 +1,15 @@
 // ============================================
 // Supabase Edge Function: sync-anime-data
 // Purpose: Fetch data from Jikan API and store in Supabase
-// Runs every 1 hour via pg_cron
+// Runs every 1 hour via pg_cron (staggered: :00, :15, :30)
 // ============================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
+// Jikan API Rate Limits: 3 requests/second, 60 requests/minute
+// Using 1 second delay = 1 req/sec to stay well within limits
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
 
 // Helper: Delay function

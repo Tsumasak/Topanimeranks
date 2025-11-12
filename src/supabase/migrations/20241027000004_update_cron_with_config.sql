@@ -8,11 +8,13 @@ SELECT cron.unschedule('sync-season-rankings');
 SELECT cron.unschedule('sync-anticipated-animes');
 
 -- ============================================
--- Schedule: Sync Weekly Episodes (every 10 minutes)
+-- Schedule: Sync Weekly Episodes (every 1 hour)
+-- Rate limit: 3 req/sec, 60 req/min (Jikan API)
+-- Current delay: 1000ms between requests = 1 req/sec (safe)
 -- ============================================
 SELECT cron.schedule(
   'sync-weekly-episodes',
-  '*/10 * * * *',
+  '0 * * * *',
   $$
   SELECT
     net.http_post(
@@ -29,11 +31,12 @@ SELECT cron.schedule(
 );
 
 -- ============================================
--- Schedule: Sync Season Rankings (every 10 minutes)
+-- Schedule: Sync Season Rankings (every 1 hour at 15min)
+-- Offset by 15 minutes to avoid overlapping with weekly episodes
 -- ============================================
 SELECT cron.schedule(
   'sync-season-rankings',
-  '*/10 * * * *',
+  '15 * * * *',
   $$
   SELECT
     net.http_post(
@@ -52,11 +55,12 @@ SELECT cron.schedule(
 );
 
 -- ============================================
--- Schedule: Sync Anticipated Animes (every 10 minutes)
+-- Schedule: Sync Anticipated Animes (every 1 hour at 30min)
+-- Offset by 30 minutes to avoid overlapping
 -- ============================================
 SELECT cron.schedule(
   'sync-anticipated-animes',
-  '*/10 * * * *',
+  '30 * * * *',
   $$
   SELECT
     net.http_post(

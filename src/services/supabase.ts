@@ -274,7 +274,7 @@ export async function getSeasonRankings(
         console.log(`[SupabaseService] ✅ Found ${data.length} animes`);
         
         // Transform Supabase data to JikanAnimeData format
-        const animes: JikanAnimeData[] = data.map(row => ({
+        const animes: JikanAnimeData[] = (data as SeasonRankingRow[]).map(row => ({
           mal_id: row.anime_id,
           url: `https://myanimelist.net/anime/${row.anime_id}`,
           title: row.title,
@@ -405,7 +405,7 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
         console.log(`[SupabaseService] 📊 Breakdown:`, breakdown);
         
         // Transform to JikanAnimeData format (same as getSeasonRankings)
-        const animes: JikanAnimeData[] = sortedData.map(row => ({
+        const animes: JikanAnimeData[] = (sortedData as SeasonRankingRow[]).map(row => ({
           mal_id: row.anime_id,
           url: `https://myanimelist.net/anime/${row.anime_id}`,
           title: row.title,
@@ -484,7 +484,7 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
         console.log(`[SupabaseService] ✅ Found ${data.length} anticipated animes in Supabase`);
         
         // Transform Supabase data to AnticipatedAnime format
-        const animes: AnticipatedAnime[] = data.map(row => ({
+        const animes: AnticipatedAnime[] = (data as AnticipatedAnimeRow[]).map(row => ({
           id: row.anime_id,
           title: row.title_english || row.title,
           imageUrl: row.image_url,
@@ -547,7 +547,7 @@ export async function getSyncStatus(): Promise<SyncStatus[]> {
       return [];
     }
 
-    return (data || []).map(row => ({
+    return ((data || []) as SyncStatusRow[]).map(row => ({
       syncType: row.sync_type,
       status: row.status,
       itemsSynced: row.items_synced || 0,

@@ -8,26 +8,10 @@ import { AnimeInfo } from '../components/anime/AnimeInfo';
 import { AnimeEpisodes } from '../components/anime/AnimeEpisodes';
 import { AnimeExternalLinks } from '../components/anime/AnimeExternalLinks';
 
-interface Episode {
-  id: string;
-  anime_id: number;
-  episode_number: number;
-  episode_name: string;
-  episode_score: number | null;
-  aired_at: string;
-  anime_image_url?: string;
-  anime_title?: string;
-  type?: string;
-  status?: string;
-  demographic?: string[];
-  genre?: string[];
-  theme?: string[];
-}
-
 export default function AnimeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<any>(null);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 

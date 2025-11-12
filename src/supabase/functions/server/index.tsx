@@ -274,13 +274,13 @@ app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Get animes for the season, ordered by anime_score
+    // Get animes for the season, ordered by score
     const { data: animes, error } = await supabase
       .from('season_rankings')
       .select('*')
       .eq('season', season)
       .eq('year', year)
-      .order('anime_score', { ascending: false, nullsFirst: false })
+      .order('score', { ascending: false, nullsFirst: false })
       .order('members', { ascending: false, nullsFirst: false });
 
     if (error) {

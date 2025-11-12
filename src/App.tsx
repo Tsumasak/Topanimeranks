@@ -8,6 +8,7 @@ import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
+import AnimeDetailsPage from "./pages/AnimeDetailsPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
 
@@ -209,6 +210,7 @@ function AppContent() {
           <Route path="/top-season-animes" element={<TopSeasonAnimesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
+          <Route path="/anime/:id" element={<AnimeDetailsPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>

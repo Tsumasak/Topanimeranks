@@ -2,7 +2,7 @@
 // Supabase Service - Fast data fetching
 // ============================================
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase/client';
 import type { 
   Episode, 
   AnticipatedAnime,
@@ -10,17 +10,14 @@ import type {
 } from '../types/anime';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
-// Initialize Supabase client
-const supabaseUrl = projectId ? `https://${projectId}.supabase.co` : '';
-const supabaseAnonKey = publicAnonKey || '';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Re-export the singleton instance
+export { supabase };
 
 // ============================================
 // Check if Supabase is configured
 // ============================================
 export const isSupabaseConfigured = () => {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return Boolean(projectId && publicAnonKey);
 };
 
 // ============================================
@@ -523,11 +520,11 @@ export async function triggerManualSync(syncType: 'weekly_episodes' | 'season_ra
   console.log(`[SupabaseService] Triggering manual sync: ${syncType}`);
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/sync-anime-data`, {
+    const response = await fetch(`https://${projectId}.supabase.co/functions/v1/sync-anime-data`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Authorization': `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({ sync_type: syncType }),
     });

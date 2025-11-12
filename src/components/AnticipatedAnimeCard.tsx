@@ -184,8 +184,12 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
                 {[...genres, ...themes].slice(0, 3).map((tag, index) => (
                   <span 
                     key={index} 
-                    className="px-3 py-1 theme-rating text-xs rounded-full border"
-                    style={{borderColor: 'var(--card-border)'}}
+                    className="px-2.5 py-1 text-xs rounded-full border"
+                    style={{
+                      borderColor: 'var(--card-border)',
+                      background: 'var(--card-background)',
+                      color: 'var(--foreground)'
+                    }}
                   >
                     {tag}
                   </span>

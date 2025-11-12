@@ -130,14 +130,11 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
     }
   };
   
-  const CardWrapper = data.url ? 'a' : 'div';
-  const cardProps = data.url ? { href: data.url, target: '_blank', rel: 'noopener noreferrer' } : {};
-  
   // OLD LAYOUT for Weekly Episodes (original design)
   if (isEpisode) {
     return (
-      <CardWrapper 
-        {...cardProps}
+      <Link 
+        to={data.url || '#'}
         className={`block theme-card rounded-lg overflow-hidden flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-[280px] md:w-full h-full`}
       >
         {/* Image Section */}
@@ -223,14 +220,14 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
             ) : data.score ? `★ ${data.score}` : ''}
           </div>
         </div>
-      </CardWrapper>
+      </Link>
     );
   }
   
   // NEW LAYOUT for Top Animes & Most Anticipated (centered badge design)
   return (
-    <CardWrapper 
-      {...cardProps}
+    <Link 
+      to={data.url || '#'}
       className={`relative block theme-card rounded-lg overflow-visible flex flex-col group border ${borderStyle} ${hoverClass} transition-all duration-300 w-[280px] md:w-full md:h-full min-h-[380px]`}
     >
       {/* Image Section */}
@@ -309,7 +306,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
           ) : data.score ? `★ ${data.score}` : ''}
         </div>
       </div>
-    </CardWrapper>
+    </Link>
   );
 }
 
@@ -382,7 +379,7 @@ export function HomePage() {
             demographics: anime.demographics?.map(d => d.name) || [],
             genres: anime.genres?.map(g => g.name) || [],
             themes: anime.themes?.map(t => t.name) || [],
-            url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
+            url: `/anime/${anime.mal_id}`
           }));
           setTopSeasonAnimes(topSeason);
           
@@ -405,7 +402,7 @@ export function HomePage() {
             demographics: anime.demographics?.map(d => d.name) || [],
             genres: anime.genres?.map(g => g.name) || [],
             themes: anime.themes?.map(t => t.name) || [],
-            url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`
+            url: `/anime/${anime.mal_id}`
           }));
           setAnticipated(topAnticipated);
         }
@@ -449,7 +446,7 @@ export function HomePage() {
             demographics: episode.demographics || [],
             genres: episode.genres || [],
             themes: episode.themes || [],
-            url: episode.url || `https://myanimelist.net/anime/${episode.animeId}`
+            url: `/anime/${episode.animeId}`
           }));
           setTopEpisodes(topWeekly);
           setDisplayedWeekNumber(weekToShow);
@@ -900,7 +897,7 @@ export function HomePage() {
             </a>
             <a href="https://x.com/topanimeranks" target="_blank" rel="noopener noreferrer" className="shrink-0 size-[24px] opacity-70 hover:opacity-100 transition-opacity" aria-label="X (Twitter)">
               <svg className="block size-full" fill="var(--logo-color)" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </a>
             <a href="https://www.threads.com/@topanimeranks" target="_blank" rel="noopener noreferrer" className="shrink-0 size-[24px] opacity-70 hover:opacity-100 transition-opacity" aria-label="Threads">

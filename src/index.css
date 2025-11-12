@@ -2616,6 +2616,26 @@ body {
   color: #fff;
 }
 
+.tag-winter {
+  color: #fff;
+  background: #0e7490;
+}
+
+.tag-summer {
+  color: #fff;
+  background: #ca8a04;
+}
+
+.tag-fall {
+  color: #fff;
+  background: #ea580c;
+}
+
+.tag-spring {
+  color: #fff;
+  background: #be185d;
+}
+
 .theme-toggle {
   color: var(--foreground);
   cursor: pointer;

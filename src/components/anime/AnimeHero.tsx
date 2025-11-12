@@ -195,7 +195,13 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
 
               {/* Season & Year */}
               {anime.season && anime.year && (
-                <span className="tag-default px-3 py-1 rounded-full text-xs">
+                <span className={`px-3 py-1 rounded-full text-xs ${
+                  anime.season.toLowerCase() === 'winter' ? 'tag-winter' :
+                  anime.season.toLowerCase() === 'summer' ? 'tag-summer' :
+                  anime.season.toLowerCase() === 'fall' ? 'tag-fall' :
+                  anime.season.toLowerCase() === 'spring' ? 'tag-spring' :
+                  'tag-default'
+                }`}>
                   {anime.season.charAt(0).toUpperCase() +
                     anime.season.slice(1)}{" "}
                   {anime.year}

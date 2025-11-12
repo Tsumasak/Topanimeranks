@@ -217,6 +217,27 @@ body {
   color: #ffffff;
 }
 
+/* Season tag styling - Fixed colors independent of theme */
+.tag-winter {
+  background: #0e7490; /* Cyan escuro/Dark cyan */
+  color: #ffffff;
+}
+
+.tag-summer {
+  background: #ca8a04; /* Amarelo escuro/Dark yellow */
+  color: #ffffff;
+}
+
+.tag-fall {
+  background: #ea580c; /* Vermelho alaranjado/Orange-red */
+  color: #ffffff;
+}
+
+.tag-spring {
+  background: #be185d; /* Rosa escuro/Dark pink */
+  color: #ffffff;
+}
+
 .theme-toggle {
   background: transparent;
   border: none;
@@ -520,7 +541,7 @@ button:focus {
   z-index: 9999 !important;
 }
 
-/* Fix for Radix Portal positioning (Desktop only) */
+/* Fix Radix Portal positioning (Desktop only) */
 [data-radix-select-viewport] {
   max-height: 300px !important;
   overscroll-behavior: contain;

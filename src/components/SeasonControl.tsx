@@ -94,7 +94,7 @@ const SeasonControl = () => {
           genres: Array.isArray(anime.genres) ? anime.genres.map(g => typeof g === 'string' ? g : g.name) : [],
           themes: Array.isArray(anime.themes) ? anime.themes.map(t => typeof t === 'string' ? t : t.name) : [],
           studios: Array.isArray(anime.studios) ? anime.studios.map(s => typeof s === 'string' ? s : s.name) : [],
-          url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
+          url: `/anime/${anime.mal_id}`,
         }));
         
         console.log(`[SeasonControl] ✅ Fetched ${transformedAnimes.length} animes for ${activeSeason}`);

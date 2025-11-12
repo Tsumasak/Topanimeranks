@@ -1,4 +1,5 @@
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Link } from 'react-router-dom';
 
 interface BaseAnimeCardProps {
   rank: number;
@@ -145,7 +146,7 @@ export default function BaseAnimeCard({
   const trendInfo = getTrendIndicator();
 
   return (
-    <a href={linkUrl} target="_blank" rel="noopener noreferrer" className={`block theme-card rounded-lg overflow-hidden flex flex-col h-full group border ${borderStyle} ${hoverClass} transition-all duration-300`}>
+    <Link to={linkUrl} className={`block theme-card rounded-lg overflow-hidden flex flex-col h-full group border ${borderStyle} ${hoverClass} transition-all duration-300`}>
       <div className="relative flex-shrink-0 overflow-hidden anime-card-image aspect-square">
         <ImageWithFallback 
           src={imageUrl} 
@@ -231,6 +232,6 @@ export default function BaseAnimeCard({
           {bottomText}
         </div>
       </div>
-    </a>
+    </Link>
   );
 }

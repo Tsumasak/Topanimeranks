@@ -153,7 +153,7 @@ export default function TopSeasonAnimesPage() {
                   title={anime.title_english || anime.title}
                   subtitle={`${anime.type || 'TV'} • Fall 2025`}
                   imageUrl={anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || ''}
-                  linkUrl={anime.url || `https://myanimelist.net/anime/${anime.mal_id}`}
+                  linkUrl={`/anime/${anime.mal_id}`}
                   bottomText={`⭐ ${(anime.score || 0).toFixed(2)}`}
                   animeType={anime.type}
                   demographics={anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || []}

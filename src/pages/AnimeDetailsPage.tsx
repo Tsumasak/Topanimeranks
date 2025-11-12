@@ -118,9 +118,68 @@ export default function AnimeDetailsPage() {
               console.log(
                 "[AnimeDetails] ❌ Anime not found in any table",
               );
-              setNotFound(true);
-              setLoading(false);
-              return;
+              // Fallback: Try fetching from Jikan API directly
+              console.log("[AnimeDetails] 🌐 Attempting to fetch from Jikan API as fallback...");
+              try {
+                const jikanResponse = await fetch(
+                  `https://api.jikan.moe/v4/anime/${animeId}/full`
+                );
+                
+                if (jikanResponse.ok) {
+                  const jikanData = await jikanResponse.json();
+                  const jikanAnime = jikanData.data;
+                  
+                  console.log("[AnimeDetails] ✅ Found in Jikan API");
+                  
+                  // Transform Jikan data to match expected format
+                  setAnime({
+                    anime_id: jikanAnime.mal_id,
+                    title: jikanAnime.title,
+                    title_english: jikanAnime.title_english || jikanAnime.title,
+                    title_japanese: jikanAnime.title_japanese,
+                    image_url: jikanAnime.images?.jpg?.large_image_url || jikanAnime.images?.jpg?.image_url,
+                    score: jikanAnime.score,
+                    anime_score: jikanAnime.score,
+                    members: jikanAnime.members,
+                    favorites: jikanAnime.favorites,
+                    episodes: jikanAnime.episodes,
+                    type: jikanAnime.type,
+                    status: jikanAnime.status,
+                    aired: jikanAnime.aired,
+                    season: jikanAnime.season,
+                    year: jikanAnime.year,
+                    synopsis: jikanAnime.synopsis,
+                    demographics: jikanAnime.demographics || [],
+                    genres: jikanAnime.genres || [],
+                    themes: jikanAnime.themes || [],
+                    studios: jikanAnime.studios || [],
+                    producers: jikanAnime.producers || [],
+                    licensors: jikanAnime.licensors || [],
+                    duration: jikanAnime.duration,
+                    rating: jikanAnime.rating,
+                    source: jikanAnime.source,
+                    mal_id: jikanAnime.mal_id,
+                  });
+                  
+                  // Set dynamic background
+                  if (jikanAnime.images?.jpg?.large_image_url) {
+                    document.documentElement.style.setProperty(
+                      "--bg-image",
+                      `url(${jikanAnime.images.jpg.large_image_url})`,
+                    );
+                  }
+                } else {
+                  console.log("[AnimeDetails] ❌ Anime not found in Jikan API either");
+                  setNotFound(true);
+                  setLoading(false);
+                  return;
+                }
+              } catch (jikanError) {
+                console.error("[AnimeDetails] ❌ Error fetching from Jikan API:", jikanError);
+                setNotFound(true);
+                setLoading(false);
+                return;
+              }
             }
           }
         }

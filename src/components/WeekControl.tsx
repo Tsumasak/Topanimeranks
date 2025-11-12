@@ -533,7 +533,7 @@ const WeekControl = () => {
                       title={episode.animeTitle}
                       subtitle={`EP ${episode.episodeNumber}${episode.episodeTitle ? ` - ${episode.episodeTitle}` : ''}`}
                       imageUrl={episode.imageUrl}
-                      linkUrl={episode.episodeUrl}
+                      linkUrl={`/anime/${episode.animeId}`}
                       bottomText={episode.episodeScore != null ? `★ ${episode.episodeScore.toFixed(2)}` : '★ N/A'}
                       animeType={episode.animeType}
                       demographics={episode.demographics}

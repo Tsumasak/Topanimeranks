@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface AnticipatedAnimeCardProps {
   rank: number;
@@ -113,10 +114,8 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
   );
 
   return (
-    <a 
-      href={animeUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link 
+      to={animeUrl}
       className={`theme-card rounded-lg overflow-hidden ${borderStyle} ${hoverClass} transition-all duration-300 h-full flex flex-col group`}
     >
       {/* Image Section with Tags */}
@@ -204,7 +203,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           {members.toLocaleString()} Plan to Watch
         </div>
       </div>
-    </a>
+    </Link>
   );
 };
 

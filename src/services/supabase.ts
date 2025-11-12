@@ -13,6 +13,58 @@ import { projectId, publicAnonKey } from '../utils/supabase/info';
 // Re-export the singleton instance
 export { supabase };
 
+// Define types for Supabase rows
+interface SeasonRankingRow {
+  anime_id: number;
+  title: string;
+  title_english: string;
+  image_url: string;
+  score: number | null;
+  scored_by: number | null;
+  members: number;
+  favorites: number;
+  popularity: number;
+  rank: number;
+  type: string;
+  status: string;
+  episodes: number | null;
+  aired_from: string | null;
+  aired_to: string | null;
+  season: string;
+  year: number;
+  synopsis: string;
+  demographics: any[];
+  genres: any[];
+  themes: any[];
+  studios: any[];
+}
+
+interface AnticipatedAnimeRow {
+  anime_id: number;
+  title: string;
+  title_english: string;
+  image_url: string;
+  score: number | null;
+  members: number;
+  synopsis: string;
+  type: string;
+  season: string;
+  year: number;
+  demographics: any[];
+  genres: any[];
+  themes: any[];
+  studios: any[];
+}
+
+interface SyncStatusRow {
+  sync_type: string;
+  status: string;
+  items_synced: number;
+  duration_ms: number;
+  created_at: string;
+  error_message?: string;
+}
+
 // ============================================
 // Check if Supabase is configured
 // ============================================

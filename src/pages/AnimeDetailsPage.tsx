@@ -53,12 +53,12 @@ export default function AnimeDetailsPage() {
         if (seasonData) {
           console.log('[AnimeDetails] ✅ Found in season_rankings');
           console.log('[AnimeDetails] 📊 Data:', seasonData);
-          console.log('[AnimeDetails] 📊 Score:', seasonData.score);
+          console.log('[AnimeDetails] 📊 Score:', (seasonData as any).score);
           setAnime(seasonData);
           
           // Set dynamic background
-          if (seasonData.image_url) {
-            document.documentElement.style.setProperty('--bg-image', `url(${seasonData.image_url})`);
+          if ((seasonData as any).image_url) {
+            document.documentElement.style.setProperty('--bg-image', `url(${(seasonData as any).image_url})`);
           }
         } else {
           console.log('[AnimeDetails] 📊 Searching in anticipated_animes...');
@@ -73,8 +73,8 @@ export default function AnimeDetailsPage() {
             setAnime(anticipatedData);
             
             // Set dynamic background
-            if (anticipatedData.image_url) {
-              document.documentElement.style.setProperty('--bg-image', `url(${anticipatedData.image_url})`);
+            if ((anticipatedData as any).image_url) {
+              document.documentElement.style.setProperty('--bg-image', `url(${(anticipatedData as any).image_url})`);
             }
           } else {
             console.log('[AnimeDetails] 📊 Searching in weekly_episodes...');
@@ -90,19 +90,19 @@ export default function AnimeDetailsPage() {
               console.log('[AnimeDetails] ✅ Found in weekly_episodes');
               // Transform weekly_episodes structure to match expected format
               setAnime({
-                anime_id: weeklyData.anime_id,
-                title: weeklyData.anime_title,
-                title_english: weeklyData.anime_title,
-                image_url: weeklyData.anime_image,
-                score: weeklyData.episode_score,
+                anime_id: (weeklyData as any).anime_id,
+                title: (weeklyData as any).anime_title,
+                title_english: (weeklyData as any).anime_title,
+                image_url: (weeklyData as any).anime_image,
+                score: (weeklyData as any).episode_score,
                 members: null,
-                episodes: weeklyData.episode_number,
+                episodes: (weeklyData as any).episode_number,
                 type: 'TV',
               });
               
               // Set dynamic background
-              if (weeklyData.anime_image) {
-                document.documentElement.style.setProperty('--bg-image', `url(${weeklyData.anime_image})`);
+              if ((weeklyData as any).anime_image) {
+                document.documentElement.style.setProperty('--bg-image', `url(${(weeklyData as any).anime_image})`);
               }
             } else {
               console.log('[AnimeDetails] ❌ Anime not found in any table');

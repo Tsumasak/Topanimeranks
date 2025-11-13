@@ -490,18 +490,6 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
       if (data && data.length > 0) {
         console.log(`[SupabaseService] ✅ Found ${data.length} anticipated animes in Supabase`);
         
-        // DEBUG: Log FULL first record to see what's coming from DB
-        console.log('[SupabaseService] 🔍 FULL FIRST RECORD FROM DB:', JSON.stringify(data[0], null, 2));
-        
-        // DEBUG: Log first 3 records to see season/year values
-        console.log('[SupabaseService] 🐛 DEBUG - First 3 raw records:', data.slice(0, 3).map(row => ({
-          anime_id: row.anime_id,
-          title: row.title,
-          image_url: row.image_url, // <-- CRUCIAL
-          season: row.season,
-          year: row.year
-        })));
-        
         // Transform Supabase data to AnticipatedAnime format
         const animes: AnticipatedAnime[] = (data as AnticipatedAnimeRow[]).map(row => ({
           id: row.anime_id,
@@ -517,16 +505,8 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
           genres: row.genres || [],
           themes: row.themes || [],
           studios: row.studios || [],
-          url: `https://myanimelist.net/anime/${row.anime_id}`,
+          url: `/anime/${row.anime_id}`, // FIXED: Internal link instead of MAL
         }));
-        
-        // DEBUG: Log first 3 transformed records
-        console.log('[SupabaseService] 🐛 DEBUG - First 3 transformed records:', animes.slice(0, 3).map(anime => ({
-          id: anime.id,
-          title: anime.title,
-          season: anime.season,
-          year: anime.year
-        })));
 
         return animes;
       }

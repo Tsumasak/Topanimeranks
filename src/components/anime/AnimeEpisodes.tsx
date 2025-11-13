@@ -1,6 +1,5 @@
 'use client';
 
-import { ExternalLink } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 interface Episode {
@@ -29,11 +28,6 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
       day: 'numeric',
       year: 'numeric',
     });
-  };
-
-  // Get MAL episode link
-  const getMalEpisodeLink = (episodeNumber: number) => {
-    return `https://myanimelist.net/anime/${animeId}/_/episode/${episodeNumber}`;
   };
 
   if (episodes.length === 0) {
@@ -69,15 +63,12 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
 
       <div className="space-y-3">
         {episodes.map((episode) => (
-          <a
+          <div
             key={episode.id}
-            href={getMalEpisodeLink(episode.episode_number)}
-            target="_blank"
-            rel="noopener noreferrer"
             className="block"
           >
             <div 
-              className="rounded-lg p-4 border hover:shadow-[0_10px_15px_-3px_var(--shadow-hover)] hover:-translate-y-[2px]"
+              className="rounded-lg p-4 border"
               style={{ 
                 background: 'var(--background)',
                 borderColor: 'var(--card-border)',
@@ -89,7 +80,6 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold" style={{ color: 'var(--foreground)' }}>EP {episode.episode_number}</span>
-                    <ExternalLink className="h-3 w-3 opacity-50" style={{ color: 'var(--rating-text)' }} />
                   </div>
                   <h3 className="text-sm" style={{ color: 'var(--foreground)' }}>
                     {episode.episode_name}
@@ -122,7 +112,7 @@ export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
                 )}
               </div>
             </div>
-          </a>
+          </div>
         ))}
       </div>
     </div>

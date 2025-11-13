@@ -76,21 +76,12 @@ const SeasonControl = () => {
           // This function already returns AnticipatedAnime[] format - no need to transform!
           const laterAnimes = await SupabaseService.getAnticipatedAnimesLater();
           
-          // DEBUG: Log what we got
           console.log(`[SeasonControl] ✅ Fetched ${laterAnimes.length} animes for later (already in AnticipatedAnime format)`);
-          console.log('[SeasonControl] 🔍 First 3 later animes:', laterAnimes.slice(0, 3).map(a => ({
-            id: a.id,
-            title: a.title,
-            imageUrl: a.imageUrl,
-            imageUrlLength: a.imageUrl?.length,
-          })));
           
           // Set displayedAnimes directly - no transformation needed!
           setDisplayedAnimes(laterAnimes);
           setAnimationKey('later');
           console.log(`[SeasonControl] 🎬 CRITICAL: Updating displayedAnimes (${laterAnimes.length}) and animationKey (later)`);
-          console.log(`[SeasonControl] 🎬 Previous animationKey: ${animationKey} → New: later`);
-          console.log('[SeasonControl] 🎬 displayedAnimes and animationKey updated!');
           return; // CRITICAL: Early return to avoid double transformation
         }
         

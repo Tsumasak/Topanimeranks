@@ -770,6 +770,7 @@ async function syncAnticipatedAnimes(supabase: any) {
   let itemsUpdated = 0;
 
   try {
+    // STEP 1: Fetch 2026 seasons (Winter, Spring, Summer, Fall)
     const seasons = [
       { season: 'winter', year: 2026 },
       { season: 'spring', year: 2026 },
@@ -780,7 +781,7 @@ async function syncAnticipatedAnimes(supabase: any) {
     const allAnimes: any[] = [];
     const processedAnimeIds = new Set<number>(); // Track to avoid duplicates
 
-    // Process seasons IN ORDER to prioritize Winter > Spring > Summer > Fall
+    // Process 2026 seasons IN ORDER to prioritize Winter > Spring > Summer > Fall
     for (const { season, year } of seasons) {
       const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
       const data = await fetchWithRetry(url);
@@ -807,6 +808,50 @@ async function syncAnticipatedAnimes(supabase: any) {
       }
 
       await delay(RATE_LIMIT_DELAY);
+    }
+
+    // STEP 2: Fetch ALL upcoming animes (2027+, animes without season, etc.)
+    console.log(`\n🔮 Fetching /seasons/upcoming for Later tab...`);
+    
+    let upcomingPage = 1;
+    let hasNextPage = true;
+    
+    while (hasNextPage) {
+      const upcomingUrl = `${JIKAN_BASE_URL}/seasons/upcoming?page=${upcomingPage}`;
+      console.log(`📄 Fetching upcoming page ${upcomingPage}: ${upcomingUrl}`);
+      
+      const upcomingData = await fetchWithRetry(upcomingUrl);
+      
+      if (!upcomingData || !upcomingData.data) {
+        console.log(`⚠️  No data on page ${upcomingPage}, stopping`);
+        break;
+      }
+      
+      const filteredUpcoming = upcomingData.data
+        .filter((anime: any) => anime.status === 'Not yet aired')
+        .filter((anime: any) => anime.members >= 10000)
+        // CRITICAL: Skip if already processed in 2026 seasons
+        .filter((anime: any) => {
+          if (processedAnimeIds.has(anime.mal_id)) {
+            console.log(`⏭️  Skipping ${anime.title} (ID: ${anime.mal_id}) - already in 2026 seasons`);
+            return false;
+          }
+          return true;
+        });
+      
+      console.log(`📺 Upcoming page ${upcomingPage}: Found ${filteredUpcoming.length} NEW animes (${upcomingData.data.length} total before dedup)`);
+      
+      // Mark these IDs as processed
+      filteredUpcoming.forEach((anime: any) => processedAnimeIds.add(anime.mal_id));
+      
+      allAnimes.push(...filteredUpcoming);
+      
+      hasNextPage = upcomingData.pagination?.has_next_page || false;
+      upcomingPage++;
+      
+      if (hasNextPage) {
+        await delay(RATE_LIMIT_DELAY);
+      }
     }
 
     // Sort by members (descending) - already deduplicated

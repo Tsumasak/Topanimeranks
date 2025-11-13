@@ -546,6 +546,7 @@ export async function getAnticipatedAnimesBySeason(season: string, year: number)
 
 /**
  * Get "later" anticipated animes (Summer 2026 onwards) from Supabase
+ * EXCLUDES animes that are already shown in Winter or Spring 2026 tabs
  */
 export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
   console.log('[SupabaseService] Fetching later anticipated animes...');
@@ -553,10 +554,31 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
   // Get all anticipated animes and filter client-side
   const allAnimes = await getAnticipatedAnimes();
   
-  // Filter for Summer 2026 onwards
+  // First, get IDs of animes already shown in Winter and Spring 2026
+  const winterAnimes = allAnimes.filter(anime => 
+    anime.season?.toLowerCase() === 'winter' && anime.year === 2026
+  );
+  const springAnimes = allAnimes.filter(anime => 
+    anime.season?.toLowerCase() === 'spring' && anime.year === 2026
+  );
+  
+  const shownAnimeIds = new Set([
+    ...winterAnimes.map(a => a.id),
+    ...springAnimes.map(a => a.id)
+  ]);
+  
+  console.log(`[SupabaseService] 🔍 Excluding ${shownAnimeIds.size} animes already shown in Winter/Spring 2026`);
+  
+  // Filter for Summer 2026 onwards, EXCLUDING animes already shown
   const filtered = allAnimes.filter(anime => {
     const animeSeason = anime.season?.toLowerCase();
     const animeYear = anime.year;
+    
+    // CRITICAL: Exclude if already shown in Winter or Spring 2026
+    if (shownAnimeIds.has(anime.id)) {
+      console.log(`[SupabaseService] ⏭️  Skipping ${anime.title} (ID: ${anime.id}) - already in Winter/Spring`);
+      return false;
+    }
     
     if (!animeYear || !animeSeason) return false;
     
@@ -571,7 +593,7 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
     return false;
   });
 
-  console.log(`[SupabaseService] ✅ Filtered ${filtered.length} later anticipated animes`);
+  console.log(`[SupabaseService] ✅ Filtered ${filtered.length} later anticipated animes (after exclusions)`);
   return filtered;
 }
 

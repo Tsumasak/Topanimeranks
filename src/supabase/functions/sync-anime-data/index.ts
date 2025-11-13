@@ -773,12 +773,14 @@ async function syncAnticipatedAnimes(supabase: any) {
     const seasons = [
       { season: 'winter', year: 2026 },
       { season: 'spring', year: 2026 },
-      { season: 'summer', year: 2026 }, // Add Summer 2026
-      { season: 'fall', year: 2026 },   // Add Fall 2026
+      { season: 'summer', year: 2026 },
+      { season: 'fall', year: 2026 },
     ];
 
     const allAnimes: any[] = [];
+    const processedAnimeIds = new Set<number>(); // Track to avoid duplicates
 
+    // Process seasons IN ORDER to prioritize Winter > Spring > Summer > Fall
     for (const { season, year } of seasons) {
       const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
       const data = await fetchWithRetry(url);
@@ -786,32 +788,57 @@ async function syncAnticipatedAnimes(supabase: any) {
       if (data.data) {
         const filtered = data.data
           .filter((anime: any) => anime.status === 'Not yet aired')
-          .filter((anime: any) => anime.members >= 10000);
+          .filter((anime: any) => anime.members >= 10000)
+          // CRITICAL: Skip if already processed in previous season
+          .filter((anime: any) => {
+            if (processedAnimeIds.has(anime.mal_id)) {
+              console.log(`⏭️  Skipping ${anime.title} (ID: ${anime.mal_id}) - already in ${seasons.find(s => s.season === season)?.season || 'previous season'}`);
+              return false;
+            }
+            return true;
+          });
         
-        console.log(`📺 ${season} ${year}: Found ${filtered.length} anticipated animes`);
+        console.log(`📺 ${season} ${year}: Found ${filtered.length} NEW anticipated animes (${data.data.length} total before dedup)`);
+        
+        // Mark these IDs as processed
+        filtered.forEach((anime: any) => processedAnimeIds.add(anime.mal_id));
+        
         allAnimes.push(...filtered);
       }
 
       await delay(RATE_LIMIT_DELAY);
     }
 
-    // Sort by members (descending)
+    // Sort by members (descending) - already deduplicated
     allAnimes.sort((a, b) => (b.members || 0) - (a.members || 0));
     
-    // Keep top 100 animes (not just 50) to ensure all seasons have representation
-    const topAnimes = allAnimes.slice(0, 100);
+    console.log(`\n📊 Total unique animes: ${allAnimes.length}`);
+    console.log(`📊 Processed anime IDs: ${processedAnimeIds.size}`);
 
-    console.log(`Found ${topAnimes.length} total anticipated animes across all seasons`);
+    // Delete ALL existing records before inserting new ones
+    // This ensures we don't have stale duplicates
+    console.log(`\n🗑️  Deleting all existing anticipated_animes records...`);
+    const { error: deleteError } = await supabase
+      .from('anticipated_animes')
+      .delete()
+      .neq('anime_id', 0); // Delete all rows (neq 0 means "not equal to 0", which is always true)
 
-    for (let i = 0; i < topAnimes.length; i++) {
-      const anime = topAnimes[i];
+    if (deleteError) {
+      console.error('❌ Error deleting existing records:', deleteError);
+    } else {
+      console.log(`✅ Deleted existing records successfully`);
+    }
+
+    // Insert new records
+    for (let i = 0; i < allAnimes.length; i++) {
+      const anime = allAnimes[i];
 
       const anticipatedAnime = {
         anime_id: anime.mal_id,
         title: anime.title,
         title_english: anime.title_english,
         image_url: anime.images?.jpg?.large_image_url,
-        score: anime.score, // Using 'score' to match anticipated_animes schema
+        score: anime.score,
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,
@@ -821,8 +848,8 @@ async function syncAnticipatedAnimes(supabase: any) {
         source: anime.source,
         episodes: anime.episodes,
         aired_from: anime.aired?.from,
-        season: anime.season, // Add season field
-        year: anime.year,     // Add year field
+        season: anime.season,
+        year: anime.year,
         synopsis: anime.synopsis,
         demographics: anime.demographics || [],
         genres: anime.genres || [],
@@ -831,31 +858,19 @@ async function syncAnticipatedAnimes(supabase: any) {
         position: i + 1,
       };
 
-      const { data: upsertData, error } = await supabase
+      const { data: insertData, error } = await supabase
         .from('anticipated_animes')
-        .upsert(anticipatedAnime, {
-          onConflict: 'anime_id',
-          ignoreDuplicates: false,
-        })
+        .insert(anticipatedAnime)
         .select();
 
       if (error) {
-        console.error('Upsert error:', error);
+        console.error('Insert error:', error);
         continue;
       }
 
-      if (upsertData && upsertData.length > 0) {
-        const existing = await supabase
-          .from('anticipated_animes')
-          .select('created_at, updated_at')
-          .eq('id', upsertData[0].id)
-          .single();
-
-        if (existing.data.created_at === existing.data.updated_at) {
-          itemsCreated++;
-        } else {
-          itemsUpdated++;
-        }
+      if (insertData && insertData.length > 0) {
+        itemsCreated++;
+        console.log(`✅ #${i + 1} Created: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
       }
     }
 
@@ -864,7 +879,7 @@ async function syncAnticipatedAnimes(supabase: any) {
     await supabase.from('sync_logs').insert({
       sync_type: 'anticipated',
       status: 'success',
-      items_synced: topAnimes.length,
+      items_synced: allAnimes.length,
       items_created: itemsCreated,
       items_updated: itemsUpdated,
       duration_ms: duration,

@@ -108,6 +108,7 @@ export async function syncUpcoming(supabase: any) {
             anime_id: anime.mal_id,
             title: anime.title,
             title_english: anime.title_english || anime.title,
+            title_japanese: anime.title_japanese || null,
             image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
             score: anime.score,
             scored_by: anime.scored_by,

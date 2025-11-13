@@ -5,6 +5,7 @@ import { Badge } from '../ui/badge';
 interface Episode {
   id: number;
   anime_id: number;
+  from_url?: string;
   episode_number: number;
   episode_name: string;
   episode_score: number | null;
@@ -67,8 +68,11 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
             key={episode.id}
             className="block"
           >
-            <div 
-              className="rounded-lg p-4 border"
+            <a 
+              href={episode.from_url ? `${episode.from_url}/episode` : `https://myanimelist.net/anime/${episode.anime_id}/episode`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg p-4 border block hover:shadow-lg hover:-translate-y-1"
               style={{ 
                 background: 'var(--background)',
                 borderColor: 'var(--card-border)',
@@ -111,7 +115,7 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
                   </>
                 )}
               </div>
-            </div>
+            </a>
           </div>
         ))}
       </div>

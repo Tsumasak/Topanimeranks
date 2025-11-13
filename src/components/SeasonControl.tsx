@@ -89,14 +89,11 @@ const SeasonControl = () => {
         
         if (activeSeason === 'later') {
           // This should never execute now due to early return above
-          jikanAnimesList = await SupabaseService.getAnticipatedAnimesLater();
-        } else {
-          // For regular seasons, use getAnticipatedAnimesBySeason (ordered by Plan to Watch count)
-          const anticipatedList = await SupabaseService.getAnticipatedAnimesBySeason(season, year);
-          
-          // Transform AnticipatedAnime to JikanAnimeData format for compatibility
-          jikanAnimesList = anticipatedList.map(anime => ({
+          const laterAnimes = await SupabaseService.getAnticipatedAnimesLater();
+          // Transform AnticipatedAnime to JikanAnimeData for type consistency
+          jikanAnimesList = laterAnimes.map(anime => ({
             mal_id: anime.id,
+            url: anime.url,
             title: anime.title,
             title_english: anime.title,
             title_japanese: null,
@@ -115,8 +112,8 @@ const SeasonControl = () => {
             score: anime.animeScore,
             scored_by: null,
             members: anime.members,
-            favorites: null,
-            popularity: null,
+            favorites: 0,
+            popularity: 0,
             rank: null,
             type: anime.animeType,
             status: 'Not yet aired',
@@ -125,10 +122,51 @@ const SeasonControl = () => {
             season: anime.season,
             year: anime.year,
             synopsis: anime.synopsis,
-            demographics: anime.demographics,
-            genres: anime.genres,
-            themes: anime.themes,
-            studios: anime.studios,
+            demographics: anime.demographics.map(d => ({ mal_id: 0, name: d })),
+            genres: anime.genres.map(g => ({ mal_id: 0, name: g })),
+            themes: anime.themes.map(t => ({ mal_id: 0, name: t })),
+            studios: anime.studios.map(s => ({ mal_id: 0, name: s })),
+          }));
+        } else {
+          // For regular seasons, use getAnticipatedAnimesBySeason (ordered by Plan to Watch count)
+          const anticipatedList = await SupabaseService.getAnticipatedAnimesBySeason(season, year);
+          
+          // Transform AnticipatedAnime to JikanAnimeData format for compatibility
+          jikanAnimesList = anticipatedList.map(anime => ({
+            mal_id: anime.id,
+            url: anime.url,
+            title: anime.title,
+            title_english: anime.title,
+            title_japanese: null,
+            images: {
+              jpg: {
+                image_url: anime.imageUrl,
+                small_image_url: anime.imageUrl,
+                large_image_url: anime.imageUrl,
+              },
+              webp: {
+                image_url: anime.imageUrl,
+                small_image_url: anime.imageUrl,
+                large_image_url: anime.imageUrl,
+              },
+            },
+            score: anime.animeScore,
+            scored_by: null,
+            members: anime.members,
+            favorites: 0,
+            popularity: 0,
+            rank: null,
+            type: anime.animeType,
+            status: 'Not yet aired',
+            episodes: null,
+            aired: { from: '', to: null },
+            season: anime.season,
+            year: anime.year,
+            synopsis: anime.synopsis,
+            demographics: anime.demographics.map(d => ({ mal_id: 0, name: d })),
+            genres: anime.genres.map(g => ({ mal_id: 0, name: g })),
+            themes: anime.themes.map(t => ({ mal_id: 0, name: t })),
+            studios: anime.studios.map(s => ({ mal_id: 0, name: s })),
           }));
         }
         

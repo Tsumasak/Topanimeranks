@@ -112,7 +112,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
 
         <div className="flex flex-col md:flex-row gap-8 items-start mt-6">
           {/* Poster */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 mx-auto md:mx-0">
             <div
               className="w-64 rounded-lg overflow-hidden border-2"
               style={{
@@ -124,7 +124,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
               <img
                 src={anime.image_url}
                 alt={anime.title_english || anime.title}
-                className="w-full h-auto"
+                className="w-full h-[400px] object-cover"
               />
             </div>
           </div>
@@ -134,14 +134,14 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
             {/* Title */}
             <div>
               <h1
-                className="text-5xl mb-2 font-bold"
+                className="text-3xl md:text-5xl mb-2 font-bold"
                 style={{ color: "var(--foreground)" }}
               >
                 {anime.title_english || anime.title}
               </h1>
               {anime.title_japanese && (
                 <p
-                  className="text-xl"
+                  className="text-lg md:text-xl"
                   style={{ color: "var(--rating-text)" }}
                 >
                   {anime.title_japanese}

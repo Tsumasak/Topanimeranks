@@ -580,7 +580,11 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
       return false;
     }
     
-    if (!animeYear || !animeSeason) return false;
+    // INCLUDE animes with null season/year (upcoming animes without defined release date)
+    if (!animeYear || !animeSeason) {
+      console.log(`[SupabaseService] ✅ Including ${anime.title} (ID: ${anime.id}) - null season/year (upcoming)`);
+      return true;
+    }
     
     // Include if year > 2026
     if (animeYear > 2026) return true;

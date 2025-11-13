@@ -874,6 +874,32 @@ async function syncAnticipatedAnimes(supabase: any) {
     } else {
       console.log(`✅ Deleted records with empty image_url`);
     }
+    
+    // ALSO: Find animes with WHITESPACE-only image_url and delete them
+    const { data: blankImageAnimes, error: blankFetchError } = await supabase
+      .from('anticipated_animes')
+      .select('anime_id, title, image_url')
+      .not('image_url', 'is', null);
+    
+    if (!blankFetchError && blankImageAnimes) {
+      const blankIds = blankImageAnimes
+        .filter(anime => anime.image_url.trim() === '')
+        .map(anime => anime.anime_id);
+      
+      if (blankIds.length > 0) {
+        console.log(`🗑️  Found ${blankIds.length} animes with whitespace-only image_url, deleting...`);
+        const { error: deleteBlankError } = await supabase
+          .from('anticipated_animes')
+          .delete()
+          .in('anime_id', blankIds);
+        
+        if (deleteBlankError) {
+          console.error('❌ Error deleting blank image records:', deleteBlankError);
+        } else {
+          console.log(`✅ Deleted ${blankIds.length} records with blank image_url`);
+        }
+      }
+    }
 
     // STEP 2: For each anime ID, keep only the FIRST occurrence (by priority: Winter > Spring > Summer > Fall)
     // Get all current records grouped by anime_id

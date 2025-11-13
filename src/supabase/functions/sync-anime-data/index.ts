@@ -815,29 +815,119 @@ async function syncAnticipatedAnimes(supabase: any) {
     console.log(`\n📊 Total unique animes: ${allAnimes.length}`);
     console.log(`📊 Processed anime IDs: ${processedAnimeIds.size}`);
 
-    // Delete ALL existing records before inserting new ones
-    // This ensures we don't have stale duplicates
-    console.log(`\n🗑️  Deleting all existing anticipated_animes records...`);
-    const { error: deleteError } = await supabase
+    // STEP 1: Delete ONLY invalid records (empty image_url) and duplicates
+    console.log(`\n🗑️  Cleaning up invalid and duplicate records...`);
+    
+    // Delete animes with empty image_url
+    const { error: deleteInvalidError } = await supabase
       .from('anticipated_animes')
       .delete()
-      .neq('anime_id', 0); // Delete all rows (neq 0 means "not equal to 0", which is always true)
+      .or('image_url.is.null,image_url.eq.');
 
-    if (deleteError) {
-      console.error('❌ Error deleting existing records:', deleteError);
+    if (deleteInvalidError) {
+      console.error('❌ Error deleting invalid records:', deleteInvalidError);
     } else {
-      console.log(`✅ Deleted existing records successfully`);
+      console.log(`✅ Deleted records with empty image_url`);
     }
 
-    // Insert new records
+    // STEP 2: For each anime ID, keep only the FIRST occurrence (by priority: Winter > Spring > Summer > Fall)
+    // Get all current records grouped by anime_id
+    const { data: existingAnimes, error: fetchError } = await supabase
+      .from('anticipated_animes')
+      .select('anime_id, season, year, id')
+      .order('anime_id');
+
+    if (!fetchError && existingAnimes) {
+      const animeGroups = new Map<number, any[]>();
+      
+      // Group by anime_id
+      existingAnimes.forEach(anime => {
+        if (!animeGroups.has(anime.anime_id)) {
+          animeGroups.set(anime.anime_id, []);
+        }
+        animeGroups.get(anime.anime_id)!.push(anime);
+      });
+
+      // For each group with duplicates, keep only the earliest season
+      const seasonPriority = { 'winter': 1, 'spring': 2, 'summer': 3, 'fall': 4 };
+      const idsToDelete: number[] = [];
+
+      animeGroups.forEach((records, animeId) => {
+        if (records.length > 1) {
+          // Sort by season priority
+          records.sort((a, b) => {
+            const priorityA = seasonPriority[a.season as keyof typeof seasonPriority] || 999;
+            const priorityB = seasonPriority[b.season as keyof typeof seasonPriority] || 999;
+            return priorityA - priorityB;
+          });
+
+          // Keep the first (highest priority), delete the rest
+          for (let i = 1; i < records.length; i++) {
+            idsToDelete.push(records[i].id);
+            console.log(`🗑️  Marking duplicate for deletion: ${animeId} (${records[i].season} ${records[i].year})`);
+          }
+        }
+      });
+
+      // Delete duplicates
+      if (idsToDelete.length > 0) {
+        const { error: deleteDupsError } = await supabase
+          .from('anticipated_animes')
+          .delete()
+          .in('id', idsToDelete);
+
+        if (deleteDupsError) {
+          console.error('❌ Error deleting duplicates:', deleteDupsError);
+        } else {
+          console.log(`✅ Deleted ${idsToDelete.length} duplicate records`);
+        }
+      } else {
+        console.log(`✅ No duplicates found`);
+      }
+    }
+
+    // STEP 3: Upsert (insert or update) all anime records
+    console.log(`\n💾 Starting upsert for ${allAnimes.length} animes...`);
+    
     for (let i = 0; i < allAnimes.length; i++) {
       const anime = allAnimes[i];
+
+      // CRITICAL: Validate image URL before upserting
+      let imageUrl = anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '';
+      
+      // If image is missing, try fetching full anime details
+      if (!imageUrl || imageUrl.trim() === '') {
+        console.warn(`⚠️  Anime ${anime.title} (ID: ${anime.mal_id}) has no image, fetching full details...`);
+        
+        try {
+          const detailsUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}`;
+          const detailsData = await fetchWithRetry(detailsUrl);
+          
+          if (detailsData?.data?.images?.jpg?.large_image_url) {
+            imageUrl = detailsData.data.images.jpg.large_image_url;
+            console.log(`✅ Found image from full details: ${imageUrl}`);
+          } else if (detailsData?.data?.images?.jpg?.image_url) {
+            imageUrl = detailsData.data.images.jpg.image_url;
+            console.log(`✅ Found image from full details: ${imageUrl}`);
+          }
+          
+          await delay(RATE_LIMIT_DELAY);
+        } catch (error) {
+          console.error(`❌ Error fetching full details for ${anime.title}:`, error);
+        }
+      }
+      
+      // Final validation - skip if still no image
+      if (!imageUrl || imageUrl.trim() === '') {
+        console.warn(`⚠️  SKIPPING anime ${anime.title} (ID: ${anime.mal_id}) - no image URL available even after fetching full details`);
+        continue;
+      }
 
       const anticipatedAnime = {
         anime_id: anime.mal_id,
         title: anime.title,
         title_english: anime.title_english,
-        image_url: anime.images?.jpg?.large_image_url,
+        image_url: imageUrl,
         score: anime.score,
         scored_by: anime.scored_by,
         members: anime.members,
@@ -858,19 +948,36 @@ async function syncAnticipatedAnimes(supabase: any) {
         position: i + 1,
       };
 
-      const { data: insertData, error } = await supabase
+      // Check if exists to determine if it's create or update
+      const { data: existing } = await supabase
         .from('anticipated_animes')
-        .insert(anticipatedAnime)
+        .select('id')
+        .eq('anime_id', anime.mal_id)
+        .maybeSingle();
+
+      const isUpdate = !!existing;
+
+      const { data: upsertData, error } = await supabase
+        .from('anticipated_animes')
+        .upsert(anticipatedAnime, {
+          onConflict: 'anime_id',
+          ignoreDuplicates: false,
+        })
         .select();
 
       if (error) {
-        console.error('Insert error:', error);
+        console.error('Upsert error:', error);
         continue;
       }
 
-      if (insertData && insertData.length > 0) {
-        itemsCreated++;
-        console.log(`✅ #${i + 1} Created: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
+      if (upsertData && upsertData.length > 0) {
+        if (isUpdate) {
+          itemsUpdated++;
+          console.log(`🔄 #${i + 1} Updated: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
+        } else {
+          itemsCreated++;
+          console.log(`✅ #${i + 1} Created: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
+        }
       }
     }
 

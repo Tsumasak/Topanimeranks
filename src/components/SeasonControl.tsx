@@ -317,9 +317,18 @@ const SeasonControl = () => {
             onAnimationStart={() => console.log(`[SeasonControl] 🎬 Animation START for key: ${animationKey}`)}
             onAnimationComplete={() => console.log(`[SeasonControl] ✨ Animation COMPLETE for key: ${animationKey}`)}
           >
-            {displayedAnimes.map((anime, index) => (
+            {displayedAnimes
+              .filter(anime => {
+                // CRITICAL: Filter out animes with invalid data
+                if (!anime.imageUrl || anime.imageUrl.trim() === '') {
+                  console.warn(`⚠️  Skipping anime with empty imageUrl:`, anime.title);
+                  return false;
+                }
+                return true;
+              })
+              .map((anime, index) => (
               <motion.div
-                key={`${anime.id}`}
+                key={`${animationKey}-${anime.id}-${index}`}
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{

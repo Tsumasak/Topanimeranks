@@ -102,7 +102,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-[24px] py-12 p-[24px]">
+      <div className="relative z-10 container mx-auto px-[24px] py-[24px]">
         {/* Breadcrumb */}
         <AnimeBreadcrumb
           season={anime.season}

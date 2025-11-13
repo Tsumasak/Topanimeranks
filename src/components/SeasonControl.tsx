@@ -4,8 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
-import { AnticipatedAnime } from '../types/anime';
-import { JikanAnimeData } from '../types/jikan';
+import { AnticipatedAnime, JikanAnimeData } from '../types/anime';
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");

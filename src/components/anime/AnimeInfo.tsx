@@ -33,6 +33,16 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
     return 'tag-default';
   };
 
+  // Get season tag class (same as Hero)
+  const getSeasonClass = (season: string) => {
+    const seasonLower = season?.toLowerCase();
+    if (seasonLower === 'winter') return 'tag-winter';
+    if (seasonLower === 'summer') return 'tag-summer';
+    if (seasonLower === 'fall') return 'tag-fall';
+    if (seasonLower === 'spring') return 'tag-spring';
+    return 'tag-default';
+  };
+
   // Get status tag class
   const getStatusClass = (status: string) => {
     const statusLower = status?.toLowerCase();
@@ -73,7 +83,7 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
           </div>
           <div className="col-span-2">
             {anime.type ? (
-              <span className={`${getTypeClass(anime.type)} px-2.5 py-1 rounded-full text-xs inline-block`}>
+              <span className={`${getTypeClass(anime.type)} px-3 py-1 rounded-full text-xs inline-block`}>
                 {anime.type}
               </span>
             ) : (
@@ -99,7 +109,7 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
           </div>
           <div className="col-span-2">
             {anime.status ? (
-              <span className={`${getStatusClass(anime.status)} px-2.5 py-1 rounded-full text-xs inline-block`}>
+              <span className={`${getStatusClass(anime.status)} px-3 py-1 rounded-full text-xs inline-block`}>
                 {anime.status}
               </span>
             ) : (
@@ -125,7 +135,7 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
           </div>
           <div className="col-span-2">
             {anime.season && anime.year ? (
-              <span className="tag-default px-2.5 py-1 rounded-full text-xs inline-block">
+              <span className={`${getSeasonClass(anime.season)} px-3 py-1 rounded-full text-xs inline-block`}>
                 {anime.season.charAt(0).toUpperCase() + anime.season.slice(1)} {anime.year}
               </span>
             ) : (
@@ -180,11 +190,11 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
             <div className="col-span-1 text-sm" style={{ color: 'var(--rating-text)' }}>
               Genres
             </div>
-            <div className="col-span-2 flex flex-wrap gap-1.5">
+            <div className="col-span-2 flex flex-wrap gap-2">
               {anime.genres.map((genre: any, index: number) => (
                 <span 
                   key={index} 
-                  className="px-2.5 py-1 rounded-full text-xs border"
+                  className="px-3 py-1 rounded-full text-xs border"
                   style={{ 
                     borderColor: 'var(--card-border)',
                     background: 'var(--card-background)',
@@ -204,11 +214,11 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
             <div className="col-span-1 text-sm" style={{ color: 'var(--rating-text)' }}>
               Themes
             </div>
-            <div className="col-span-2 flex flex-wrap gap-1.5">
+            <div className="col-span-2 flex flex-wrap gap-2">
               {anime.themes.map((theme: any, index: number) => (
                 <span 
                   key={index} 
-                  className="px-2.5 py-1 rounded-full text-xs border"
+                  className="px-3 py-1 rounded-full text-xs border"
                   style={{ 
                     borderColor: 'var(--card-border)',
                     background: 'var(--card-background)',
@@ -228,13 +238,13 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
             <div className="col-span-1 text-sm" style={{ color: 'var(--rating-text)' }}>
               Demographics
             </div>
-            <div className="col-span-2 flex flex-wrap gap-1.5">
+            <div className="col-span-2 flex flex-wrap gap-2">
               {anime.demographics.map((demo: any, index: number) => {
                 const demoName = typeof demo === 'string' ? demo : demo.name;
                 return (
                   <span 
                     key={index} 
-                    className={`${getDemographicClass(demoName)} px-2.5 py-1 rounded-full text-xs`}
+                    className={`${getDemographicClass(demoName)} px-3 py-1 rounded-full text-xs`}
                   >
                     {demoName}
                   </span>

@@ -48,7 +48,7 @@ export function AnimeStats({ anime }: AnimeStatsProps) {
               {stat.label}
             </p>
             <p
-              className="text-2xl"
+              className="text-3xl font-bold"
               style={{ color: "var(--rating-yellow)" }}
             >
               {stat.value}

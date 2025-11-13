@@ -16,10 +16,10 @@ interface Episode {
 
 interface AnimeEpisodesProps {
   episodes: Episode[];
-  animeId: number;
+  animeId?: number; // Optional since we removed the link functionality
 }
 
-export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
+export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

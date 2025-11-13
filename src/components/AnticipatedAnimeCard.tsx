@@ -138,7 +138,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (() => {
-            const demographic = typeof demographics[0] === 'string' ? demographics[0] : demographics[0]?.name;
+            const demographic: string = typeof demographics[0] === 'string' ? demographics[0] : (demographics[0] as any)?.name;
             return demographic ? (
               <div className={`px-3 py-1 rounded-full text-xs ${
                 demographic.toLowerCase() === 'seinen' ? 'tag-seinen' :
@@ -183,8 +183,8 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
             {/* Genres + Themes Tags - Combine and show first 3 total */}
             {((genres && genres.length > 0) || (themes && themes.length > 0)) && (() => {
               // Extract string values from genres and themes (handle both string arrays and object arrays)
-              const genreStrings = genres.map(g => typeof g === 'string' ? g : g?.name).filter(Boolean);
-              const themeStrings = themes.map(t => typeof t === 'string' ? t : t?.name).filter(Boolean);
+              const genreStrings = genres.map((g: any) => typeof g === 'string' ? g : g?.name).filter(Boolean);
+              const themeStrings = themes.map((t: any) => typeof t === 'string' ? t : t?.name).filter(Boolean);
               const allTags = [...genreStrings, ...themeStrings].slice(0, 3);
               
               return allTags.length > 0 ? (

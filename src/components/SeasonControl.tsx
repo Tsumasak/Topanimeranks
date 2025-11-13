@@ -5,6 +5,7 @@ import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime } from '../types/anime';
+import { JikanAnimeData } from '../types/jikan';
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");
@@ -70,9 +71,34 @@ const SeasonControl = () => {
         const { season, year, isLater } = parseSeasonId(activeSeason);
         
         // Use Supabase service - ANTICIPATED ANIMES table
-        let jikanAnimesList;
         if (isLater) {
           // For "Later" tab, get all upcoming animes from Summer 2026 onwards
+          // This function already returns AnticipatedAnime[] format - no need to transform!
+          const laterAnimes = await SupabaseService.getAnticipatedAnimesLater();
+          
+          // DEBUG: Log what we got
+          console.log(`[SeasonControl] ✅ Fetched ${laterAnimes.length} animes for later (already in AnticipatedAnime format)`);
+          console.log('[SeasonControl] 🔍 First 3 later animes:', laterAnimes.slice(0, 3).map(a => ({
+            id: a.id,
+            title: a.title,
+            imageUrl: a.imageUrl,
+            imageUrlLength: a.imageUrl?.length,
+          })));
+          
+          // Set displayedAnimes directly - no transformation needed!
+          setDisplayedAnimes(laterAnimes);
+          setAnimationKey('later');
+          console.log(`[SeasonControl] 🎬 CRITICAL: Updating displayedAnimes (${laterAnimes.length}) and animationKey (later)`);
+          console.log(`[SeasonControl] 🎬 Previous animationKey: ${animationKey} → New: later`);
+          console.log('[SeasonControl] 🎬 displayedAnimes and animationKey updated!');
+          return; // CRITICAL: Early return to avoid double transformation
+        }
+        
+        // For regular seasons (winter/spring)
+        let jikanAnimesList: JikanAnimeData[];
+        
+        if (activeSeason === 'later') {
+          // This should never execute now due to early return above
           jikanAnimesList = await SupabaseService.getAnticipatedAnimesLater();
         } else {
           // For regular seasons, use getAnticipatedAnimesBySeason (ordered by Plan to Watch count)
@@ -319,6 +345,17 @@ const SeasonControl = () => {
           >
             {displayedAnimes
               .filter(anime => {
+                // DEBUG: Log first 3 animes to see what we're getting
+                if (displayedAnimes.indexOf(anime) < 3) {
+                  console.log(`[SeasonControl] 🎯 DEBUG - Anime #${displayedAnimes.indexOf(anime)}:`, {
+                    id: anime.id,
+                    title: anime.title,
+                    imageUrl: anime.imageUrl,
+                    imageUrlType: typeof anime.imageUrl,
+                    imageUrlLength: anime.imageUrl?.length,
+                  });
+                }
+                
                 // CRITICAL: Filter out animes with invalid data
                 if (!anime.imageUrl || anime.imageUrl.trim() === '') {
                   console.warn(`⚠️  Skipping anime with empty imageUrl:`, anime.title);

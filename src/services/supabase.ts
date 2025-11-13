@@ -490,6 +490,18 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
       if (data && data.length > 0) {
         console.log(`[SupabaseService] ✅ Found ${data.length} anticipated animes in Supabase`);
         
+        // DEBUG: Log FULL first record to see what's coming from DB
+        console.log('[SupabaseService] 🔍 FULL FIRST RECORD FROM DB:', JSON.stringify(data[0], null, 2));
+        
+        // DEBUG: Log first 3 records to see season/year values
+        console.log('[SupabaseService] 🐛 DEBUG - First 3 raw records:', data.slice(0, 3).map(row => ({
+          anime_id: row.anime_id,
+          title: row.title,
+          image_url: row.image_url, // <-- CRUCIAL
+          season: row.season,
+          year: row.year
+        })));
+        
         // Transform Supabase data to AnticipatedAnime format
         const animes: AnticipatedAnime[] = (data as AnticipatedAnimeRow[]).map(row => ({
           id: row.anime_id,
@@ -499,14 +511,22 @@ export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
           members: row.members,
           synopsis: row.synopsis || '',
           animeType: row.type || 'TV',
-          season: row.season || 'unknown',
-          year: row.year || 2025,
+          season: row.season, // CRITICAL: Keep null as null, don't use fallback
+          year: row.year, // CRITICAL: Keep null as null, don't use fallback
           demographics: row.demographics || [],
           genres: row.genres || [],
           themes: row.themes || [],
           studios: row.studios || [],
           url: `https://myanimelist.net/anime/${row.anime_id}`,
         }));
+        
+        // DEBUG: Log first 3 transformed records
+        console.log('[SupabaseService] 🐛 DEBUG - First 3 transformed records:', animes.slice(0, 3).map(anime => ({
+          id: anime.id,
+          title: anime.title,
+          season: anime.season,
+          year: anime.year
+        })));
 
         return animes;
       }
@@ -598,6 +618,16 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
   });
 
   console.log(`[SupabaseService] ✅ Filtered ${filtered.length} later anticipated animes (after exclusions)`);
+  
+  // DEBUG: Log FIRST 3 rows BEFORE transformation
+  console.log('[SupabaseService] 🔍 First 3 rows BEFORE transformation:', filtered.slice(0, 3).map(row => ({
+    anime_id: row.id,
+    title: row.title,
+    image_url: row.imageUrl,
+    image_url_type: typeof row.imageUrl,
+    image_url_length: row.imageUrl?.length,
+  })));
+  
   return filtered;
 }
 

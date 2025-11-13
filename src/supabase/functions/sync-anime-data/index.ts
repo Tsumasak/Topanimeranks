@@ -773,6 +773,8 @@ async function syncAnticipatedAnimes(supabase: any) {
     const seasons = [
       { season: 'winter', year: 2026 },
       { season: 'spring', year: 2026 },
+      { season: 'summer', year: 2026 }, // Add Summer 2026
+      { season: 'fall', year: 2026 },   // Add Fall 2026
     ];
 
     const allAnimes: any[] = [];
@@ -786,17 +788,20 @@ async function syncAnticipatedAnimes(supabase: any) {
           .filter((anime: any) => anime.status === 'Not yet aired')
           .filter((anime: any) => anime.members >= 10000);
         
+        console.log(`📺 ${season} ${year}: Found ${filtered.length} anticipated animes`);
         allAnimes.push(...filtered);
       }
 
       await delay(RATE_LIMIT_DELAY);
     }
 
-    // Sort by members
+    // Sort by members (descending)
     allAnimes.sort((a, b) => (b.members || 0) - (a.members || 0));
-    const topAnimes = allAnimes.slice(0, 50);
+    
+    // Keep top 100 animes (not just 50) to ensure all seasons have representation
+    const topAnimes = allAnimes.slice(0, 100);
 
-    console.log(`Found ${topAnimes.length} anticipated animes`);
+    console.log(`Found ${topAnimes.length} total anticipated animes across all seasons`);
 
     for (let i = 0; i < topAnimes.length; i++) {
       const anime = topAnimes[i];

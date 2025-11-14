@@ -2470,6 +2470,15 @@
 }
 
 :root {
+  --font-weight-thin: 100;
+  --font-weight-extralight: 200;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
   --background: #fff;
   --background-rgb: 255, 255, 255;
   --foreground: #0f0f0f;
@@ -2696,10 +2705,16 @@ button, input, select, textarea {
 
 h1, h2, h3, h4, h5, h6 {
   color: var(--foreground);
+  font-weight: 700 !important;
 }
 
 p, span, div {
   color: inherit;
+}
+
+.font-bold {
+  --tw-font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-bold) !important;
 }
 
 .hamburger-button {

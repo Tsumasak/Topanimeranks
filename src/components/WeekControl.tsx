@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimeCard } from './AnimeCard';
@@ -96,6 +97,9 @@ const WeekControl = () => {
   const userSwitchedTab = useRef(false);
   // Track if we're transitioning between weeks (to avoid showing empty state)
   const isTransitioning = useRef(false);
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [activeWeek, setActiveWeek] = useState<string | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [displayedEpisodes, setDisplayedEpisodes] = useState<Episode[]>([]);
@@ -128,6 +132,10 @@ const WeekControl = () => {
     userSwitchedTab.current = true;
     setDisplayedCount(12); // Reset to 12 episodes when changing weeks
     setActiveWeek(newWeek); // Change immediately
+    
+    // Update URL query param to persist state
+    setSearchParams({ week: newWeek });
+    
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
   };
 
@@ -169,9 +177,15 @@ const WeekControl = () => {
           setAvailableWeeks(weeksWithData);
           setLatestWeekNumber(detectedLatestWeek);
           
-          // Default to latest week with 5+ scored episodes
-          setActiveWeek(`week${detectedLatestWeek}`);
-          console.log(`[WeekControl] 📌 Defaulting to Week ${detectedLatestWeek} (latest with 5+ scored episodes)`);
+          // Check URL param for week, otherwise default to latest week
+          const weekParam = searchParams.get('week');
+          const weekToLoad = weekParam || `week${detectedLatestWeek}`;
+          
+          // Validate that the week from URL exists in available weeks
+          const finalWeek = weeksWithData.includes(weekToLoad) ? weekToLoad : `week${detectedLatestWeek}`;
+          
+          setActiveWeek(finalWeek);
+          console.log(`[WeekControl] 📌 Loading week: ${finalWeek} (from URL: ${weekParam || 'not set'})`);
         } else {
           // Fallback: show only weeks up to current week (no filtering by episode count)
           const pastWeeks = WEEKS_DATA

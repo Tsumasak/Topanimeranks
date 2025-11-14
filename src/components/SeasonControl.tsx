@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
@@ -9,7 +10,11 @@ import { AnticipatedAnime, JikanAnimeData } from '../types/anime';
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");
   
-  const [activeSeason, setActiveSeason] = useState<string>('winter2026');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Read initial season from URL query param, fallback to winter2026
+  const initialSeason = searchParams.get('season') || 'winter2026';
+  const [activeSeason, setActiveSeason] = useState<string>(initialSeason);
   const [animes, setAnimes] = useState<AnticipatedAnime[]>([]);
   const [displayedAnimes, setDisplayedAnimes] = useState<AnticipatedAnime[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +45,10 @@ const SeasonControl = () => {
     console.log(`[SeasonControl] 🔄 handleSeasonChange: ${activeSeason} → ${newSeason}`);
     setUserSwitched(true);
     setActiveSeason(newSeason); // Change immediately
+    
+    // Update URL query param to persist state
+    setSearchParams({ season: newSeason });
+    
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on tab change
   };
   

@@ -73,28 +73,47 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     const allAnimes: any[] = [];
     
     for (const { season, year } of seasonsToCheck) {
-      const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
-      console.log(`🌐 Fetching ${season} ${year} season: ${seasonUrl}`);
+      // 🔄 Fetch ALL pages from the API (not just page 1!)
+      let currentPage = 1;
+      let hasNextPage = true;
       
-      try {
-        const seasonData = await fetchWithRetry(seasonUrl);
+      console.log(`🌐 Fetching all pages for ${season} ${year}...`);
+      
+      while (hasNextPage) {
+        const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
+        console.log(`📄 Fetching page ${currentPage}: ${seasonUrl}`);
         
-        if (seasonData && seasonData.data) {
-          console.log(`📺 Found ${seasonData.data.length} animes in ${season} ${year}`);
-          allAnimes.push(...seasonData.data);
+        try {
+          const seasonData = await fetchWithRetry(seasonUrl);
+          
+          if (seasonData && seasonData.data) {
+            console.log(`📺 Page ${currentPage}: Found ${seasonData.data.length} animes in ${season} ${year}`);
+            allAnimes.push(...seasonData.data);
+            
+            // Check if there's a next page
+            hasNextPage = seasonData.pagination?.has_next_page || false;
+            currentPage++;
+            
+            console.log(`📊 Total animes so far: ${allAnimes.length} | Has next page: ${hasNextPage}`);
+            
+            if (hasNextPage) {
+              await delay(RATE_LIMIT_DELAY);
+            }
+          } else {
+            hasNextPage = false;
+          }
+        } catch (error) {
+          console.error(`⚠️ Error fetching ${season} ${year} page ${currentPage}:`, error);
+          hasNextPage = false;
         }
-      } catch (error) {
-        console.error(`⚠️  Error fetching ${season} ${year}:`, error);
       }
-      
-      await delay(RATE_LIMIT_DELAY);
     }
     
     console.log(`📺 Total animes from all seasons: ${allAnimes.length}`);
 
     // ⭐ HARDCODED EXCEPTIONS: Animes to ALWAYS check, even if not in the season list
     // Add anime IDs here if they're missing from season API but should be synced
-    const HARDCODED_ANIME_IDS = [62405, 59062];
+    const HARDCODED_ANIME_IDS = [62405, 59062, 60378];
     
     console.log(`\\n⭐ Checking ${HARDCODED_ANIME_IDS.length} hardcoded exception animes...`);
     

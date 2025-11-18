@@ -323,9 +323,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         
         weekEpisodes.push(...newEpisodes);
 
-        // 🆕 STEP 3: BACKFILL - Find episodes with score that should be in past weeks but are missing
+        // 🆕 STEP 3: BACKFILL - DISABLED FOR NOW (was causing syntax errors)
         // CRITICAL: Run BEFORE checking if weekEpisodes.length === 0, so we backfill even if no episodes this week
-        if (weekNumber > 1) {
+        if (weekNumber > 1 && false) {
           try {
             console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
           
@@ -445,7 +445,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
                 console.log(`✅ Week ${backfilledWeek} positions recalculated`);
               }
             }
-          } catch (backfillError) {
+          } catch (backfillError: any) {
             console.error(`  ❌ BACKFILL ERROR (non-fatal, continuing): ${backfillError}`);
             console.error(`  ❌ Stack:`, backfillError.stack);
           }

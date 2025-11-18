@@ -185,21 +185,46 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
       console.log(`\n🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
 
-      // Get anime episodes
-      const episodesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes`;
-      const episodesData = await fetchWithRetry(episodesUrl);
+      // Get anime episodes - FETCH ALL PAGES!
+      let allEpisodes: any[] = [];
+      let episodePage = 1;
+      let hasNextEpisodePage = true;
       
-      if (!episodesData || !episodesData.data || episodesData.data.length === 0) {
+      while (hasNextEpisodePage) {
+        const episodesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes?page=${episodePage}`;
+        console.log(`  📄 Fetching episodes page ${episodePage}: ${episodesUrl}`);
+        
+        const episodesData = await fetchWithRetry(episodesUrl);
+        
+        if (!episodesData || !episodesData.data || episodesData.data.length === 0) {
+          console.log(`  ⏭️ No episodes found on page ${episodePage} for ${anime.title}`);
+          hasNextEpisodePage = false;
+          break;
+        }
+        
+        console.log(`  📺 Page ${episodePage}: Found ${episodesData.data.length} episodes`);
+        allEpisodes.push(...episodesData.data);
+        
+        // Check if there's a next page
+        hasNextEpisodePage = episodesData.pagination?.has_next_page || false;
+        episodePage++;
+        
+        if (hasNextEpisodePage) {
+          await delay(RATE_LIMIT_DELAY);
+        }
+      }
+      
+      if (allEpisodes.length === 0) {
         console.log(`⏭️ No episodes found for ${anime.title}`);
         continue;
       }
 
       // Find ALL episodes that aired in this week OR exist in database for this week
-      console.log(`  📺 Found ${episodesData.data.length} episodes for ${anime.title}`);
+      console.log(`  📺 Total episodes fetched: ${allEpisodes.length} for ${anime.title}`);
       
       // Log all episodes with their aired dates for debugging
-      const maxEpsToLog = anime.mal_id === 62405 ? episodesData.data.length : 5; // Log ALL episodes for anime 62405
-      episodesData.data.forEach((ep: any, idx: number) => {
+      const maxEpsToLog = anime.mal_id === 62405 ? allEpisodes.length : 5; // Log ALL episodes for anime 62405
+      allEpisodes.forEach((ep: any, idx: number) => {
         if (idx < maxEpsToLog) {
           console.log(`    EP${ep.mal_id}: ${ep.title || 'Untitled'} - Aired: ${ep.aired || 'No date'} - Score: ${ep.score || 'N/A'}`);
         }
@@ -212,7 +237,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       
       for (const existingEp of existingEpsForAnime) {
         // Find this episode in the API data to get updated score
-        const apiEpisode = episodesData.data.find((ep: any) => ep.mal_id === existingEp.episode_number);
+        const apiEpisode = allEpisodes.find((ep: any) => ep.mal_id === existingEp.episode_number);
         if (apiEpisode) {
           console.log(`  🔄 UPDATING existing episode: EP${apiEpisode.mal_id} (Score: ${apiEpisode.score || 'N/A'})`);
           weekEpisodes.push(apiEpisode);
@@ -220,7 +245,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       }
       
       // STEP 2: Find NEW episodes that aired in this week
-      const newEpisodes = episodesData.data.filter((ep: any) => {
+      const newEpisodes = allEpisodes.filter((ep: any) => {
         if (!ep.aired) {
           if (anime.mal_id === 62405) {
             console.log(`  🔍 DEBUG 62405: EP${ep.mal_id} has no aired date`);
@@ -254,7 +279,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         
         const weeksNeedingRecalc = new Set<number>(); // Track which weeks need position recalc
         
-        for (const ep of episodesData.data) {
+        for (const ep of allEpisodes) {
           // Skip if episode has no aired date or no score
           if (!ep.aired || !ep.score) continue;
           

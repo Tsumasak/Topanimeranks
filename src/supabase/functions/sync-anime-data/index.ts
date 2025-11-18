@@ -228,15 +228,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       
       weekEpisodes.push(...newEpisodes);
 
-      if (weekEpisodes.length === 0) {
-        console.log(`  ⏭️ No episodes aired in week ${weekNumber} range for ${anime.title} and no existing episodes to update`);
-        continue;
-      }
-
-      console.log(`  📋 Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
-
       // 🆕 STEP 3: BACKFILL - Find episodes with score that should be in past weeks but are missing
-      // Only run this if we're NOT in week 1 (no past weeks to backfill)
+      // CRITICAL: Run BEFORE checking if weekEpisodes.length === 0, so we backfill even if no episodes this week
       if (weekNumber > 1) {
         console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
         
@@ -358,6 +351,13 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
           }
         }
       }
+
+      if (weekEpisodes.length === 0) {
+        console.log(`  ⏭️ No episodes aired in week ${weekNumber} range for ${anime.title} and no existing episodes to update`);
+        continue;
+      }
+
+      console.log(`  📋 Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
 
       // Process each episode found
       for (const weekEpisode of weekEpisodes) {

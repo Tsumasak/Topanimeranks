@@ -323,17 +323,54 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         
         weekEpisodes.push(...newEpisodes);
 
-        // 🆕 STEP 3: BACKFILL - DISABLED FOR NOW (was causing syntax errors)
-        // CRITICAL: Run BEFORE checking if weekEpisodes.length === 0, so we backfill even if no episodes this week
-        if (weekNumber > 1 && false) {
-          try {
-            console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
+        if (weekEpisodes.length === 0) {
+          console.log(`  ⏭️ No episodes aired in week ${weekNumber} range for ${anime.title} and no existing episodes to update`);
+          continue;
+        }
+
+        console.log(`  📋 Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
+
+        // Process each episode found
+        for (const weekEpisode of weekEpisodes) {
+          const episodeKey = `${anime.mal_id}_${weekEpisode.mal_id}`;
           
-          const weeksNeedingRecalc = new Set<number>(); // Track which weeks need position recalc
-          
-          for (const ep of allEpisodes) {
-            // Skip if episode has no aired date or no score
-            if (!ep.aired || !ep.score) continue;
+          // Skip if we already processed this exact episode
+          if (processedEpisodeKeys.has(episodeKey)) {
+            console.log(`  ⏭️ Already processed ${anime.title} EP${weekEpisode.mal_id}, skipping duplicate`);
+            continue;
+          }
+
+          processedEpisodeKeys.add(episodeKey);
+
+          console.log(`  ✅ Adding episode: ${anime.title} EP${weekEpisode.mal_id} "${weekEpisode.title}" (Aired: ${weekEpisode.aired}, Score: ${weekEpisode.score || 'N/A'})`);
+
+          const episode = {
+            anime_id: anime.mal_id,
+            anime_title_english: anime.title_english || anime.title,
+            anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
+            from_url: weekEpisode.url || anime.url,
+            episode_number: weekEpisode.mal_id,
+            episode_name: weekEpisode.title || `Episode ${weekEpisode.mal_id}`,
+            episode_score: weekEpisode.score || null,
+            week_number: weekNumber,
+            position_in_week: 0, // Will be set later
+            is_manual: false,
+            type: anime.type,
+            status: anime.status,
+            demographic: anime.demographics || [],
+            genre: anime.genres || [],
+            theme: anime.themes || [],
+            aired_at: weekEpisode.aired,
+          };
+
+          episodes.push(episode);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing anime ${anime.title} (ID: ${anime.mal_id}):`, error);
+      }
+    }
+
+    console.log(`\n📊 ============================================`);
             
             const epAiredDate = new Date(ep.aired);
             

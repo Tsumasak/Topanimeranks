@@ -445,6 +445,14 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`📊 Total airing animes checked: ${airingAnimes.length}`);
     console.log(`📊 Episodes found for this week: ${episodes.length}`);
     console.log(`📊 ============================================`);
+    
+    // 🐛 DEBUG: Log all episodes before sorting to verify they're all there
+    if (episodes.length > 0) {
+      console.log(`\n🐛 DEBUG: All ${episodes.length} episodes BEFORE sorting:`);
+      episodes.forEach((ep, idx) => {
+        console.log(`  ${idx + 1}. ${ep.anime_title_english} EP${ep.episode_number} (Score: ${ep.episode_score || 'N/A'}, Aired: ${ep.aired_at})`);
+      });
+    }
 
     // Sort episodes: First by episode_score (N/A at end), then by members
     episodes.sort((a, b) => {
@@ -454,6 +462,14 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       if (scoreB !== scoreA) return scoreB - scoreA;
       return (b.members || 0) - (a.members || 0);
     });
+    
+    // 🐛 DEBUG: Log all episodes after sorting
+    if (episodes.length > 0) {
+      console.log(`\n🐛 DEBUG: All ${episodes.length} episodes AFTER sorting:`);
+      episodes.forEach((ep, idx) => {
+        console.log(`  ${idx + 1}. ${ep.anime_title_english} EP${ep.episode_number} (Score: ${ep.episode_score || 'N/A'})`);
+      });
+    }
 
     // Add position and calculate trend
     for (let i = 0; i < episodes.length; i++) {

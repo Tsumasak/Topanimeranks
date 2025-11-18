@@ -77,14 +77,28 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       let currentPage = 1;
       let hasNextPage = true;
       
-      console.log(`🌐 Fetching all pages for ${season} ${year}...`);
+      console.log(`\n🌐 ============================================`);
+      console.log(`🌐 FETCHING ALL PAGES FOR ${season.toUpperCase()} ${year}`);
+      console.log(`🌐 Week: ${weekNumber}`);
+      console.log(`🌐 ============================================\n`);
       
       while (hasNextPage) {
         const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
-        console.log(`📄 Fetching page ${currentPage}: ${seasonUrl}`);
+        console.log(`\n📄 ============================================`);
+        console.log(`📄 PAGE ${currentPage} FETCH STARTING...`);
+        console.log(`📄 URL: ${seasonUrl}`);
+        console.log(`📄 ============================================`);
         
         try {
           const seasonData = await fetchWithRetry(seasonUrl);
+          
+          console.log(`\n✅ ============================================`);
+          console.log(`✅ PAGE ${currentPage} FETCH SUCCESSFUL!`);
+          console.log(`✅ seasonData exists: ${!!seasonData}`);
+          console.log(`✅ seasonData.data exists: ${!!seasonData?.data}`);
+          console.log(`✅ seasonData.data.length: ${seasonData?.data?.length || 0}`);
+          console.log(`✅ seasonData.pagination: ${JSON.stringify(seasonData?.pagination || {})}`);
+          console.log(`✅ ============================================\n`);
           
           if (seasonData && seasonData.data) {
             console.log(`📺 Page ${currentPage}: Found ${seasonData.data.length} animes in ${season} ${year}`);
@@ -94,19 +108,47 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
             hasNextPage = seasonData.pagination?.has_next_page || false;
             currentPage++;
             
-            console.log(`📊 Total animes so far: ${allAnimes.length} | Has next page: ${hasNextPage}`);
+            console.log(`\n📊 ============================================`);
+            console.log(`📊 PAGINATION STATUS AFTER PAGE ${currentPage - 1}`);
+            console.log(`📊 Total animes accumulated: ${allAnimes.length}`);
+            console.log(`📊 Has next page: ${hasNextPage}`);
+            console.log(`📊 Next page will be: ${hasNextPage ? currentPage : 'NONE (stopping)'}`);
+            console.log(`📊 ============================================\n`);
             
             if (hasNextPage) {
+              console.log(`⏳ Waiting ${RATE_LIMIT_DELAY}ms before fetching page ${currentPage}...\n`);
               await delay(RATE_LIMIT_DELAY);
+            } else {
+              console.log(`🏁 NO MORE PAGES - Pagination complete!\n`);
             }
           } else {
+            console.log(`\n⚠️ ============================================`);
+            console.log(`⚠️ PAGE ${currentPage} RETURNED NO DATA!`);
+            console.log(`⚠️ seasonData: ${JSON.stringify(seasonData)}`);
+            console.log(`⚠️ Setting hasNextPage = false`);
+            console.log(`⚠️ ============================================\n`);
             hasNextPage = false;
           }
         } catch (error) {
-          console.error(`⚠️ Error fetching ${season} ${year} page ${currentPage}:`, error);
+          console.error(`\n❌ ============================================`);
+          console.error(`❌ ERROR FETCHING PAGE ${currentPage}!`);
+          console.error(`❌ Week: ${weekNumber}`);
+          console.error(`❌ URL: ${seasonUrl}`);
+          console.error(`❌ Error:`, error);
+          console.error(`❌ Error message: ${error.message}`);
+          console.error(`❌ Error stack: ${error.stack}`);
+          console.error(`❌ Setting hasNextPage = false - STOPPING PAGINATION`);
+          console.error(`❌ ============================================\n`);
           hasNextPage = false;
         }
       }
+      
+      console.log(`\n🏁 ============================================`);
+      console.log(`🏁 PAGINATION COMPLETE FOR ${season.toUpperCase()} ${year}`);
+      console.log(`🏁 Week: ${weekNumber}`);
+      console.log(`🏁 Total pages fetched: ${currentPage - 1}`);
+      console.log(`🏁 Total animes collected: ${allAnimes.length}`);
+      console.log(`🏁 ============================================\n`);
     }
     
     console.log(`📺 Total animes from all seasons: ${allAnimes.length}`);

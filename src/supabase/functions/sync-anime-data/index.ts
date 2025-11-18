@@ -235,6 +235,130 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
       console.log(`  📋 Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
 
+      // 🆕 STEP 3: BACKFILL - Find episodes with score that should be in past weeks but are missing
+      // Only run this if we're NOT in week 1 (no past weeks to backfill)
+      if (weekNumber > 1) {
+        console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
+        
+        const weeksNeedingRecalc = new Set<number>(); // Track which weeks need position recalc
+        
+        for (const ep of episodesData.data) {
+          // Skip if episode has no aired date or no score
+          if (!ep.aired || !ep.score) continue;
+          
+          const epAiredDate = new Date(ep.aired);
+          
+          // Calculate which week this episode should belong to
+          const daysSinceSeasonStart = Math.floor((epAiredDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
+          const calculatedWeek = Math.floor(daysSinceSeasonStart / 7) + 1;
+          
+          // Only backfill for weeks BEFORE current week (don't duplicate current week logic)
+          if (calculatedWeek < 1 || calculatedWeek >= weekNumber) continue;
+          
+          // Check if this episode already exists in the database for its correct week
+          const { data: existingBackfill, error: backfillCheckError } = await supabase
+            .from('weekly_episodes')
+            .select('id')
+            .eq('anime_id', anime.mal_id)
+            .eq('episode_number', ep.mal_id)
+            .eq('week_number', calculatedWeek)
+            .maybeSingle();
+          
+          if (backfillCheckError) {
+            console.error(`  ❌ Error checking backfill for EP${ep.mal_id}:`, backfillCheckError);
+            continue;
+          }
+          
+          // If episode doesn't exist, add it to the correct week
+          if (!existingBackfill) {
+            console.log(`  🆕 BACKFILL FOUND: EP${ep.mal_id} (Score: ${ep.score}) aired ${ep.aired} → Should be in Week ${calculatedWeek} but is MISSING!`);
+            
+            const backfillEpisode = {
+              anime_id: anime.mal_id,
+              anime_title_english: anime.title_english || anime.title,
+              anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
+              from_url: ep.url || anime.url,
+              episode_number: ep.mal_id,
+              episode_name: ep.title || `Episode ${ep.mal_id}`,
+              episode_score: ep.score,
+              week_number: calculatedWeek, // Put in the CORRECT week based on aired date
+              position_in_week: 0, // Will be recalculated later
+              is_manual: false,
+              type: anime.type,
+              status: anime.status,
+              demographic: anime.demographics || [],
+              genre: anime.genres || [],
+              theme: anime.themes || [],
+              aired_at: ep.aired,
+            };
+            
+            // Insert the backfill episode directly
+            const { error: backfillInsertError } = await supabase
+              .from('weekly_episodes')
+              .insert(backfillEpisode);
+            
+            if (backfillInsertError) {
+              console.error(`  ❌ Error inserting backfill EP${ep.mal_id}:`, backfillInsertError);
+            } else {
+              console.log(`  ✅ BACKFILLED: Added EP${ep.mal_id} to Week ${calculatedWeek}`);
+              itemsCreated++;
+              weeksNeedingRecalc.add(calculatedWeek); // Mark week for recalculation
+            }
+          }
+        }
+        
+        // 🔄 RECALCULATE POSITIONS for backfilled weeks
+        if (weeksNeedingRecalc.size > 0) {
+          console.log(`\n🔄 Recalculating positions for ${weeksNeedingRecalc.size} backfilled weeks: ${Array.from(weeksNeedingRecalc).join(', ')}`);
+          
+          for (const backfilledWeek of Array.from(weeksNeedingRecalc)) {
+            console.log(`\n📊 Recalculating week ${backfilledWeek}...`);
+            
+            // Fetch all episodes for this week
+            const { data: weekEps, error: fetchWeekError } = await supabase
+              .from('weekly_episodes')
+              .select('*')
+              .eq('week_number', backfilledWeek);
+            
+            if (fetchWeekError) {
+              console.error(`❌ Error fetching episodes for week ${backfilledWeek}:`, fetchWeekError);
+              continue;
+            }
+            
+            if (weekEps) {
+              // Sort by score (descending), nulls at end
+              const sorted = weekEps.sort((a, b) => {
+                const scoreA = a.episode_score !== null ? a.episode_score : -1;
+                const scoreB = b.episode_score !== null ? b.episode_score : -1;
+                return scoreB - scoreA;
+              });
+              
+              // Update positions
+              for (let i = 0; i < sorted.length; i++) {
+                const ep = sorted[i];
+                const newPosition = i + 1;
+                
+                // Only update if position changed
+                if (newPosition !== ep.position_in_week) {
+                  const { error: posUpdateError } = await supabase
+                    .from('weekly_episodes')
+                    .update({ position_in_week: newPosition })
+                    .eq('id', ep.id);
+                  
+                  if (posUpdateError) {
+                    console.error(`❌ Error updating position for ${ep.anime_title_english}:`, posUpdateError);
+                  } else {
+                    console.log(`  📊 Reranked ${ep.anime_title_english}: #${ep.position_in_week} → #${newPosition}`);
+                  }
+                }
+              }
+              
+              console.log(`✅ Week ${backfilledWeek} positions recalculated`);
+            }
+          }
+        }
+      }
+
       // Process each episode found
       for (const weekEpisode of weekEpisodes) {
         const episodeKey = `${anime.mal_id}_${weekEpisode.mal_id}`;

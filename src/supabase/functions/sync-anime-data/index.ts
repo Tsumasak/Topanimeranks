@@ -222,8 +222,16 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`\n🔄 Starting to process ${airingAnimes.length} airing animes for week ${weekNumber}...`);
     console.log(`📅 Week dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
+    let processedAnimeCount = 0;
+    
     for (const anime of airingAnimes) {
       try {
+        processedAnimeCount++;
+        console.log(`\n📌 ============================================`);
+        console.log(`📌 ANIME PROGRESS: [${processedAnimeCount}/${airingAnimes.length}]`);
+        console.log(`📌 Starting: ${anime.title} (ID: ${anime.mal_id})`);
+        console.log(`📌 ============================================`);
+        
         await delay(RATE_LIMIT_DELAY);
 
         console.log(`\n🔍 Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
@@ -318,7 +326,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         // 🆕 STEP 3: BACKFILL - Find episodes with score that should be in past weeks but are missing
         // CRITICAL: Run BEFORE checking if weekEpisodes.length === 0, so we backfill even if no episodes this week
         if (weekNumber > 1) {
-          console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
+          try {
+            console.log(`  🔍 BACKFILL: Checking for missing episodes in past weeks with score...`);
           
           const weeksNeedingRecalc = new Set<number>(); // Track which weeks need position recalc
           
@@ -436,6 +445,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
                 console.log(`✅ Week ${backfilledWeek} positions recalculated`);
               }
             }
+          } catch (backfillError) {
+            console.error(`  ❌ BACKFILL ERROR (non-fatal, continuing): ${backfillError}`);
+            console.error(`  ❌ Stack:`, backfillError.stack);
           }
         }
 

@@ -218,6 +218,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     // Process episodes for this week
     const episodes: any[] = [];
     const processedEpisodeKeys = new Set<string>(); // Track anime_id + episode_number to avoid duplicates
+    const animesToSaveInSeasonRankings = new Map<number, any>(); // Track animes to save in season_rankings (key: anime_id, value: anime object)
     
     console.log(`\n🔄 Starting to process ${airingAnimes.length} airing animes for week ${weekNumber}...`);
     console.log(`📅 Week dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
@@ -364,6 +365,9 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
           };
 
           episodes.push(episode);
+
+          // Add anime to map for season_rankings
+          animesToSaveInSeasonRankings.set(anime.mal_id, anime);
         }
       } catch (error) {
         console.error(`❌ Error processing anime ${anime.title} (ID: ${anime.mal_id}):`, error);
@@ -543,6 +547,68 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       }
       
       console.log(`✅ Position recalculation complete for week ${weekNumber}`);
+    }
+
+    // Upsert animes to season_rankings
+    console.log(`\n💾 Upserting ${animesToSaveInSeasonRankings.size} animes to season_rankings...`);
+    
+    for (const [animeId, anime] of animesToSaveInSeasonRankings) {
+      const seasonAnime = {
+        anime_id: anime.mal_id,
+        title: anime.title,
+        title_english: anime.title_english,
+        image_url: anime.images?.jpg?.large_image_url,
+        anime_score: anime.score, // Using 'anime_score' to match database schema
+        scored_by: anime.scored_by,
+        members: anime.members,
+        favorites: anime.favorites,
+        popularity: anime.popularity,
+        rank: anime.rank,
+        type: anime.type,
+        status: anime.status,
+        rating: anime.rating,
+        source: anime.source,
+        episodes: anime.episodes,
+        aired_from: anime.aired?.from,
+        aired_to: anime.aired?.to,
+        duration: anime.duration,
+        demographics: anime.demographics || [],
+        genres: anime.genres || [],
+        themes: anime.themes || [],
+        studios: anime.studios || [],
+        synopsis: anime.synopsis,
+        season: 'fall', // Hardcoded for now, as we're only syncing fall 2025
+        year: 2025,
+      };
+
+      const { data: upsertData, error } = await supabase
+        .from('season_rankings')
+        .upsert(seasonAnime, {
+          onConflict: 'anime_id,season,year',
+          ignoreDuplicates: false,
+        })
+        .select();
+
+      if (error) {
+        console.error('Upsert error:', error);
+        continue;
+      }
+
+      if (upsertData && upsertData.length > 0) {
+        const existing = await supabase
+          .from('season_rankings')
+          .select('created_at, updated_at')
+          .eq('id', upsertData[0].id)
+          .single();
+
+        if (existing.data.created_at === existing.data.updated_at) {
+          itemsCreated++;
+        } else {
+          itemsUpdated++;
+        }
+      }
+
+      await delay(RATE_LIMIT_DELAY);
     }
 
     const duration = Date.now() - startTime;

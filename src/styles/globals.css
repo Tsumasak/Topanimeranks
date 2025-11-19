@@ -16,6 +16,9 @@
   --background: #ffffff;
   --background-rgb: 255, 255, 255;
   --foreground: #0f0f0f;
+  --primary: #3b82f6;
+  --primary-rgb: 59, 130, 246;
+  --primary-foreground: #ffffff;
   --card-background: #f8f9fa;
   --card-border: #e2e8f0;
   --card-hover: #f1f5f9;
@@ -48,6 +51,9 @@
   --background: #0f172a;
   --background-rgb: 15, 23, 42;
   --foreground: #f1f5f9;
+  --primary: #60a5fa;
+  --primary-rgb: 96, 165, 250;
+  --primary-foreground: #0f172a;
   --card-background: #1e293b;
   --card-border: #334155;
   --card-hover: #293548;
@@ -80,6 +86,9 @@
   --background: #0f172a;
   --background-rgb: 15, 23, 42;
   --foreground: #f1f5f9;
+  --primary: #60a5fa;
+  --primary-rgb: 96, 165, 250;
+  --primary-foreground: #0f172a;
   --card-background: #1e293b;
   --card-border: #334155;
   --card-hover: #293548;
@@ -120,7 +129,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 101vh; /* Force scrollbar to always be present, preventing layout shift */
   /* Critical for sticky to work */
@@ -302,7 +311,12 @@ p, span, div {
 /* Force bold class to work with Tailwind variable */
 .font-bold {
   --tw-font-weight: var(--font-weight-bold);
-  font-weight: var(--font-weight-bold) !important;
+  font-weight: 700 !important;
+}
+
+/* Ensure bold works for all elements regardless of font-family */
+b, strong, .font-bold {
+  font-weight: 700 !important;
 }
 
 /* Mobile Menu Styles */

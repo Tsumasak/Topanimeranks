@@ -259,7 +259,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
       {/* Container with gradient for top 3 positions */}
       <div className={`relative flex-grow flex flex-col justify-between ${contentGradient}`}>
         {/* Badge - Centered at top, overlapping image */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-[24px] flex items-center justify-center w-12 h-12">
+        <div className="absolute left-4 -top-[24px] flex items-center justify-center w-12 h-12">
           {data.rank === 1 ? (
             <GoldBadge />
           ) : data.rank === 2 ? (
@@ -307,40 +307,6 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
         </div>
       </div>
     </Link>
-  );
-}
-
-function SectionHeader({ title, subtitle, highlightText, highlightColor }: { 
-  title: string; 
-  subtitle: string;
-  highlightText?: string;
-  highlightColor?: string;
-}) {
-  // Split title to highlight specific text
-  const renderTitle = () => {
-    if (!highlightText) {
-      return title;
-    }
-    
-    const parts = title.split(highlightText);
-    return (
-      <>
-        {parts[0]}
-        <span style={{ color: highlightColor || 'var(--rating-yellow)' }}>{highlightText}</span>
-        {parts[1]}
-      </>
-    );
-  };
-  
-  return (
-    <div className="flex flex-col gap-[4px] items-start justify-center w-full">
-      <p className="font-['Arial'] font-bold leading-[32px] relative shrink-0 text-[24px] md:text-[30px] break-words" style={{ color: 'var(--foreground)' }}>
-        {renderTitle()}
-      </p>
-      <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
-        {subtitle}
-      </p>
-    </div>
   );
 }
 
@@ -517,13 +483,22 @@ export function HomePage() {
         {/* Weekly Episodes Section */}
         <div className="flex flex-col gap-[18px] w-full">
           {/* Section Header - Outside card */}
-          <div className="flex items-center w-full">
-            <SectionHeader 
-              title={`Weekly Anime Episodes - Week ${displayedWeekNumber}`}
-              subtitle={weekPeriod || 'Loading period...'}
-              highlightText={`Week ${displayedWeekNumber}`}
-              highlightColor="var(--rating-yellow)"
-            />
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <p className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words" style={{ color: 'var(--foreground)' }}>
+                Weekly Anime Episodes - <span style={{ color: 'var(--rating-yellow)' }}>Week {displayedWeekNumber}</span>
+              </p>
+              <Link 
+                to="/ranks"
+                className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                style={{ color: 'var(--rating-yellow)', fontWeight: 700 }}
+              >
+                View All
+              </Link>
+            </div>
+            <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
+              {weekPeriod || 'Loading period...'}
+            </p>
           </div>
           
           {/* Mobile: Carousel without card container */}
@@ -571,14 +546,6 @@ export function HomePage() {
                     </CarouselContent>
                   </Carousel>
                 </div>
-                
-                <Link 
-                  to="/ranks"
-                  className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity px-[18px]"
-                  style={{ color: 'var(--foreground)' }}
-                >
-                  <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
-                </Link>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -641,13 +608,22 @@ export function HomePage() {
         <div className="flex flex-col lg:flex-row gap-[18px] items-stretch w-full">
           {/* Top Animes - Fall 2025 */}
           <div className="flex flex-col gap-[18px] lg:flex-1 w-full">
-            <div className="flex items-center w-full">
-              <SectionHeader 
-                title="Top Animes - Fall 2025"
-                subtitle="Highest rated animes of the season and worth checking out."
-                highlightText="Fall 2025"
-                highlightColor="var(--rating-yellow)"
-              />
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between gap-4 w-full">
+                <p className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words" style={{ color: 'var(--foreground)', fontWeight: 700 }}>
+                  Top Animes - <span style={{ color: 'var(--rating-yellow)' }}>Fall 2025</span>
+                </p>
+                <Link 
+                  to="/top-season-animes"
+                  className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                  style={{ color: 'var(--rating-yellow)', fontWeight: 700 }}
+                >
+                  View All
+                </Link>
+              </div>
+              <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
+                Highest rated animes of the season and worth checking out.
+              </p>
             </div>
             
             {/* Mobile: Carousel without card container */}
@@ -695,14 +671,6 @@ export function HomePage() {
                       </CarouselContent>
                     </Carousel>
                   </div>
-                  
-                  <Link 
-                    to="/top-season-animes"
-                    className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity px-[18px]"
-                    style={{ color: 'var(--foreground)' }}
-                  >
-                    <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
-                  </Link>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -762,13 +730,22 @@ export function HomePage() {
 
           {/* Most Anticipated Animes */}
           <div className="flex flex-col gap-[18px] lg:flex-1 w-full">
-            <div className="flex items-center w-full">
-              <SectionHeader 
-                title="Most Anticipated Animes - Winter 2026"
-                subtitle="Most anticipated animes of the upcoming seasons. Check out all the future seasons here."
-                highlightText="Winter 2026"
-                highlightColor="var(--rating-yellow)"
-              />
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between gap-4 w-full">
+                <p className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words" style={{ color: 'var(--foreground)', fontWeight: 700 }}>
+                  Most Anticipated Animes - <span style={{ color: 'var(--rating-yellow)' }}>Winter 2026</span>
+                </p>
+                <Link 
+                  to="/most-anticipated-animes"
+                  className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                  style={{ color: 'var(--rating-yellow)', fontWeight: 700 }}
+                >
+                  View All
+                </Link>
+              </div>
+              <p className="font-['Arial'] leading-[16px] text-[12px] break-words" style={{ color: 'var(--rating-text)' }}>
+                Most anticipated animes of the upcoming seasons. Check out all the future seasons here.
+              </p>
             </div>
             
             {/* Mobile: Carousel without card container */}
@@ -816,14 +793,6 @@ export function HomePage() {
                       </CarouselContent>
                     </Carousel>
                   </div>
-                  
-                  <Link 
-                    to="/most-anticipated-animes"
-                    className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity px-[18px]"
-                    style={{ color: 'var(--foreground)' }}
-                  >
-                    <span style={{ color: 'var(--rating-yellow)' }}>▸ </span>View Complete Rank
-                  </Link>
                 </motion.div>
               </AnimatePresence>
             </div>

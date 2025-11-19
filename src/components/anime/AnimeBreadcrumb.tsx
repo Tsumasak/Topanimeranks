@@ -16,7 +16,7 @@ export function AnimeBreadcrumb({ season, year, animeTitle }: AnimeBreadcrumbPro
     : null;
 
   return (
-    <nav className="flex items-center gap-2 text-sm overflow-hidden">
+    <nav className="flex items-center gap-2 text-sm overflow-hidden px-[24px] py-[0px]">
       <Link 
         to="/home" 
         className="hover:opacity-70 transition-opacity shrink-0"

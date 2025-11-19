@@ -94,7 +94,7 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
                 {episode.episode_score !== null ? (
                   <div className="flex items-center gap-1" style={{ color: 'var(--rating-yellow)' }}>
                     <span>⭐</span>
-                    <span className="font-bold">{episode.episode_score.toFixed(2)}</span>
+                    <span className="font-bold text-[20px]">{episode.episode_score.toFixed(2)}</span>
                   </div>
                 ) : (
                   <Badge variant="outline" className="text-xs">

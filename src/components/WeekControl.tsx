@@ -359,6 +359,47 @@ const WeekControl = () => {
     return () => clearTimeout(checkViewportId);
   }, [loading, displayedEpisodes.length, displayedCount, loadMoreEpisodes]);
 
+  // Scroll to anime card if hash is present in URL
+  useEffect(() => {
+    if (loading || displayedEpisodes.length === 0) return;
+    
+    const hash = window.location.hash;
+    if (hash) {
+      // Extract anime ID from hash (e.g., #anime-123 -> 123)
+      const animeId = hash.replace('#anime-', '');
+      
+      // Find the index of the anime in displayedEpisodes
+      const animeIndex = displayedEpisodes.findIndex(ep => ep.animeId.toString() === animeId);
+      
+      if (animeIndex !== -1) {
+        // If anime is beyond currently displayed count, load all episodes
+        if (animeIndex >= displayedCount) {
+          console.log(`[WeekControl] 📦 Loading all episodes to show anime at index ${animeIndex}`);
+          setDisplayedCount(displayedEpisodes.length);
+        }
+        
+        // Wait for the DOM to render the cards
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log(`[WeekControl] 📍 Scrolled to ${hash}`);
+            
+            // Add highlight effect
+            element.classList.add('anime-card-highlight');
+            setTimeout(() => {
+              element.classList.remove('anime-card-highlight');
+            }, 2500);
+          } else {
+            console.log(`[WeekControl] ⚠️ Element not found: ${hash}`);
+          }
+        }, 500); // Delay to ensure cards are rendered
+      } else {
+        console.log(`[WeekControl] ⚠️ Anime ID ${animeId} not found in this week`);
+      }
+    }
+  }, [loading, displayedEpisodes, displayedCount, animationKey]);
+
   // No loading screen - render directly
   if (loading || !activeWeek) {
     console.log(`[WeekControl] 🚫 Render blocked: loading=${loading}, activeWeek=${activeWeek}`);
@@ -554,6 +595,7 @@ const WeekControl = () => {
                       genres={episode.genres}
                       themes={episode.themes}
                       positionChange={positionChange}
+                      animeId={episode.animeId}
                     />
                   </motion.div>
                 );

@@ -3028,6 +3028,30 @@ b, strong, .font-bold {
   }
 }
 
+@keyframes highlightPulse {
+  0% {
+    border-width: 2px;
+    box-shadow: 0 0 #3b82f6cc, 0 0 20px #3b82f699;
+  }
+
+  50% {
+    border-width: 2px;
+    box-shadow: 0 0 0 15px #3b82f600, 0 0 30px #3b82f6cc;
+  }
+
+  100% {
+    border-width: 2px;
+    box-shadow: 0 0 #3b82f600, 0 0 20px #3b82f600;
+  }
+}
+
+.anime-card-highlight {
+  animation: 2.5s ease-out highlightPulse;
+  border-color: var(--primary) !important;
+  border-style: solid !important;
+  border-width: 2px !important;
+}
+
 @media (width <= 767px) {
   .hamburger-button {
     display: block;

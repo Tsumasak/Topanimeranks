@@ -13,6 +13,7 @@ interface BaseAnimeCardProps {
   genres?: string[]; // Genres array like ["Action", "Comedy"]
   themes?: string[]; // Themes array like ["School", "Super Power"]
   positionChange?: number; // Position change from previous week (positive = up, negative = down, 0 = same, undefined = new)
+  animeId?: number; // Anime ID for anchor links
 }
 
 export default function BaseAnimeCard({ 
@@ -26,7 +27,8 @@ export default function BaseAnimeCard({
   demographics = [],
   genres = [],
   themes = [],
-  positionChange
+  positionChange,
+  animeId
 }: BaseAnimeCardProps) {
   // Determine border styling and gradients based on rank
   let borderStyle = 'border border-gray-600'; // Default border for positions 4+
@@ -146,7 +148,11 @@ export default function BaseAnimeCard({
   const trendInfo = getTrendIndicator();
 
   return (
-    <Link to={linkUrl} className={`block theme-card rounded-lg overflow-hidden flex flex-col h-full group border ${borderStyle} ${hoverClass} transition-all duration-300`}>
+    <Link 
+      to={linkUrl} 
+      id={animeId ? `anime-${animeId}` : undefined}
+      className={`block theme-card rounded-lg overflow-hidden flex flex-col h-full group border ${borderStyle} ${hoverClass} transition-all duration-300`}
+    >
       <div className="relative flex-shrink-0 overflow-hidden anime-card-image aspect-square">
         <ImageWithFallback 
           src={imageUrl} 

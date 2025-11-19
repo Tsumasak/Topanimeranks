@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '../ui/badge';
+import { Link } from 'react-router-dom';
 
 interface Episode {
   id: number;
@@ -17,10 +18,10 @@ interface Episode {
 
 interface AnimeEpisodesProps {
   episodes: Episode[];
-  animeId?: number; // Optional since we removed the link functionality
+  animeId?: number;
 }
 
-export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
+export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -68,10 +69,8 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
             key={episode.id}
             className="block"
           >
-            <a 
-              href={episode.from_url ? `${episode.from_url}/episode` : `https://myanimelist.net/anime/${episode.anime_id}/episode`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link 
+              to={`/ranks?week=week${episode.week_number}#anime-${episode.anime_id}`}
               className="rounded-lg p-4 border block hover:shadow-lg hover:-translate-y-1"
               style={{ 
                 background: 'var(--background)',
@@ -115,7 +114,7 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
                   </>
                 )}
               </div>
-            </a>
+            </Link>
           </div>
         ))}
       </div>

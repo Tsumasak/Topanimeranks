@@ -204,7 +204,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`\n🔍 Fetching existing episodes from database for week ${weekNumber}...`);
     const { data: existingEpisodes, error: existingFetchError } = await supabase
       .from('weekly_episodes')
-      .select('anime_id, episode_number')
+      .select('anime_id, episode_number, week_number')
       .eq('week_number', weekNumber)
       .eq('is_manual', false); // Only update auto-synced episodes
 
@@ -215,6 +215,25 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     const existingAnimeIds = new Set(existingEpisodes?.map(ep => ep.anime_id) || []);
     console.log(`📊 Found ${existingAnimeIds.size} existing episodes in database for week ${weekNumber}`);
 
+    // 🆕 STEP 1.5: Get ALL existing episodes from database (all weeks) to prevent duplicates
+    console.log(`\n🔍 Fetching ALL existing episodes from database (all weeks)...`);
+    const { data: allExistingEpisodes, error: allExistingFetchError } = await supabase
+      .from('weekly_episodes')
+      .select('anime_id, episode_number, week_number, aired_at')
+      .eq('is_manual', false);
+
+    if (allExistingFetchError) {
+      console.error(`❌ Error fetching all existing episodes:`, allExistingFetchError);
+    }
+
+    // Create a map: "anime_id_episode_number" -> { week_number, aired_at }
+    const allEpisodesMap = new Map<string, { week_number: number, aired_at: string }>();
+    allExistingEpisodes?.forEach(ep => {
+      const key = `${ep.anime_id}_${ep.episode_number}`;
+      allEpisodesMap.set(key, { week_number: ep.week_number, aired_at: ep.aired_at });
+    });
+    console.log(`📊 Found ${allEpisodesMap.size} total episodes across all weeks in database`);
+    
     // Process episodes for this week
     const episodes: any[] = [];
     const processedEpisodeKeys = new Set<string>(); // Track anime_id + episode_number to avoid duplicates
@@ -304,6 +323,16 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
             }
             return false;
           }
+
+          // 🛡️ CRITICAL: Check if this episode already exists in ANY week (prevents duplicates)
+          const episodeKey = `${anime.mal_id}_${ep.mal_id}`;
+          const existingInDb = allEpisodesMap.get(episodeKey);
+          
+          if (existingInDb) {
+            console.log(`  🛡️ SKIP: EP${ep.mal_id} already exists in week ${existingInDb.week_number} (aired: ${existingInDb.aired_at})`);
+            return false; // Don't process - already in database
+          }
+
           const airedDate = new Date(ep.aired);
           const isInWeek = airedDate >= startDate && airedDate <= endDate;
           

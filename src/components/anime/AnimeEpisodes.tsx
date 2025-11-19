@@ -21,7 +21,7 @@ interface AnimeEpisodesProps {
   animeId?: number;
 }
 
-export function AnimeEpisodes({ episodes, animeId }: AnimeEpisodesProps) {
+export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

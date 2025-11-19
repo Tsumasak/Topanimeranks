@@ -1,7 +1,6 @@
 "use client";
 
 import { Share2 } from "lucide-react";
-import { Button } from "../ui/button";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
 import {
   Tooltip,

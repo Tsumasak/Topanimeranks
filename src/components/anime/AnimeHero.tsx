@@ -160,7 +160,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                   <span className="text-lg">
                     {(
                       anime.score || anime.anime_score
-                    )?.toFixed(1)}
+                    )?.toFixed(2)}
                   </span>
                 </div>
               )}

@@ -7,10 +7,6 @@ interface AnimeStatsProps {
 export function AnimeStats({ anime }: AnimeStatsProps) {
   const stats = [
     {
-      label: "Overall Rank",
-      value: anime.rank ? `#${anime.rank}` : "N/A",
-    },
-    {
       label: "Rating",
       value:
         anime.score || anime.anime_score
@@ -18,14 +14,18 @@ export function AnimeStats({ anime }: AnimeStatsProps) {
           : "N/A",
     },
     {
-      label: "Popularity",
-      value: anime.popularity ? `#${anime.popularity}` : "N/A",
-    },
-    {
       label: "Members on MAL",
       value: anime.members
         ? anime.members.toLocaleString()
         : "N/A",
+    },
+    {
+      label: "Overall Rank",
+      value: anime.rank ? `#${anime.rank}` : "N/A",
+    },
+    {
+      label: "Popularity",
+      value: anime.popularity ? `#${anime.popularity}` : "N/A",
     },
   ];
 

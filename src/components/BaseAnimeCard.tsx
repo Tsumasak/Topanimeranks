@@ -202,9 +202,11 @@ export default function BaseAnimeCard({
           </div>
           
           <div className="relative flex flex-col ml-4 flex-grow">
-            <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700 !important'}}>{title}</h3>
+            <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
             {subtitle && (
-              <p className="text-sm leading-[1.1] mb-2" style={{color: 'var(--foreground)'}}>{subtitle}</p>
+              <p className="text-sm leading-[1.1] mb-2" style={{color: 'var(--foreground)'}}>
+                {subtitle}
+              </p>
             )}
             
             {/* Genres + Themes Tags - Combine and show first 3 total */}

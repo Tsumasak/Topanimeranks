@@ -85,7 +85,7 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold" style={{ color: 'var(--foreground)' }}>EP {episode.episode_number}</span>
                   </div>
-                  <h3 className="text-sm" style={{ color: 'var(--foreground)' }}>
+                  <h3 style={{ color: 'var(--rating-yellow)', fontSize: '1rem', fontWeight: '700' }}>
                     {episode.episode_name}
                   </h3>
                 </div>

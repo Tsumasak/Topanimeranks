@@ -213,11 +213,9 @@ export default function BaseAnimeCard({
                 {[...genres, ...themes].slice(0, 3).map((tag, index) => (
                   <span 
                     key={index} 
-                    className="px-2.5 py-1 text-xs rounded-full border"
+                    className="px-2.5 py-1 text-xs rounded-full border theme-rating"
                     style={{
-                      borderColor: 'var(--card-border)',
-                      background: 'var(--card-background)',
-                      color: 'var(--foreground)'
+                      borderColor: 'var(--card-border)'
                     }}
                   >
                     {tag}

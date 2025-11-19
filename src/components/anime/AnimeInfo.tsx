@@ -194,11 +194,9 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
               {anime.genres.map((genre: any, index: number) => (
                 <span 
                   key={index} 
-                  className="px-3 py-1 rounded-full text-xs border"
+                  className="px-3 py-1 theme-rating text-xs rounded-full border"
                   style={{ 
-                    borderColor: 'var(--card-border)',
-                    background: 'var(--card-background)',
-                    color: 'var(--foreground)'
+                    borderColor: 'var(--card-border)'
                   }}
                 >
                   {genre.name || genre}
@@ -218,11 +216,9 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
               {anime.themes.map((theme: any, index: number) => (
                 <span 
                   key={index} 
-                  className="px-3 py-1 rounded-full text-xs border"
+                  className="px-3 py-1 theme-rating text-xs rounded-full border"
                   style={{ 
-                    borderColor: 'var(--card-border)',
-                    background: 'var(--card-background)',
-                    color: 'var(--foreground)'
+                    borderColor: 'var(--card-border)'
                   }}
                 >
                   {theme.name || theme}

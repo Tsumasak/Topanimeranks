@@ -43,8 +43,9 @@ export async function syncFall2025(supabase: any) {
   console.log("🚀 Iniciando sync Fall 2025...");
   
   try {
-    // Data de início da temporada Fall 2025 (Outubro 2025)
-    const seasonStartDate = new Date('2025-10-01');
+    // Data de início da temporada Fall 2025 (29 de Setembro de 2025 - Segunda-feira)
+    // ✅ CORRIGIDO: Era '2025-10-01', agora é '2025-09-29' conforme as migrações
+    const seasonStartDate = new Date('2025-09-29');
     
     let totalAnimes = 0;
     let totalEpisodes = 0;
@@ -52,8 +53,28 @@ export async function syncFall2025(supabase: any) {
     let page = 1;
     let hasNextPage = true;
     
+    // 🆕 Buscar TODOS os episódios existentes no banco para evitar duplicatas
+    console.log("🔍 Buscando episódios existentes no banco...");
+    const { data: allExistingEpisodes, error: existingError } = await supabase
+      .from('weekly_episodes')
+      .select('anime_id, episode_number, week_number, id')
+      .eq('is_manual', false);
+    
+    if (existingError) {
+      console.error("❌ Erro ao buscar episódios existentes:", existingError);
+    }
+    
+    // Criar mapa: "anime_id_episode_number" -> week_number
+    const existingEpisodesMap = new Map<string, { week_number: number, id: string }>();
+    allExistingEpisodes?.forEach(ep => {
+      const key = `${ep.anime_id}_${ep.episode_number}`;
+      existingEpisodesMap.set(key, { week_number: ep.week_number, id: ep.id });
+    });
+    console.log(`📊 Encontrados ${existingEpisodesMap.size} episódios existentes no banco`);
+    
     // Buscar animes Fall 2025 com paginação
-    while (hasNextPage && page <= 5) { // Limitar a 5 páginas (125 animes)
+    // ✅ CORRIGIDO: Removido limite de 5 páginas - agora busca TODAS as páginas
+    while (hasNextPage) {
       console.log(`📊 Buscando página ${page} de animes Fall 2025...`);
       
       const seasonUrl = `https://api.jikan.moe/v4/seasons/2025/fall?page=${page}&limit=25`;
@@ -85,27 +106,48 @@ export async function syncFall2025(supabase: any) {
         try {
           console.log(`🔍 Processando: ${anime.titles.find(t => t.type === 'English')?.title || anime.titles[0].title}`);
           
-          // Buscar episódios do anime
+          // Buscar episódios do anime com PAGINAÇÃO
           await sleep(333); // Rate limit Jikan: 3 req/sec
           
-          const episodesUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/episodes`;
-          const episodesResponse = await fetch(episodesUrl);
+          let allEpisodes: JikanEpisode[] = [];
+          let episodePage = 1;
+          let hasNextEpisodePage = true;
           
-          if (!episodesResponse.ok) {
-            console.error(`❌ Erro ao buscar episódios de ${anime.mal_id}: ${episodesResponse.status}`);
-            errors++;
-            continue;
+          // ✅ CORRIGIDO: Agora faz paginação de episódios
+          while (hasNextEpisodePage) {
+            const episodesUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/episodes?page=${episodePage}`;
+            const episodesResponse = await fetch(episodesUrl);
+            
+            if (!episodesResponse.ok) {
+              console.error(`❌ Erro ao buscar episódios (página ${episodePage}) de ${anime.mal_id}: ${episodesResponse.status}`);
+              break;
+            }
+            
+            const episodesData = await episodesResponse.json();
+            const episodes: JikanEpisode[] = episodesData.data || [];
+            
+            if (episodes.length === 0) {
+              break;
+            }
+            
+            console.log(`📺 Página ${episodePage}: ${episodes.length} episódios`);
+            allEpisodes.push(...episodes);
+            
+            // Verificar se há próxima página
+            hasNextEpisodePage = episodesData.pagination?.has_next_page || false;
+            episodePage++;
+            
+            if (hasNextEpisodePage) {
+              await sleep(333); // Rate limit entre páginas de episódios
+            }
           }
           
-          const episodesData = await episodesResponse.json();
-          const episodes: JikanEpisode[] = episodesData.data || [];
-          
-          if (episodes.length === 0) {
+          if (allEpisodes.length === 0) {
             console.log(`⚠️ Anime ${anime.mal_id} sem episódios ainda`);
             continue;
           }
           
-          console.log(`📺 ${episodes.length} episódios encontrados`);
+          console.log(`📺 Total: ${allEpisodes.length} episódios encontrados`);
           
           // Extrair dados do anime
           const englishTitle = anime.titles.find(t => t.type === "English")?.title || 
@@ -124,15 +166,41 @@ export async function syncFall2025(supabase: any) {
             theme: anime.themes.map(t => t.name)
           };
           
-          // Inserir cada episódio
-          for (const episode of episodes) {
+          // ✅ CORRIGIDO: Processar apenas episódios NOVOS ou que precisam atualização
+          for (const episode of allEpisodes) {
             // Calcular semana baseado na data de exibição
             let weekNumber = 1;
             if (episode.aired) {
               weekNumber = calculateWeekNumber(episode.aired, seasonStartDate);
             } else {
-              // Se não tem data, usar o número do episódio como aproximação
-              weekNumber = Math.ceil(episode.mal_id / 1);
+              // Se não tem data, pular - não adivinhar
+              console.log(`⏭️ Episódio ${episode.mal_id} sem data de aired, pulando...`);
+              continue;
+            }
+            
+            // ✅ VERIFICAR SE EPISÓDIO JÁ EXISTE NO BANCO (em qualquer semana)
+            const episodeKey = `${anime.mal_id}_${episode.mal_id}`;
+            const existingEpisode = existingEpisodesMap.get(episodeKey);
+            
+            if (existingEpisode) {
+              // Episódio já existe - verificar se está na semana correta
+              if (existingEpisode.week_number === weekNumber) {
+                // Mesma semana - apenas atualizar score se mudou
+                console.log(`🔄 Atualizando score do EP${episode.mal_id} na semana ${weekNumber}`);
+              } else {
+                // SEMANA DIFERENTE - pode ser devido ao bug de data anterior
+                console.log(`⚠️ EP${episode.mal_id} existe na week ${existingEpisode.week_number}, mas deveria estar na week ${weekNumber} - CORRIGINDO!`);
+                
+                // Deletar entrada antiga
+                await supabase
+                  .from('weekly_episodes')
+                  .delete()
+                  .eq('id', existingEpisode.id);
+                
+                console.log(`🗑️ Entrada antiga deletada, será recriada na semana correta`);
+              }
+            } else {
+              console.log(`✅ NOVO episódio: EP${episode.mal_id} para semana ${weekNumber}`);
             }
             
             // Buscar rating individual do episódio (1.00-5.00)

@@ -3,7 +3,6 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { enrichEpisodes } from "./enrich.tsx";
-import { syncFall2025 } from "./sync-fall-2024.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 
 const app = new Hono();
@@ -345,44 +344,6 @@ app.get("/make-server-c1d1bfd8/anticipated-animes", async (c) => {
 
   } catch (error) {
     console.error("❌ Anticipated animes error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
-});
-
-// ============================================
-// SYNC FALL 2025 ENDPOINT (AUTOMÁTICO)
-// ============================================
-app.post("/make-server-c1d1bfd8/sync-fall-2025", async (c) => {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return c.json({ 
-        success: false, 
-        error: "Missing Supabase credentials" 
-      }, 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log("🚀 Iniciando sync automático Fall 2025...");
-    
-    const result = await syncFall2025(supabase);
-
-    return c.json({
-      success: result.success,
-      animes: result.animes,
-      episodes: result.episodes,
-      errors: result.errors,
-      message: result.message
-    });
-
-  } catch (error) {
-    console.error("❌ Sync Fall 2025 error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

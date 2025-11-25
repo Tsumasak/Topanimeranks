@@ -490,7 +490,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       const { data, error } = await supabase
         .from('weekly_episodes')
         .upsert(episode, {
-          onConflict: 'anime_id,episode_number,week_number',
+          onConflict: 'anime_id,episode_number',
           ignoreDuplicates: false,
         })
         .select();

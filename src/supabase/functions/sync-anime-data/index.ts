@@ -324,17 +324,29 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
             return false;
           }
 
-          // 🛡️ CRITICAL: Check if this episode already exists in ANY week (prevents duplicates)
+          const airedDate = new Date(ep.aired);
+          const isInWeek = airedDate >= startDate && airedDate <= endDate;
+          
+          // 🛡️ Check if this episode already exists in the database
           const episodeKey = `${anime.mal_id}_${ep.mal_id}`;
           const existingInDb = allEpisodesMap.get(episodeKey);
           
           if (existingInDb) {
-            console.log(`  🛡️ SKIP: EP${ep.mal_id} already exists in week ${existingInDb.week_number} (aired: ${existingInDb.aired_at})`);
-            return false; // Don't process - already in database
+            // If episode exists in the CORRECT week, skip it
+            if (existingInDb.week_number === weekNumber) {
+              console.log(`  🛡️ SKIP: EP${ep.mal_id} already in correct week ${weekNumber}`);
+              return false;
+            }
+            
+            // If episode exists but in WRONG week, allow it to be moved if it should be in this week
+            if (isInWeek) {
+              console.log(`  🔄 MOVE: EP${ep.mal_id} from week ${existingInDb.week_number} to week ${weekNumber} (correct aired_at: ${ep.aired})`);
+              return true; // Allow update to move to correct week
+            } else {
+              console.log(`  🛡️ SKIP: EP${ep.mal_id} already in week ${existingInDb.week_number}, not meant for week ${weekNumber}`);
+              return false;
+            }
           }
-
-          const airedDate = new Date(ep.aired);
-          const isInWeek = airedDate >= startDate && airedDate <= endDate;
           
           if (anime.mal_id === 62405) {
             console.log(`  🔍 DEBUG 62405: EP${ep.mal_id} aired ${ep.aired} | airedDate: ${airedDate.toISOString()} | isInWeek: ${isInWeek}`);

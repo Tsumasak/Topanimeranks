@@ -338,14 +338,24 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Auto-detect current week
-    const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
-    const today = new Date();
-    const diffTime = today.getTime() - baseDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
+    // Get week_number from request body (if provided)
+    const body = await req.text();
+    const { week_number } = body ? JSON.parse(body) : {};
+
+    let currentWeek = week_number;
     
-    console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
+    // Auto-detect current week if not provided
+    if (!currentWeek) {
+      const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+      const today = new Date();
+      const diffTime = today.getTime() - baseDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
+      
+      console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
+    } else {
+      console.log(`📅 Using provided week number: ${currentWeek}`);
+    }
 
     const result = await insertWeeklyEpisodes(supabase, currentWeek);
 

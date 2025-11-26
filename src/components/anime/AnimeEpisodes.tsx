@@ -32,6 +32,9 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
     });
   };
 
+  // Reverse episodes to show newest first
+  const sortedEpisodes = [...episodes].reverse();
+
   if (episodes.length === 0) {
     return (
       <div 
@@ -64,7 +67,7 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
       </h2>
 
       <div className="space-y-3">
-        {episodes.map((episode) => (
+        {sortedEpisodes.map((episode, index) => (
           <div
             key={episode.id}
             className="block"
@@ -83,6 +86,18 @@ export function AnimeEpisodes({ episodes }: AnimeEpisodesProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold" style={{ color: 'var(--foreground)' }}>EP {episode.episode_number}</span>
+                    {/* NEW Badge for most recent episode */}
+                    {index === 0 && (
+                      <span 
+                        className="px-2 py-0.5 rounded text-xs font-bold"
+                        style={{
+                          background: 'var(--primary)',
+                          color: 'white',
+                        }}
+                      >
+                        NEW
+                      </span>
+                    )}
                   </div>
                   <h3 style={{ color: 'var(--rating-yellow)', fontSize: '1rem', fontWeight: '700' }}>
                     {episode.episode_name}

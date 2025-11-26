@@ -6,7 +6,6 @@ import { AnimeStats } from "../components/anime/AnimeStats";
 import { AnimeSynopsis } from "../components/anime/AnimeSynopsis";
 import { AnimeInfo } from "../components/anime/AnimeInfo";
 import { AnimeEpisodes } from "../components/anime/AnimeEpisodes";
-import { AnimeExternalLinks } from "../components/anime/AnimeExternalLinks";
 
 export default function AnimeDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -288,17 +287,17 @@ export default function AnimeDetailsPage() {
         {/* Stats Bar */}
         <AnimeStats anime={anime} />
 
-        {/* Synopsis */}
-        {anime.synopsis && (
-          <AnimeSynopsis synopsis={anime.synopsis} />
-        )}
+      
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           {/* Left Column - Information */}
           <div className="space-y-8">
+            {/* Synopsis */}
+        {anime.synopsis && (
+          <AnimeSynopsis synopsis={anime.synopsis} />
+        )}
             <AnimeInfo anime={anime} />
-            <AnimeExternalLinks anime={anime} />
           </div>
 
           {/* Right Column - Episodes */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Share2 } from "lucide-react";
+import { Share2, ExternalLink } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
 import {
   Tooltip,
@@ -87,6 +87,9 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
     if (typeLower === "ona") return "tag-ona";
     return "tag-default";
   };
+
+  // MyAnimeList link
+  const malLink = `https://myanimelist.net/anime/${anime.anime_id}`;
 
   return (
     <div
@@ -299,8 +302,9 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
               )}
             </div>
 
-            {/* Share Button - pushed to bottom */}
-            <div className="mt-4 md:mt-auto w-full flex justify-center md:justify-start">
+            {/* Share and MAL Buttons - pushed to bottom */}
+            <div className="mt-4 md:mt-auto w-full flex gap-3 justify-center md:justify-start">
+              {/* Share Button */}
               <button
                 onClick={handleShare}
                 className="relative rounded-[32px] overflow-visible group cursor-pointer hover:-translate-y-[2px] hover:shadow-lg"
@@ -334,6 +338,43 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                   </span>
                 </div>
               </button>
+
+              {/* MyAnimeList Button */}
+              <a
+                href={malLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative rounded-[32px] overflow-visible group cursor-pointer hover:-translate-y-[2px] hover:shadow-lg"
+                style={{
+                  backgroundColor:
+                    "rgba(var(--primary-rgb), 0.2)",
+                  transition:
+                    "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              >
+                {/* Borda externa destacada */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-[-1.4px] pointer-events-none rounded-[33.4px] border-[1.4px] border-solid transition-all group-hover:inset-[-2px]"
+                  style={{
+                    borderColor: "var(--primary)",
+                  }}
+                />
+
+                {/* Conteúdo do botão */}
+                <div className="flex items-center justify-center gap-3 px-[12px] py-[8px]">
+                  <ExternalLink
+                    className="h-5 w-5"
+                    style={{ color: "var(--foreground)" }}
+                  />
+                  <span
+                    className="text-[16px] font-semibold"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    MyAnimeList
+                  </span>
+                </div>
+              </a>
             </div>
           </div>
         </div>

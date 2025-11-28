@@ -342,25 +342,42 @@ serve(async (req) => {
     const body = await req.text();
     const { week_number } = body ? JSON.parse(body) : {};
 
-    let currentWeek = week_number;
+    let weeksToProcess: number[] = [];
     
     // Auto-detect current week if not provided
-    if (!currentWeek) {
+    if (week_number) {
+      console.log(`📅 Using provided week number: ${week_number}`);
+      weeksToProcess = [week_number];
+    } else {
       const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
       const today = new Date();
       const diffTime = today.getTime() - baseDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
+      const currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
+      
+      // Process current week AND previous week (to catch late-scored episodes)
+      weeksToProcess = currentWeek > 1 ? [currentWeek - 1, currentWeek] : [currentWeek];
       
       console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
-    } else {
-      console.log(`📅 Using provided week number: ${currentWeek}`);
+      console.log(`📅 Will process weeks: ${weeksToProcess.join(', ')}`);
     }
 
-    const result = await insertWeeklyEpisodes(supabase, currentWeek);
+    // Process all weeks
+    const results = [];
+    for (const weekNum of weeksToProcess) {
+      const result = await insertWeeklyEpisodes(supabase, weekNum);
+      results.push(result);
+    }
+
+    const totalCreated = results.reduce((sum, r) => sum + r.itemsCreated, 0);
 
     return new Response(
-      JSON.stringify({ success: true, ...result }),
+      JSON.stringify({ 
+        success: true, 
+        weeksProcessed: weeksToProcess,
+        totalItemsCreated: totalCreated,
+        results 
+      }),
       {
         headers: {
           'Content-Type': 'application/json',

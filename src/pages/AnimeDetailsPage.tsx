@@ -11,6 +11,7 @@ export default function AnimeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<any>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
+  const [weeklyData, setWeeklyData] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -82,7 +83,7 @@ export default function AnimeDetailsPage() {
             console.log(
               "[AnimeDetails] 📊 Searching in weekly_episodes...",
             );
-            let { data: weeklyData } = await supabase
+            let { data: weeklyEpisodeData } = await supabase
               .from("weekly_episodes")
               .select("*")
               .eq("anime_id", animeId)
@@ -90,27 +91,27 @@ export default function AnimeDetailsPage() {
               .limit(1)
               .single();
 
-            if (weeklyData) {
+            if (weeklyEpisodeData) {
               console.log(
                 "[AnimeDetails] ✅ Found in weekly_episodes",
               );
               // Transform weekly_episodes structure to match expected format
               setAnime({
-                anime_id: (weeklyData as any).anime_id,
-                title: (weeklyData as any).anime_title,
-                title_english: (weeklyData as any).anime_title,
-                image_url: (weeklyData as any).anime_image,
-                score: (weeklyData as any).episode_score,
+                anime_id: (weeklyEpisodeData as any).anime_id,
+                title: (weeklyEpisodeData as any).anime_title,
+                title_english: (weeklyEpisodeData as any).anime_title,
+                image_url: (weeklyEpisodeData as any).anime_image,
+                score: (weeklyEpisodeData as any).episode_score,
                 members: null,
-                episodes: (weeklyData as any).episode_number,
+                episodes: (weeklyEpisodeData as any).episode_number,
                 type: "TV",
               });
 
               // Set dynamic background
-              if ((weeklyData as any).anime_image) {
+              if ((weeklyEpisodeData as any).anime_image) {
                 document.documentElement.style.setProperty(
                   "--bg-image",
-                  `url(${(weeklyData as any).anime_image})`,
+                  `url(${(weeklyEpisodeData as any).anime_image})`,
                 );
               }
             } else {
@@ -196,6 +197,46 @@ export default function AnimeDetailsPage() {
             `[AnimeDetails] ✅ Found ${episodesData.length} episodes`,
           );
           setEpisodes(episodesData);
+
+          // Fetch all episodes for each week to calculate ranks
+          const weeks = [...new Set(episodesData.map((ep: any) => ep.week_number))];
+          console.log("[AnimeDetails] 📊 Fetching weekly data for weeks:", weeks);
+          
+          const weeklyDataMap: Record<number, any[]> = {};
+          
+          for (const weekNum of weeks) {
+            // Fetch all episodes from this week (ordered by score like in WeekControl)
+            const { data: weekEpisodes } = await supabase
+              .from("weekly_episodes")
+              .select("*")
+              .eq("week_number", weekNum)
+              .not("episode_score", "is", null)
+              .order("episode_score", { ascending: false })
+              .order("position_in_week", { ascending: true });
+
+            if (weekEpisodes) {
+              weeklyDataMap[weekNum] = weekEpisodes;
+              console.log(`[AnimeDetails] ✅ Week ${weekNum}: ${weekEpisodes.length} episodes`);
+            }
+
+            // Also fetch previous week for trend calculation
+            if (weekNum > 1 && !weeklyDataMap[weekNum - 1]) {
+              const { data: prevWeekEpisodes } = await supabase
+                .from("weekly_episodes")
+                .select("*")
+                .eq("week_number", weekNum - 1)
+                .not("episode_score", "is", null)
+                .order("episode_score", { ascending: false })
+                .order("position_in_week", { ascending: true });
+
+              if (prevWeekEpisodes) {
+                weeklyDataMap[weekNum - 1] = prevWeekEpisodes;
+                console.log(`[AnimeDetails] ✅ Week ${weekNum - 1}: ${prevWeekEpisodes.length} episodes (prev)`);
+              }
+            }
+          }
+
+          setWeeklyData(weeklyDataMap);
         }
 
         setLoading(false);
@@ -279,32 +320,24 @@ export default function AnimeDetailsPage() {
       className="min-h-screen"
       style={{ background: "var(--background)" }}
     >
-      {/* Hero Section */}
       <AnimeHero anime={anime} />
 
-      {/* Main Content */}
       <div className="container mx-auto px-[24px] py-8">
-        {/* Stats Bar */}
         <AnimeStats anime={anime} />
 
-      
-
-        {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          {/* Left Column - Information */}
           <div className="space-y-8">
-            {/* Synopsis */}
-        {anime.synopsis && (
-          <AnimeSynopsis synopsis={anime.synopsis} />
-        )}
+            {anime.synopsis && (
+              <AnimeSynopsis synopsis={anime.synopsis} />
+            )}
             <AnimeInfo anime={anime} />
           </div>
 
-          {/* Right Column - Episodes */}
           <div className="lg:col-span-2">
             <AnimeEpisodes
               episodes={episodes}
               animeId={anime.anime_id}
+              weeklyData={weeklyData}
             />
           </div>
         </div>

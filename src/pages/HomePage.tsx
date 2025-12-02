@@ -367,13 +367,13 @@ export function HomePage() {
             members: anime.members, // ✅ Already a number
             animeType: anime.animeType, // ✅ Already processed
             demographics: Array.isArray(anime.demographics) 
-              ? anime.demographics.map(d => typeof d === 'string' ? d : d.name) 
+              ? anime.demographics.map((d: any) => typeof d === 'string' ? d : d.name) 
               : [],
             genres: Array.isArray(anime.genres)
-              ? anime.genres.map(g => typeof g === 'string' ? g : g.name)
+              ? anime.genres.map((g: any) => typeof g === 'string' ? g : g.name)
               : [],
             themes: Array.isArray(anime.themes)
-              ? anime.themes.map(t => typeof t === 'string' ? t : t.name)
+              ? anime.themes.map((t: any) => typeof t === 'string' ? t : t.name)
               : [],
             url: anime.url // ✅ Already has correct path /anime/${id}
           }));

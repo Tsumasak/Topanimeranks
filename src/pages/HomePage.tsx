@@ -15,7 +15,7 @@ interface HomeCardData {
   subtitle?: string;
   image: string;
   score?: number;
-  members?: string;
+  members?: number; // ✅ FIXED: Changed from string to number
   animeType?: string;
   demographics?: string[];
   genres?: string[];
@@ -214,7 +214,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
           <div className="font-bold text-right px-4 pb-4 text-lg mt-auto" style={{ color: 'var(--rating-yellow)' }}>
             {isAnticipated && data.members ? (
               <div className="flex flex-row md:flex-col items-end leading-tight gap-1 md:gap-0">
-                <div>{data.members}</div>
+                <div>{data.members.toLocaleString()}</div>
                 <div className="text-sm">Plan to Watch</div>
               </div>
             ) : data.score ? `★ ${data.score}` : ''}
@@ -300,7 +300,7 @@ function HomeAnimeCard({ data, type }: { data: HomeCardData; type: 'episode' | '
         <div className="font-bold text-right px-4 pb-4 text-lg mt-auto h-[36px] flex items-center justify-end" style={{ color: 'var(--rating-yellow)' }}>
           {isAnticipated && data.members ? (
             <div className="flex flex-row md:flex-col items-end leading-tight gap-1 md:gap-0">
-              <div>{data.members}</div>
+              <div>{data.members.toLocaleString()}</div>
               <div className="text-sm">Plan to Watch</div>
             </div>
           ) : data.score ? `★ ${data.score}` : ''}
@@ -356,19 +356,26 @@ export function HomePage() {
         }
 
         // Winter 2026 - Order by MEMBERS (popularity-based ranking)
-        const winter2026Animes = await SupabaseService.getSeasonRankings('winter', 2026, 'members');
+        // ✅ FIXED: Use anticipated_animes table instead of season_rankings
+        const winter2026Animes = await SupabaseService.getAnticipatedAnimesBySeason('winter', 2026);
         
         if (winter2026Animes.length > 0) {
           const topAnticipated = winter2026Animes.slice(0, 3).map((anime, index) => ({
             rank: index + 1,
-            title: anime.title_english || anime.title,
-            image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-            members: anime.members.toLocaleString('en-US'),
-            animeType: anime.type || 'TV',
-            demographics: anime.demographics?.map(d => d.name) || [],
-            genres: anime.genres?.map(g => g.name) || [],
-            themes: anime.themes?.map(t => t.name) || [],
-            url: `/anime/${anime.mal_id}`
+            title: anime.title, // ✅ Already processed (title_english || title)
+            image: anime.imageUrl, // ✅ Direct imageUrl field
+            members: anime.members, // ✅ Already a number
+            animeType: anime.animeType, // ✅ Already processed
+            demographics: Array.isArray(anime.demographics) 
+              ? anime.demographics.map(d => typeof d === 'string' ? d : d.name) 
+              : [],
+            genres: Array.isArray(anime.genres)
+              ? anime.genres.map(g => typeof g === 'string' ? g : g.name)
+              : [],
+            themes: Array.isArray(anime.themes)
+              ? anime.themes.map(t => typeof t === 'string' ? t : t.name)
+              : [],
+            url: anime.url // ✅ Already has correct path /anime/${id}
           }));
           setAnticipated(topAnticipated);
         }
@@ -386,6 +393,15 @@ export function HomePage() {
             }
           );
           
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Response is not JSON');
+          }
+
           const result = await response.json();
           
           if (result.success && result.latestWeek) {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface AnticipatedAnimeCardProps {
   rank: number;
@@ -120,7 +121,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
     >
       {/* Image Section with Tags */}
       <div className="relative aspect-square w-full overflow-hidden flex-shrink-0 anime-card-image">
-        <img 
+        <ImageWithFallback 
           src={imageUrl} 
           alt={title}
           className="w-full h-full object-cover transition-all duration-1500 ease-out group-hover:object-top"

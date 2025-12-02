@@ -2,6 +2,7 @@
 
 import { Share2, ExternalLink } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
 import {
   Tooltip,
   TooltipContent,
@@ -129,7 +130,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                   "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
             >
-              <img
+              <ImageWithFallback
                 src={anime.image_url}
                 alt={anime.title_english || anime.title}
                 className="w-full h-[400px] object-cover"

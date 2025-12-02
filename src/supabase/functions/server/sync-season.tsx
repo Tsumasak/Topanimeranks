@@ -1,9 +1,9 @@
 // ============================================
-// SYNC UPCOMING - MANUAL/ON-DEMAND
+// SYNC SEASON - MANUAL/ON-DEMAND
 // ============================================
-// Busca animes UPCOMING (sem season especifica) do Jikan API
-// Inclui animes com "2026 to ?", "2027 to ?", "Not available"
-// Popula a tabela anticipated_animes (NAO season_rankings!)
+// Busca animes de uma season específica do Jikan API
+// Exemplo: /seasons/fall/2025, /seasons/winter/2026
+// Popula a tabela season_rankings
 // ============================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -48,8 +48,8 @@ interface JikanAnime {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function syncUpcoming(supabase: any) {
-  console.log("🚀 Iniciando sync UPCOMING animes...");
+export async function syncSeason(supabase: any, season: string, year: number) {
+  console.log(`🚀 Iniciando sync SEASON ${season} ${year}...`);
   
   try {
     let totalAnimes = 0;
@@ -59,21 +59,20 @@ export async function syncUpcoming(supabase: any) {
     let errors = 0;
     let page = 1;
     let hasNextPage = true;
-    let currentPosition = 1; // Track position for anticipated_animes
     
-    // Buscar animes UPCOMING com paginação
+    // Buscar animes da season com paginação
     while (hasNextPage && page <= 10) { // Limitar a 10 páginas (250 animes)
-      console.log(`📊 Buscando página ${page} de animes UPCOMING...`);
+      console.log(`📊 Buscando página ${page} de ${season} ${year}...`);
       
-      const upcomingUrl = `https://api.jikan.moe/v4/seasons/upcoming?page=${page}&limit=25`;
+      const seasonUrl = `https://api.jikan.moe/v4/seasons/${year}/${season}?page=${page}&limit=25`;
       
       await sleep(333); // Rate limit Jikan: 3 req/sec
-      const upcomingResponse = await fetch(upcomingUrl);
+      const seasonResponse = await fetch(seasonUrl);
       
-      if (!upcomingResponse.ok) {
-        console.error(`❌ Erro ao buscar página ${page}: ${upcomingResponse.status}`);
+      if (!seasonResponse.ok) {
+        console.error(`❌ Erro ao buscar página ${page}: ${seasonResponse.status}`);
         
-        if (upcomingResponse.status === 429) {
+        if (seasonResponse.status === 429) {
           console.log("⏳ Rate limit atingido, aguardando 5 segundos...");
           await sleep(5000);
           continue; // Tentar novamente
@@ -82,15 +81,15 @@ export async function syncUpcoming(supabase: any) {
         break;
       }
       
-      const contentType = upcomingResponse.headers.get('content-type');
+      const contentType = seasonResponse.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         console.error(`❌ Resposta não é JSON para página ${page}`);
         errors++;
         break;
       }
 
-      const upcomingData = await upcomingResponse.json();
-      const animes: JikanAnime[] = upcomingData.data || [];
+      const seasonData = await seasonResponse.json();
+      const animes: JikanAnime[] = seasonData.data || [];
       
       console.log(`✅ Encontrados ${animes.length} animes na página ${page}`);
       
@@ -118,6 +117,7 @@ export async function syncUpcoming(supabase: any) {
             title_english: anime.title_english || anime.title,
             title_japanese: anime.title_japanese || null,
             image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+            anime_score: anime.score,
             score: anime.score,
             scored_by: anime.scored_by,
             members: anime.members,
@@ -137,17 +137,18 @@ export async function syncUpcoming(supabase: any) {
             themes: anime.themes || [],
             studios: anime.studios || [],
             synopsis: anime.synopsis || '',
-            season: anime.season || null, // Pode ser null para "2026 to ?", "2027 to ?", etc.
-            year: anime.year || null, // Pode ser null para "Not available"
-            position: currentPosition++, // Position based on order in API
+            season: season,
+            year: year,
             updated_at: new Date().toISOString(),
           };
           
           // Verificar se já existe antes de inserir
           const { data: existingAnime } = await supabase
-            .from('anticipated_animes')
+            .from('season_rankings')
             .select('id')
             .eq('anime_id', anime.mal_id)
+            .eq('season', season)
+            .eq('year', year)
             .maybeSingle();
           
           let upsertError;
@@ -155,16 +156,20 @@ export async function syncUpcoming(supabase: any) {
           if (existingAnime) {
             // Atualizar anime existente
             const { error } = await supabase
-              .from('anticipated_animes')
+              .from('season_rankings')
               .update(animeData)
-              .eq('anime_id', anime.mal_id);
+              .eq('anime_id', anime.mal_id)
+              .eq('season', season)
+              .eq('year', year);
             upsertError = error;
+            updated++;
           } else {
             // Inserir novo anime
             const { error } = await supabase
-              .from('anticipated_animes')
+              .from('season_rankings')
               .insert(animeData);
             upsertError = error;
+            inserted++;
           }
           
           if (upsertError) {
@@ -173,7 +178,6 @@ export async function syncUpcoming(supabase: any) {
             continue;
           }
           
-          inserted++;
           console.log(`✅ Anime ${titleEnglish} salvo com sucesso`);
           
         } catch (error) {
@@ -183,16 +187,17 @@ export async function syncUpcoming(supabase: any) {
       }
       
       // Verificar se há próxima página
-      hasNextPage = upcomingData.pagination?.has_next_page || false;
+      hasNextPage = seasonData.pagination?.has_next_page || false;
       page++;
       
       // Delay entre páginas
       await sleep(1000);
     }
     
-    console.log(`\n📊 RESUMO DO SYNC UPCOMING:`);
+    console.log(`\n📊 RESUMO DO SYNC ${season.toUpperCase()} ${year}:`);
     console.log(`   Total encontrados: ${totalAnimes}`);
-    console.log(`   ✅ Inseridos/atualizados: ${inserted}`);
+    console.log(`   ✅ Inseridos: ${inserted}`);
+    console.log(`   🔄 Atualizados: ${updated}`);
     console.log(`   ⏭️  Pulados: ${skipped}`);
     console.log(`   ❌ Erros: ${errors}`);
     
@@ -206,7 +211,7 @@ export async function syncUpcoming(supabase: any) {
     };
     
   } catch (error) {
-    console.error("❌ Erro geral no sync UPCOMING:", error);
+    console.error(`❌ Erro geral no sync ${season} ${year}:`, error);
     throw error;
   }
 }

@@ -28,55 +28,55 @@ export default function AnimeDetailsPage() {
       try {
         const animeId = parseInt(id);
 
-        // Priority search: season_rankings -> anticipated_animes -> weekly_episodes
+        // Priority search: anticipated_animes -> season_rankings -> weekly_episodes
         console.log(
-          "[AnimeDetails] 📊 Searching in season_rankings...",
+          "[AnimeDetails] 📊 Searching in anticipated_animes...",
         );
-        let { data: seasonData } = await supabase
-          .from("season_rankings")
+        let { data: anticipatedData } = await supabase
+          .from("anticipated_animes")
           .select("*")
           .eq("anime_id", animeId)
           .single();
 
-        if (seasonData) {
+        if (anticipatedData) {
           console.log(
-            "[AnimeDetails] ✅ Found in season_rankings",
+            "[AnimeDetails] ✅ Found in anticipated_animes",
           );
-          console.log("[AnimeDetails] 📊 Data:", seasonData);
+          console.log("[AnimeDetails] 📊 Data:", anticipatedData);
           console.log(
             "[AnimeDetails] 📊 Score:",
-            (seasonData as any).score,
+            (anticipatedData as any).score,
           );
-          setAnime(seasonData);
+          setAnime(anticipatedData);
 
           // Set dynamic background
-          if ((seasonData as any).image_url) {
+          if ((anticipatedData as any).image_url) {
             document.documentElement.style.setProperty(
               "--bg-image",
-              `url(${(seasonData as any).image_url})`,
+              `url(${(anticipatedData as any).image_url})`,
             );
           }
         } else {
           console.log(
-            "[AnimeDetails] 📊 Searching in anticipated_animes...",
+            "[AnimeDetails] 📊 Searching in season_rankings...",
           );
-          let { data: anticipatedData } = await supabase
-            .from("anticipated_animes")
+          let { data: seasonData } = await supabase
+            .from("season_rankings")
             .select("*")
             .eq("anime_id", animeId)
             .single();
 
-          if (anticipatedData) {
+          if (seasonData) {
             console.log(
-              "[AnimeDetails] ✅ Found in anticipated_animes",
+              "[AnimeDetails] ✅ Found in season_rankings",
             );
-            setAnime(anticipatedData);
+            setAnime(seasonData);
 
             // Set dynamic background
-            if ((anticipatedData as any).image_url) {
+            if ((seasonData as any).image_url) {
               document.documentElement.style.setProperty(
                 "--bg-image",
-                `url(${(anticipatedData as any).image_url})`,
+                `url(${(seasonData as any).image_url})`,
               );
             }
           } else {
@@ -125,54 +125,56 @@ export default function AnimeDetailsPage() {
                   `https://api.jikan.moe/v4/anime/${animeId}/full`
                 );
                 
-                if (jikanResponse.ok) {
-                  const jikanData = await jikanResponse.json();
-                  const jikanAnime = jikanData.data;
+                if (!jikanResponse.ok) {
+                  throw new Error(`HTTP ${jikanResponse.status}`);
+                }
+
+                const contentType = jikanResponse.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                  throw new Error('Response is not JSON');
+                }
+
+                const jikanData = await jikanResponse.json();
+                const jikanAnime = jikanData.data;
                   
-                  console.log("[AnimeDetails] ✅ Found in Jikan API");
+                console.log("[AnimeDetails] ✅ Found in Jikan API");
                   
-                  // Transform Jikan data to match expected format
-                  setAnime({
-                    anime_id: jikanAnime.mal_id,
-                    title: jikanAnime.title,
-                    title_english: jikanAnime.title_english || jikanAnime.title,
-                    title_japanese: jikanAnime.title_japanese,
-                    image_url: jikanAnime.images?.jpg?.large_image_url || jikanAnime.images?.jpg?.image_url,
-                    score: jikanAnime.score,
-                    anime_score: jikanAnime.score,
-                    members: jikanAnime.members,
-                    favorites: jikanAnime.favorites,
-                    episodes: jikanAnime.episodes,
-                    type: jikanAnime.type,
-                    status: jikanAnime.status,
-                    aired: jikanAnime.aired,
-                    season: jikanAnime.season,
-                    year: jikanAnime.year,
-                    synopsis: jikanAnime.synopsis,
-                    demographics: jikanAnime.demographics || [],
-                    genres: jikanAnime.genres || [],
-                    themes: jikanAnime.themes || [],
-                    studios: jikanAnime.studios || [],
-                    producers: jikanAnime.producers || [],
-                    licensors: jikanAnime.licensors || [],
-                    duration: jikanAnime.duration,
-                    rating: jikanAnime.rating,
-                    source: jikanAnime.source,
-                    mal_id: jikanAnime.mal_id,
-                  });
+                // Transform Jikan data to match expected format
+                setAnime({
+                  anime_id: jikanAnime.mal_id,
+                  title: jikanAnime.title,
+                  title_english: jikanAnime.title_english || jikanAnime.title,
+                  title_japanese: jikanAnime.title_japanese,
+                  image_url: jikanAnime.images?.jpg?.large_image_url || jikanAnime.images?.jpg?.image_url,
+                  score: jikanAnime.score,
+                  anime_score: jikanAnime.score,
+                  members: jikanAnime.members,
+                  favorites: jikanAnime.favorites,
+                  episodes: jikanAnime.episodes,
+                  type: jikanAnime.type,
+                  status: jikanAnime.status,
+                  aired: jikanAnime.aired,
+                  season: jikanAnime.season,
+                  year: jikanAnime.year,
+                  synopsis: jikanAnime.synopsis,
+                  demographics: jikanAnime.demographics || [],
+                  genres: jikanAnime.genres || [],
+                  themes: jikanAnime.themes || [],
+                  studios: jikanAnime.studios || [],
+                  producers: jikanAnime.producers || [],
+                  licensors: jikanAnime.licensors || [],
+                  duration: jikanAnime.duration,
+                  rating: jikanAnime.rating,
+                  source: jikanAnime.source,
+                  mal_id: jikanAnime.mal_id,
+                });
                   
-                  // Set dynamic background
-                  if (jikanAnime.images?.jpg?.large_image_url) {
-                    document.documentElement.style.setProperty(
-                      "--bg-image",
-                      `url(${jikanAnime.images.jpg.large_image_url})`,
-                    );
-                  }
-                } else {
-                  console.log("[AnimeDetails] ❌ Anime not found in Jikan API either");
-                  setNotFound(true);
-                  setLoading(false);
-                  return;
+                // Set dynamic background
+                if (jikanAnime.images?.jpg?.large_image_url) {
+                  document.documentElement.style.setProperty(
+                    "--bg-image",
+                    `url(${jikanAnime.images.jpg.large_image_url})`,
+                  );
                 }
               } catch (jikanError) {
                 console.error("[AnimeDetails] ❌ Error fetching from Jikan API:", jikanError);

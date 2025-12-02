@@ -14,6 +14,9 @@ interface BaseAnimeCardProps {
   themes?: string[]; // Themes array like ["School", "Super Power"]
   positionChange?: number; // Position change from previous week (positive = up, negative = down, 0 = same, undefined = new)
   animeId?: number; // Anime ID for anchor links
+  hideRank?: boolean; // Hide rank display (for search results)
+  season?: string | null; // Season name (winter, spring, summer, fall)
+  year?: number | null; // Year
 }
 
 export default function BaseAnimeCard({ 
@@ -28,7 +31,10 @@ export default function BaseAnimeCard({
   genres = [],
   themes = [],
   positionChange,
-  animeId
+  animeId,
+  hideRank = false,
+  season,
+  year
 }: BaseAnimeCardProps) {
   // Determine border styling and gradients based on rank
   let borderStyle = 'border border-gray-600'; // Default border for positions 4+
@@ -36,18 +42,21 @@ export default function BaseAnimeCard({
   let contentGradient = ''; // Gradient for top 3 positions
   let rankStyle = 'rank-4plus'; // Default style for positions 4+
   
-  if (rank === 1) {
-    contentGradient = 'bg-gradient-to-br from-yellow-500/30 via-yellow-500/15 to-transparent';
-    borderStyle = 'border border-yellow-600';
-    hoverClass = 'rank-hover-1';
-  } else if (rank === 2) {
-    contentGradient = 'bg-gradient-to-br from-gray-400/30 via-gray-400/15 to-transparent';
-    borderStyle = 'border border-gray-500';
-    hoverClass = 'rank-hover-2';
-  } else if (rank === 3) {
-    contentGradient = 'bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent';
-    borderStyle = 'border border-orange-500';
-    hoverClass = 'rank-hover-3';
+  // Only apply special styling if not hiding rank
+  if (!hideRank) {
+    if (rank === 1) {
+      contentGradient = 'bg-gradient-to-br from-yellow-500/30 via-yellow-500/15 to-transparent';
+      borderStyle = 'border border-yellow-600';
+      hoverClass = 'rank-hover-1';
+    } else if (rank === 2) {
+      contentGradient = 'bg-gradient-to-br from-gray-400/30 via-gray-400/15 to-transparent';
+      borderStyle = 'border border-gray-500';
+      hoverClass = 'rank-hover-2';
+    } else if (rank === 3) {
+      contentGradient = 'bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent';
+      borderStyle = 'border border-orange-500';
+      hoverClass = 'rank-hover-3';
+    }
   }
 
   // Generate unique ID for gradients to avoid conflicts with multiple cards
@@ -181,34 +190,58 @@ export default function BaseAnimeCard({
       {/* Container with gradient for top 3 positions */}
       <div className={`relative flex-grow flex flex-col ${contentGradient}`}>
         <div className="p-4 flex items-start flex-grow">
-          {/* Rank Display - SVG badges for top 3, pill for others */}
-          <div className="flex-shrink-0 flex flex-col items-center">
-            {rank === 1 ? (
-              <GoldBadge />
-            ) : rank === 2 ? (
-              <SilverBadge />
-            ) : rank === 3 ? (
-              <BronzeBadge />
-            ) : (
-              <div className="w-12 h-12 flex items-center justify-center">
-                <div className={`px-3 py-1 rounded-full text-sm ${rankStyle}`}>
-                  #{rank}
+          {/* Rank Display - Only show if not hideRank */}
+          {!hideRank && (
+            <div className="flex-shrink-0 flex flex-col items-center">
+              {rank === 1 ? (
+                <GoldBadge />
+              ) : rank === 2 ? (
+                <SilverBadge />
+              ) : rank === 3 ? (
+                <BronzeBadge />
+              ) : (
+                <div className="w-12 h-12 flex items-center justify-center">
+                  <div className={`px-3 py-1 rounded-full text-sm ${rankStyle}`}>
+                    #{rank}
+                  </div>
                 </div>
+              )}
+              
+              {/* Trend Indicator - Below rank - Always show (including NEW) */}
+              <div 
+                className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
+                style={{ color: trendInfo.color }}
+              >
+                <span className="font-bold text-[14px] text-[13px]">{trendInfo.symbol}</span>
+                <span className="text-[14px] font-bold">{trendInfo.text}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className={`relative flex flex-col ${hideRank ? '' : 'ml-4'} flex-grow`}>
+            <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
+            
+            {/* Season Tag - Show if season and year are provided */}
+            {season && year && (
+              <div className="mb-2">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs ${
+                    season.toLowerCase() === "winter"
+                      ? "tag-winter"
+                      : season.toLowerCase() === "summer"
+                        ? "tag-summer"
+                        : season.toLowerCase() === "fall"
+                          ? "tag-fall"
+                          : season.toLowerCase() === "spring"
+                            ? "tag-spring"
+                            : "tag-default"
+                  }`}
+                >
+                  {season.charAt(0).toUpperCase() + season.slice(1)} {year}
+                </span>
               </div>
             )}
             
-            {/* Trend Indicator - Below rank - Always show (including NEW) */}
-            <div 
-              className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
-              style={{ color: trendInfo.color }}
-            >
-              <span className="font-bold text-[14px] text-[13px]">{trendInfo.symbol}</span>
-              <span className="text-[14px] font-bold">{trendInfo.text}</span>
-            </div>
-          </div>
-          
-          <div className="relative flex flex-col ml-4 flex-grow">
-            <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
             {subtitle && (
               <p className="text-sm leading-[1.1] mb-2" style={{color: 'var(--foreground)'}}>
                 {subtitle}

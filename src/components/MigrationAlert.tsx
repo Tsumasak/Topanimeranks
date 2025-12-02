@@ -25,6 +25,15 @@ export function MigrationAlert() {
           }
         );
 
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+
         const result = await response.json();
 
         // If the endpoint fails or migration is needed, show instructions

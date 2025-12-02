@@ -70,6 +70,14 @@ export async function enrichEpisodes(supabase: any) {
           continue;
         }
         
+        const contentType = animeResponse.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error(`❌ Resposta não é JSON para anime ${animeId}`);
+          errors++;
+          await sleep(1000);
+          continue;
+        }
+
         const animeData = await animeResponse.json();
         const anime: JikanAnime = animeData.data;
         
@@ -84,11 +92,20 @@ export async function enrichEpisodes(supabase: any) {
         const episodesResponse = await fetch(`https://api.jikan.moe/v4/anime/${animeId}/episodes`);
         
         if (!episodesResponse.ok) {
-          console.error(`❌ Erro ao buscar episódios do anime ${animeId}: ${episodesResponse.status}`);
+          console.error(`❌ Erro ao buscar episódios de ${animeId}: ${episodesResponse.status}`);
           errors++;
+          await sleep(1000);
           continue;
         }
-        
+
+        const episodesContentType = episodesResponse.headers.get('content-type');
+        if (!episodesContentType || !episodesContentType.includes('application/json')) {
+          console.error(`❌ Resposta de episódios não é JSON para anime ${animeId}`);
+          errors++;
+          await sleep(1000);
+          continue;
+        }
+
         const episodesData = await episodesResponse.json();
         const episodesList: JikanEpisode[] = episodesData.data || [];
         

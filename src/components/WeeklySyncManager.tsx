@@ -51,6 +51,12 @@ export function WeeklySyncManager() {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await response.text();
+        throw new Error(`Response is not JSON: ${errorText.substring(0, 100)}`);
+      }
+
       const result = await response.json();
       
       updateWeekStatus(week, {

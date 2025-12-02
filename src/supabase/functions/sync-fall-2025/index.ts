@@ -72,10 +72,18 @@ Deno.serve(async (_req) => {
         
         const seasonResponse = await fetch(seasonUrl);
         if (!seasonResponse.ok) {
-          console.error(`❌ Erro ao buscar página ${page}: ${seasonResponse.status}`);
+          console.error(`❌ Error: ${seasonResponse.status} ${seasonResponse.statusText}`);
+          errors++;
           break;
         }
         
+        const contentType = seasonResponse.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error(`❌ Response is not JSON for page ${page}`);
+          errors++;
+          break;
+        }
+
         const seasonData = await seasonResponse.json();
         const animes: JikanAnime[] = seasonData.data || [];
         
@@ -111,6 +119,13 @@ Deno.serve(async (_req) => {
               continue;
             }
             
+            const episodesContentType = episodesResponse.headers.get('content-type');
+            if (!episodesContentType || !episodesContentType.includes('application/json')) {
+              console.error(`❌ Episodes response is not JSON for anime ${anime.mal_id}`);
+              errors++;
+              continue;
+            }
+
             const episodesData = await episodesResponse.json();
             const episodes: JikanEpisode[] = episodesData.data || [];
             

@@ -33,6 +33,13 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
         console.error(`❌ HTTP Error: ${response.status} - ${errorText}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
+      }
+
       const data = await response.json();
       console.log(`✅ Data received, keys: ${Object.keys(data).join(', ')}`);
       return data;

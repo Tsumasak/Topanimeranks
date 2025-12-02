@@ -123,3 +123,17 @@ export interface SeasonData {
   season: string;
   animes: AnticipatedAnime[];
 }
+
+// Search Result Type
+export interface SearchResult {
+  id: number;
+  title: string;
+  imageUrl: string;
+  season: string | null;
+  year: number | null;
+  tags: string[]; // Combined genres, themes, demographics (max 5)
+  members: number;
+  score: number | null;
+  source: 'weekly_episodes' | 'season_rankings' | 'anticipated_animes';
+  relevance: number; // Internal ranking score
+}

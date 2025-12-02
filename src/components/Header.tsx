@@ -2,6 +2,8 @@ import { Sun, Moon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Union from "../imports/Union";
+import { SearchBar } from "./SearchBar";
+import { MobileSearchButton } from "./MobileSearchButton";
 
 interface HeaderProps {
   onThemeToggle?: () => void;
@@ -94,10 +96,18 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                 <Moon className="w-5 h-5" />
               )}
             </button>
+            
+            {/* Search Bar - moved to the right */}
+            <div className="w-80">
+              <SearchBar />
+            </div>
           </div>
 
           {/* Mobile Hamburger Button */}
-          <div className="md:hidden mobile-menu-container">
+          <div className="md:hidden mobile-menu-container flex items-center gap-2">
+            {/* Mobile Search Button */}
+            <MobileSearchButton />
+            
             <button
               onClick={toggleMobileMenu}
               className="theme-toggle flex items-center justify-center w-10 h-10 rounded-md"
@@ -183,7 +193,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
               aria-label="X (Twitter)"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </a>
             

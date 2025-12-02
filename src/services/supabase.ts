@@ -121,6 +121,16 @@ export async function getWeeklyEpisodes(
         }
       );
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
+      }
+
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
@@ -675,6 +685,16 @@ export async function triggerManualSync(syncType: 'weekly_episodes' | 'season_ra
       },
       body: JSON.stringify({ sync_type: syncType }),
     });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
+    }
 
     const result = await response.json();
     console.log('[SupabaseService] Sync result:', result);

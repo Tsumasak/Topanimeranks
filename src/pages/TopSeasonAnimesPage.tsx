@@ -159,6 +159,8 @@ export default function TopSeasonAnimesPage() {
                   demographics={anime.demographics?.map(d => typeof d === 'string' ? d : d.name) || []}
                   genres={anime.genres?.map(g => typeof g === 'string' ? g : g.name) || []}
                   themes={anime.themes?.map(t => typeof t === 'string' ? t : t.name) || []}
+                  season="fall"
+                  year={2025}
                 />
               </motion.div>
             ))}

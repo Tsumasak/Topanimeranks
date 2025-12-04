@@ -620,7 +620,7 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     // ============================================
     const { data: seasonData, error: seasonError } = await supabase
       .from('season_rankings')
-      .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, score, type')
+      .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, anime_score, type') // ✅ FIXED: Changed 'score' to 'anime_score'
       .order('members', { ascending: false, nullsFirst: false })
       .limit(200);
 
@@ -649,7 +649,7 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
           themes: extractTags(anime.themes || []),
           demographics: extractTags(anime.demographics || []),
           members: anime.members,
-          score: anime.score,
+          score: anime.anime_score, // ✅ FIXED: Changed from anime.score to anime.anime_score
           source: 'season_rankings',
           relevance: anime.relevance
         }));

@@ -117,8 +117,7 @@ export async function syncSeason(supabase: any, season: string, year: number) {
             title_english: anime.title_english || anime.title,
             title_japanese: anime.title_japanese || null,
             image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-            anime_score: anime.score,
-            score: anime.score,
+            anime_score: anime.score, // ✅ ONLY anime_score exists in season_rankings
             scored_by: anime.scored_by,
             members: anime.members,
             favorites: anime.favorites,

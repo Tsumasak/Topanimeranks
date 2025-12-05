@@ -9,11 +9,11 @@ import { syncSeason } from "./sync-season.tsx";
 const app = new Hono();
 
 // ============================================
-// CURRENT SEASON CONFIG
+// CURRENT SEASON CONFIGURATION
 // ============================================
 // Atualizar manualmente quando a temporada mudar
 const CURRENT_SEASON = 'fall';
-const CURRENT_YEAR = 2024;
+const CURRENT_YEAR = 2025;
 
 // Enable logger
 app.use('*', logger(console.log));

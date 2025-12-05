@@ -363,8 +363,70 @@ app.get("/", (c) => {
       GET: "GET /winter/2025"
     },
     availableSeasons: ["winter", "spring", "summer", "fall"],
-    example: "GET /sync-past-anime-data/winter/2025"
+    example: "GET /winter/2025 or POST / with body"
   });
+});
+
+// Handle invocations from Supabase dashboard
+app.get("/sync-past-anime-data", (c) => {
+  return c.json({
+    message: "Sync Past Anime Data Function",
+    usage: {
+      POST: 'POST /sync-past-anime-data with body: { "season": "winter", "year": 2025 }',
+      GET: "GET /sync-past-anime-data/winter/2025"
+    },
+    availableSeasons: ["winter", "spring", "summer", "fall"],
+    example: "Use POST with season and year in body, or GET with /winter/2025"
+  });
+});
+
+app.post("/sync-past-anime-data", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { season, year } = body;
+    
+    if (!season || !year) {
+      return c.json({
+        success: false,
+        error: "Missing required parameters: season and year"
+      }, 400);
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
+    
+    const result = await syncPastSeasons(supabase, season, year);
+
+    return c.json({
+      success: result.success,
+      totalAnimes: result.totalAnimes,
+      totalEpisodes: result.totalEpisodes,
+      insertedEpisodes: result.insertedEpisodes,
+      updatedEpisodes: result.updatedEpisodes,
+      skippedEpisodes: result.skippedEpisodes,
+      errors: result.errors,
+      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
+    });
+
+  } catch (error) {
+    console.error("❌ Sync PAST SEASONS error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    }, 500);
+  }
 });
 
 app.post("/", async (c) => {

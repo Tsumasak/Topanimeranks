@@ -5,7 +5,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { enrichEpisodes } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
-import { syncPastSeasons } from "./sync-past-seasons.tsx";
 
 const app = new Hono();
 
@@ -515,105 +514,6 @@ app.get("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
-});
-
-// ============================================
-// SYNC PAST SEASONS ENDPOINT (MANUAL)
-// ============================================
-// Sincroniza animes de temporadas passadas COM EPISÓDIOS
-// Salva episódios em weekly_episodes com week_number calculado pela data de airing
-app.post("/make-server-c1d1bfd8/sync-past-seasons/:season/:year", async (c) => {
-  try {
-    const season = c.req.param('season');
-    const year = parseInt(c.req.param('year'));
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return c.json({ 
-        success: false, 
-        error: "Missing Supabase credentials" 
-      }, 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
-    
-    const result = await syncPastSeasons(supabase, season, year);
-
-    return c.json({
-      success: result.success,
-      totalAnimes: result.totalAnimes,
-      totalEpisodes: result.totalEpisodes,
-      insertedEpisodes: result.insertedEpisodes,
-      updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
-      errors: result.errors,
-      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
-    });
-
-  } catch (error) {
-    console.error("❌ Sync PAST SEASONS error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
-});
-
-// ============================================
-// SYNC PAST SEASONS ENDPOINT (MANUAL) - GET VERSION
-// ============================================
-// Temporary GET endpoint for easy browser testing
-app.get("/make-server-c1d1bfd8/sync-past-seasons/:season/:year", async (c) => {
-  try {
-    const season = c.req.param('season');
-    const year = parseInt(c.req.param('year'));
-    
-    // Quick validation
-    if (!season || !year || isNaN(year)) {
-      return c.json({
-        success: false,
-        error: "Invalid season or year parameter"
-      }, 400);
-    }
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return c.json({ 
-        success: false, 
-        error: "Missing Supabase credentials" 
-      }, 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
-    
-    const result = await syncPastSeasons(supabase, season, year);
-
-    return c.json({
-      success: result.success,
-      totalAnimes: result.totalAnimes,
-      totalEpisodes: result.totalEpisodes,
-      insertedEpisodes: result.insertedEpisodes,
-      updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
-      errors: result.errors,
-      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
-    });
-
-  } catch (error) {
-    console.error("❌ Sync PAST SEASONS error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined
     }, 500);
   }
 });

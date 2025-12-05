@@ -37,7 +37,23 @@ export default function AdminSyncPage() {
         }
       });
       
-      const data = await response.json();
+      // Debug: Log response status and headers
+      addLog(`Response status: ${response.status}`, 'info');
+      addLog(`Response Content-Type: ${response.headers.get('content-type')}`, 'info');
+      
+      // Get response text first to debug
+      const responseText = await response.text();
+      addLog(`Response (first 200 chars): ${responseText.substring(0, 200)}`, 'info');
+      
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        addLog(`❌ JSON PARSE ERROR: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`, 'error');
+        addLog(`Full response: ${responseText}`, 'error');
+        return;
+      }
       
       if (data.success) {
         addLog(`✅ SUCCESS: ${data.message}`, 'success');

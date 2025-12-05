@@ -8,6 +8,7 @@
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
+        'hono@4': 'hono',
         'figma:asset/fe8a29349e223eac688d543a304b6373974fba28.png': path.resolve(__dirname, './src/assets/fe8a29349e223eac688d543a304b6373974fba28.png'),
         'figma:asset/f686314581c0a4fbd5f282aed19b8a0bebe4df81.png': path.resolve(__dirname, './src/assets/f686314581c0a4fbd5f282aed19b8a0bebe4df81.png'),
         'figma:asset/f25ecd8fe81bf8bfae2dc575d1c3bbfae0496979.png': path.resolve(__dirname, './src/assets/f25ecd8fe81bf8bfae2dc575d1c3bbfae0496979.png'),

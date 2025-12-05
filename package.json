@@ -39,7 +39,7 @@
           "cmdk": "*",
           "embla-carousel-react": "*",
           "framer-motion": "*",
-          "hono": "*",
+          "hono": "^4",
           "input-otp": "*",
           "lucide-react": "*",
           "next-themes": "*",

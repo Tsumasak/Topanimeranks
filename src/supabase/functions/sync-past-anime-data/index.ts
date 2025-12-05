@@ -243,38 +243,38 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
               
               console.log(`   📅 Episódio ${episode.mal_id}: aired ${episode.aired || 'N/A'} → week ${weekNumber} (${week_start_date} - ${week_end_date})`);
               
-              // Preparar dados do episódio
+              // Preparar dados do episódio (usando nomes corretos das colunas)
               const episodeData = {
-                episode_mal_id: episode.mal_id,
                 anime_id: anime.mal_id,
-                anime_title: anime.title,
                 anime_title_english: anime.title_english || anime.title,
                 anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-                episode_number: episode.mal_id, // MAL episode ID
-                episode_title: episode.title || `Episode ${episode.mal_id}`,
-                episode_aired: episode.aired ? new Date(episode.aired).toISOString() : null,
-                episode_score: episode.score,
+                from_url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
+                episode_number: episode.mal_id, // Using MAL episode ID as episode number
+                episode_name: episode.title || `Episode ${episode.mal_id}`,
+                episode_score: episode.score ? String(episode.score) : null, // Converter para string
                 week_number: weekNumber,
-                week_start_date: week_start_date,
-                week_end_date: week_end_date,
                 position_in_week: 0, // Will be calculated later if needed
-                members: anime.members,
-                score: anime.score,
+                is_manual: false,
                 type: anime.type,
+                status: anime.status || 'Airing',
+                // Colunas singulares (original)
+                demographic: anime.demographics || [],
+                genre: anime.genres || [],
+                theme: anime.themes || [],
+                // Colunas plurais (search indexes)
+                demographics: anime.demographics || [],
                 genres: anime.genres || [],
                 themes: anime.themes || [],
-                demographics: anime.demographics || [],
-                studios: anime.studios || [],
-                synopsis: anime.synopsis || '',
-                updated_at: new Date().toISOString(),
+                aired_at: episode.aired ? new Date(episode.aired).toISOString() : null,
               };
               
-              // Verificar se episódio já existe
+              // Verificar se episódio já existe (usando anime_id + episode_number + week_number)
               const { data: existingEpisode } = await supabase
                 .from('weekly_episodes')
                 .select('id')
-                .eq('episode_mal_id', episode.mal_id)
                 .eq('anime_id', anime.mal_id)
+                .eq('episode_number', episode.mal_id)
+                .eq('week_number', weekNumber)
                 .maybeSingle();
               
               let upsertError;
@@ -284,8 +284,9 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 const { error } = await supabase
                   .from('weekly_episodes')
                   .update(episodeData)
-                  .eq('episode_mal_id', episode.mal_id)
-                  .eq('anime_id', anime.mal_id);
+                  .eq('anime_id', anime.mal_id)
+                  .eq('episode_number', episode.mal_id)
+                  .eq('week_number', weekNumber);
                 upsertError = error;
                 updatedEpisodes++;
               } else {

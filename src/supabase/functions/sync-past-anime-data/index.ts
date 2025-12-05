@@ -257,6 +257,9 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 is_manual: false,
                 type: anime.type,
                 status: anime.status || 'Airing',
+                // Season e Year para filtrar
+                season: season.toLowerCase(),
+                year: year,
                 // Colunas singulares (original)
                 demographic: anime.demographics || [],
                 genre: anime.genres || [],
@@ -268,13 +271,15 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 aired_at: episode.aired ? new Date(episode.aired).toISOString() : null,
               };
               
-              // Verificar se episódio já existe (usando anime_id + episode_number + week_number)
+              // Verificar se episódio já existe (usando anime_id + episode_number + week_number + season + year)
               const { data: existingEpisode } = await supabase
                 .from('weekly_episodes')
                 .select('id')
                 .eq('anime_id', anime.mal_id)
                 .eq('episode_number', episode.mal_id)
                 .eq('week_number', weekNumber)
+                .eq('season', season.toLowerCase())
+                .eq('year', year)
                 .maybeSingle();
               
               let upsertError;

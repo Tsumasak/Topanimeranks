@@ -8,6 +8,13 @@ import { syncSeason } from "./sync-season.tsx";
 
 const app = new Hono();
 
+// ============================================
+// CURRENT SEASON CONFIG
+// ============================================
+// Atualizar manualmente quando a temporada mudar
+const CURRENT_SEASON = 'fall';
+const CURRENT_YEAR = 2024;
+
 // Enable logger
 app.use('*', logger(console.log));
 
@@ -213,10 +220,13 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
     // Get episodes for the week, ordered by score (primary) and position (fallback)
     // FILTER: Only show episodes with a valid score (NOT NULL)
+    // FILTER: Only show episodes from the CURRENT SEASON
     const { data: episodes, error } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
+      .eq('season', CURRENT_SEASON)
+      .eq('year', CURRENT_YEAR)
       .not('episode_score', 'is', null)
       .order('episode_score', { ascending: false })
       .order('position_in_week', { ascending: true });
@@ -230,7 +240,7 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       }, 200);
     }
 
-    console.log(`[Server] Week ${weekNumber}: ${episodes?.length || 0} episodes with scores (N/A episodes hidden)`);
+    console.log(`[Server] Week ${weekNumber} (${CURRENT_SEASON} ${CURRENT_YEAR}): ${episodes?.length || 0} episodes with scores (N/A episodes hidden)`);
     
     // Debug: Log date fields from first episode
     if (episodes && episodes.length > 0) {

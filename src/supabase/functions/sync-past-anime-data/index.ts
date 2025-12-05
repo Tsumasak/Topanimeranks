@@ -487,6 +487,15 @@ app.post("/", async (c) => {
 // GET endpoint for easy browser testing
 app.get("/:season/:year", async (c) => {
   try {
+    // Simple security key to prevent abuse (BROWSER ACCESS)
+    const key = c.req.query('key');
+    if (key !== 'sync2025') {
+      return c.json({
+        success: false,
+        error: "Missing or invalid security key. Add ?key=sync2025 to the URL"
+      }, 401);
+    }
+    
     const season = c.req.param('season');
     const year = parseInt(c.req.param('year'));
     

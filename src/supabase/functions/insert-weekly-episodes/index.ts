@@ -214,8 +214,8 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             is_manual: false,
             type: anime.type,
             status: anime.status,
-            season: 'fall', // Current season
-            year: 2024, // Current year
+            season: anime.season || 'fall', // Get from Jikan API
+            year: anime.year || 2025, // Get from Jikan API
             demographic: anime.demographics || [],
             genre: anime.genres || [],
             theme: anime.themes || [],

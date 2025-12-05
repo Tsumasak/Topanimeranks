@@ -218,33 +218,30 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Get episodes for the week, ordered by score (primary) and position (fallback)
-    // FILTER: Only show episodes with a valid score (NOT NULL)
-    // FILTER: Only show episodes from the CURRENT SEASON
-    const { data: episodes, error } = await supabase
+    // Fetch weekly episodes with filters
+    console.log(`🔍 Fetching weekly episodes for week ${weekNumber}...`);
+    const { data: weeklyData, error: weeklyError } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
       .eq('season', CURRENT_SEASON)
       .eq('year', CURRENT_YEAR)
-      .not('episode_score', 'is', null)
-      .order('episode_score', { ascending: false })
       .order('position_in_week', { ascending: true });
 
-    if (error) {
-      console.error("Error fetching weekly episodes:", error);
+    if (weeklyError) {
+      console.error("Error fetching weekly episodes:", weeklyError);
       return c.json({
         success: false,
-        error: error.message,
+        error: weeklyError.message,
         needsData: true
       }, 200);
     }
 
-    console.log(`[Server] Week ${weekNumber} (${CURRENT_SEASON} ${CURRENT_YEAR}): ${episodes?.length || 0} episodes with scores (N/A episodes hidden)`);
+    console.log(`[Server] Week ${weekNumber} (${CURRENT_SEASON} ${CURRENT_YEAR}): ${weeklyData?.length || 0} episodes with scores (N/A episodes hidden)`);
     
     // Debug: Log date fields from first episode
-    if (episodes && episodes.length > 0) {
-      const firstEp = episodes[0];
+    if (weeklyData && weeklyData.length > 0) {
+      const firstEp = weeklyData[0];
       console.log(`[Server] First episode date fields:`, {
         week_start_date: firstEp.week_start_date,
         week_end_date: firstEp.week_end_date,
@@ -254,8 +251,8 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
     return c.json({
       success: true,
-      data: episodes || [],
-      count: episodes?.length || 0
+      data: weeklyData || [],
+      count: weeklyData?.length || 0
     });
 
   } catch (error) {

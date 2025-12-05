@@ -62,8 +62,8 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
-      .eq('season', 'fall') // Only update current season
-      .eq('year', 2024) // Only update current year
+      .eq('season', 'fall')
+      .eq('year', 2024)
       .eq('is_manual', false); // Only update auto-synced episodes
 
     if (fetchError) {

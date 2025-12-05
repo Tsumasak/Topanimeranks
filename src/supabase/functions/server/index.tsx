@@ -572,6 +572,15 @@ app.get("/make-server-c1d1bfd8/sync-past-seasons/:season/:year", async (c) => {
   try {
     const season = c.req.param('season');
     const year = parseInt(c.req.param('year'));
+    
+    // Quick validation
+    if (!season || !year || isNaN(year)) {
+      return c.json({
+        success: false,
+        error: "Invalid season or year parameter"
+      }, 400);
+    }
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -603,7 +612,8 @@ app.get("/make-server-c1d1bfd8/sync-past-seasons/:season/:year", async (c) => {
     console.error("❌ Sync PAST SEASONS error:", error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
     }, 500);
   }
 });

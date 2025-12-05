@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Sync Past Seasons</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .season-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .season-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 20px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .season-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .season-btn:active {
+      transform: translateY(0);
+    }
+    
+    .season-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .log-container {
+      background: #f5f5f5;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #333;
+    }
+    
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    
+    .log-success {
+      color: #22c55e;
+      font-weight: 600;
+    }
+    
+    .log-error {
+      color: #ef4444;
+      font-weight: 600;
+    }
+    
+    .log-info {
+      color: #3b82f6;
+    }
+    
+    .log-warning {
+      color: #f59e0b;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    
+    .status-running {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .status-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Sync Past Seasons</h1>
+    <p class="subtitle">Populate episodes from 2025 seasons (Winter, Spring, Summer)</p>
+    
+    <div class="season-grid">
+      <button class="season-btn" onclick="syncSeason('winter', 2025)" id="btn-winter">
+        ❄️ Winter 2025
+      </button>
+      <button class="season-btn" onclick="syncSeason('spring', 2025)" id="btn-spring">
+        🌸 Spring 2025
+      </button>
+      <button class="season-btn" onclick="syncSeason('summer', 2025)" id="btn-summer">
+        ☀️ Summer 2025
+      </button>
+    </div>
+    
+    <div class="log-container" id="log">
+      <div class="log-entry log-info">Ready to sync. Click a season button to start.</div>
+    </div>
+  </div>
+
+  <script>
+    const projectId = 'kgiuycrbdctbbuvtlyro';
+    const publicAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaXV5Y3JiZGN0YmJ1dnRseXJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMzNDQ1MTAsImV4cCI6MjA0ODkyMDUxMH0.0bDN5qVF_y4Y2Z-xEyQ6YzYDyPdBJa6xH5SuuWlKMvw';
+    
+    function addLog(message, type = 'info') {
+      const logContainer = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `[${timestamp}] ${message}`;
+      
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    function disableAllButtons() {
+      document.querySelectorAll('.season-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+    }
+    
+    function enableAllButtons() {
+      document.querySelectorAll('.season-btn').forEach(btn => {
+        btn.disabled = false;
+      });
+    }
+    
+    async function syncSeason(season, year) {
+      const btnId = `btn-${season}`;
+      const btn = document.getElementById(btnId);
+      const originalText = btn.innerHTML;
+      
+      // Disable all buttons
+      disableAllButtons();
+      
+      // Update button with spinner
+      btn.innerHTML = `<span class="spinner"></span> Syncing...`;
+      
+      addLog(`Starting sync for ${season} ${year}...`, 'info');
+      addLog('This may take 5-15 minutes. Please wait...', 'warning');
+      
+      try {
+        const url = `https://${projectId}.supabase.co/functions/v1/server/make-server-c1d1bfd8/sync-past/${season}/${year}?key=sync2025`;
+        
+        addLog(`Making request to server...`, 'info');
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addLog(`✅ SUCCESS: ${data.message}`, 'success');
+          addLog(`Total Animes: ${data.totalAnimes}`, 'success');
+          addLog(`Total Episodes: ${data.totalEpisodes}`, 'success');
+          addLog(`Inserted Episodes: ${data.insertedEpisodes}`, 'success');
+          btn.innerHTML = `✅ ${originalText.replace(/[❄️🌸☀️]/g, '').trim()}`;
+        } else {
+          addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+          btn.innerHTML = originalText;
+        }
+        
+      } catch (error) {
+        addLog(`❌ FETCH ERROR: ${error.message}`, 'error');
+        btn.innerHTML = originalText;
+      } finally {
+        // Re-enable all buttons
+        enableAllButtons();
+      }
+    }
+    
+    // Add welcome message
+    addLog('🚀 Admin Panel Ready', 'success');
+    addLog('Click a season button to populate episodes from Jikan API', 'info');
+  </script>
+</body>
+</html>

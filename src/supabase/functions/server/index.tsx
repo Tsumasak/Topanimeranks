@@ -585,6 +585,77 @@ app.get("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
 });
 
 // ============================================
+// SYNC PAST SEASONS ENDPOINT (2025 Winter, Spring, Summer)
+// ============================================
+// GET endpoint for syncing past season data and populating weekly_episodes
+app.get("/make-server-c1d1bfd8/sync-past/:season/:year", async (c) => {
+  try {
+    // Security check
+    const key = c.req.query('key');
+    if (key !== 'sync2025') {
+      return c.json({
+        success: false,
+        error: 'Invalid or missing security key. Add ?key=sync2025 to the URL'
+      }, 401);
+    }
+
+    const season = c.req.param('season');
+    const year = parseInt(c.req.param('year'));
+    
+    console.log(`[Sync Past] 🔍 Starting to sync and populate ${season} ${year}...`);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase credentials');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Step 1: Sync season rankings from Jikan
+    console.log(`[Sync Past] Step 1: Syncing ${season} ${year} season data from Jikan...`);
+    const syncResult = await syncSeason(supabase, season, year);
+    
+    if (!syncResult.success) {
+      return c.json({
+        success: false,
+        error: `Failed to sync season: ${syncResult.errors}`
+      }, 500);
+    }
+
+    console.log(`[Sync Past] ✅ Step 1 complete: ${syncResult.inserted} animes synced`);
+
+    // Step 2: Enrich episodes with scores and populate weekly_episodes
+    console.log(`[Sync Past] Step 2: Enriching episodes and populating weekly_episodes...`);
+    const enrichResult = await enrichEpisodes(supabase, season, year);
+
+    console.log(`[Sync Past] ✅ Successfully completed sync for ${season} ${year}`);
+    console.log(`[Sync Past] Total Animes: ${syncResult.total}`);
+    console.log(`[Sync Past] Enriched Episodes: ${enrichResult.enriched}`);
+
+    return c.json({
+      success: true,
+      message: `Successfully synced and populated ${season} ${year}`,
+      season,
+      year,
+      totalAnimes: syncResult.total,
+      insertedAnimes: syncResult.inserted,
+      totalEpisodes: enrichResult.enriched,
+      insertedEpisodes: enrichResult.enriched,
+      errors: enrichResult.errors
+    });
+
+  } catch (error) {
+    console.error("[Sync Past] ❌ Error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// ============================================
 // SEARCH ENDPOINT - Global Search
 // ============================================
 // Searches across all tables: weekly_episodes, season_rankings, anticipated_animes

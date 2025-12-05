@@ -609,7 +609,7 @@ export function HomePage() {
                 </AnimatePresence>
 
                 <Link 
-                  to="/ranks"
+                  to={`/weekly-episodes?week=week${displayedWeekNumber}`}
                   className="font-['Arial'] font-bold leading-[20px] relative shrink-0 text-[14px] text-right w-full hover:opacity-80 transition-opacity"
                   style={{ color: 'var(--foreground)' }}
                 >

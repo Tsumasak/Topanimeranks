@@ -36,55 +36,257 @@ app.get("/make-server-c1d1bfd8/health", (c) => {
 });
 
 // ============================================
-// TEMPORARY ENDPOINT: Populate weekly episodes for any season
+// SYNC PAST SEASONS - Browser accessible
 // ============================================
-// Usage: GET /populate-season?season=spring&year=2025&key=populate123
-// This will fetch data from Jikan API and populate weekly_episodes table
+// Usage: GET /make-server-c1d1bfd8/sync-past/:season/:year?key=sync2025
+// Example: /make-server-c1d1bfd8/sync-past/spring/2025?key=sync2025
 // ============================================
-app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
+
+interface JikanAnime {
+  mal_id: number;
+  url: string;
+  images: { 
+    jpg: { 
+      image_url: string;
+      large_image_url: string;
+    } 
+  };
+  title: string;
+  title_english: string | null;
+  title_japanese: string | null;
+  type: string;
+  source: string;
+  episodes: number | null;
+  status: string;
+  airing: boolean;
+  aired: {
+    from: string | null;
+    to: string | null;
+  };
+  duration: string;
+  rating: string;
+  score: number | null;
+  scored_by: number | null;
+  rank: number | null;
+  popularity: number;
+  members: number;
+  favorites: number;
+  synopsis: string;
+  season: string | null;
+  year: number | null;
+  demographics: Array<{ mal_id: number; type: string; name: string; url: string }>;
+  genres: Array<{ mal_id: number; type: string; name: string; url: string }>;
+  themes: Array<{ mal_id: number; type: string; name: string; url: string }>;
+  studios: Array<{ mal_id: number; type: string; name: string; url: string }>;
+}
+
+interface JikanEpisode {
+  mal_id: number;
+  url: string;
+  title: string;
+  title_japanese: string | null;
+  title_romanji: string | null;
+  aired: string | null;
+  score: number | null;
+  filler: boolean;
+  recap: boolean;
+  forum_url: string | null;
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function calculateWeekNumber(season: string, year: number, episodeAiredDate: string | null): number {
+  if (!episodeAiredDate) {
+    return 1;
+  }
+
+  const seasonStartDates: Record<string, string> = {
+    winter: `${year}-01-01`,
+    spring: `${year}-04-01`,
+    summer: `${year}-07-01`,
+    fall: `${year}-10-01`,
+  };
+
+  const seasonStartDate = seasonStartDates[season.toLowerCase()];
+  if (!seasonStartDate) {
+    return 1;
+  }
+
+  const startDate = new Date(seasonStartDate);
+  const airedDate = new Date(episodeAiredDate);
+
+  const diffTime = airedDate.getTime() - startDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  const weekNumber = Math.floor(diffDays / 7) + 1;
+
+  return Math.max(1, weekNumber);
+}
+
+async function syncPastSeasonData(supabase: any, season: string, year: number) {
+  console.log(`🚀 Sync PAST SEASON: ${season} ${year}...`);
+  
+  let totalAnimes = 0;
+  let totalEpisodes = 0;
+  let insertedEpisodes = 0;
+  let page = 1;
+  let hasNextPage = true;
+  
+  while (hasNextPage && page <= 10) {
+    console.log(`📊 Página ${page} de ${season} ${year}...`);
+    
+    const seasonUrl = `https://api.jikan.moe/v4/seasons/${year}/${season}?page=${page}&limit=25`;
+    
+    await sleep(333);
+    const seasonResponse = await fetch(seasonUrl);
+    
+    if (!seasonResponse.ok) {
+      if (seasonResponse.status === 429) {
+        console.log("⏳ Rate limit, aguardando 5s...");
+        await sleep(5000);
+        continue;
+      }
+      break;
+    }
+    
+    const seasonData = await seasonResponse.json();
+    const animes: JikanAnime[] = seasonData.data || [];
+    
+    if (animes.length === 0) {
+      hasNextPage = false;
+      break;
+    }
+    
+    const popularAnimes = animes.filter(anime => 
+      anime.members >= 5000 && 
+      (anime.type === 'TV' || anime.type === 'ONA')
+    );
+    
+    totalAnimes += popularAnimes.length;
+    
+    for (const anime of popularAnimes) {
+      const titleEnglish = anime.title_english || anime.title;
+      console.log(`🔍 ${titleEnglish} (${anime.mal_id})`);
+      
+      await sleep(333);
+      const episodesUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/episodes`;
+      const episodesResponse = await fetch(episodesUrl);
+      
+      if (!episodesResponse.ok) {
+        if (episodesResponse.status === 429) {
+          await sleep(5000);
+        }
+        continue;
+      }
+      
+      const episodesData = await episodesResponse.json();
+      const episodes: JikanEpisode[] = episodesData.data || [];
+      
+      totalEpisodes += episodes.length;
+      
+      for (const episode of episodes) {
+        const weekNumber = calculateWeekNumber(season, year, episode.aired);
+        
+        const episodeData = {
+          anime_id: anime.mal_id,
+          anime_title_english: anime.title_english || anime.title,
+          anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+          from_url: anime.url || `https://myanimelist.net/anime/${anime.mal_id}`,
+          episode_number: episode.mal_id,
+          episode_name: episode.title || `Episode ${episode.mal_id}`,
+          episode_score: episode.score ? String(episode.score) : null,
+          week_number: weekNumber,
+          position_in_week: 0,
+          is_manual: false,
+          type: anime.type,
+          status: anime.status || 'Airing',
+          season: season.toLowerCase(),
+          year: year,
+          demographic: anime.demographics || [],
+          genre: anime.genres || [],
+          theme: anime.themes || [],
+          demographics: anime.demographics || [],
+          genres: anime.genres || [],
+          themes: anime.themes || [],
+          aired_at: episode.aired ? new Date(episode.aired).toISOString() : null,
+        };
+        
+        const { data: existingEpisode } = await supabase
+          .from('weekly_episodes')
+          .select('id')
+          .eq('anime_id', anime.mal_id)
+          .eq('episode_number', episode.mal_id)
+          .eq('week_number', weekNumber)
+          .eq('season', season.toLowerCase())
+          .eq('year', year)
+          .maybeSingle();
+        
+        if (!existingEpisode) {
+          await supabase
+            .from('weekly_episodes')
+            .insert(episodeData);
+          insertedEpisodes++;
+        }
+      }
+    }
+    
+    hasNextPage = seasonData.pagination?.has_next_page || false;
+    page++;
+    await sleep(1000);
+  }
+  
+  return {
+    success: true,
+    totalAnimes,
+    totalEpisodes,
+    insertedEpisodes,
+  };
+}
+
+app.get("/make-server-c1d1bfd8/sync-past/:season/:year", async (c) => {
   try {
-    // Simple security key to prevent abuse
     const key = c.req.query('key');
-    if (key !== 'populate123') {
+    if (key !== 'sync2025') {
       return c.json({
         success: false,
-        error: 'Invalid or missing security key. Add ?key=populate123 to the URL'
+        error: "Missing or invalid security key. Add ?key=sync2025"
       }, 401);
     }
-
-    const season = c.req.query('season') || CURRENT_SEASON;
-    const year = parseInt(c.req.query('year') || String(CURRENT_YEAR));
-
-    console.log(`[Populate Season] 🔍 Starting to populate ${season} ${year}...`);
-
+    
+    const season = c.req.param('season');
+    const year = parseInt(c.req.param('year'));
+    
+    if (!season || !year || isNaN(year)) {
+      return c.json({
+        success: false,
+        error: "Invalid season or year"
+      }, 400);
+    }
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase credentials');
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Step 1: Sync season rankings (if not already synced)
-    console.log(`[Populate Season] Step 1: Syncing ${season} ${year} season data...`);
-    await syncSeason(supabase, season, year);
-
-    // Step 2: Enrich episodes with scores
-    console.log(`[Populate Season] Step 2: Enriching episodes with scores...`);
-    await enrichEpisodes(supabase, season, year);
-
-    console.log(`[Populate Season] ✅ Successfully populated ${season} ${year}`);
+    const result = await syncPastSeasonData(supabase, season, year);
 
     return c.json({
       success: true,
-      message: `Successfully populated ${season} ${year}`,
-      season,
-      year
+      totalAnimes: result.totalAnimes,
+      totalEpisodes: result.totalEpisodes,
+      insertedEpisodes: result.insertedEpisodes,
+      message: `✅ ${season} ${year}: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes`
     });
 
   } catch (error) {
-    console.error("[Populate Season] ❌ Error:", error);
+    console.error("❌ Sync error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

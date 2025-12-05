@@ -79,17 +79,3 @@ SELECT cron.schedule(
     ) AS request_id;
   $$
 );
-
--- ============================================
--- VERIFICAR CRON JOBS CRIADOS
--- ============================================
--- Use esta query para verificar se os cron jobs foram criados:
--- SELECT * FROM cron.job WHERE jobname LIKE 'sync-%2025%';
-
--- ============================================
--- REMOVER CRON JOBS (se necessário)
--- ============================================
--- SELECT cron.unschedule('sync-winter-2025');
--- SELECT cron.unschedule('sync-spring-2025');
--- SELECT cron.unschedule('sync-summer-2025');
--- SELECT cron.unschedule('sync-fall-2025-past');

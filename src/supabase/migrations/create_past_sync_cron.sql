@@ -17,12 +17,12 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-      url := 'https://kgiuycrbdctbbuvtlyro.supabase.co/functions/v1/sync-past-anime-data/winter/2025?key=sync2025',
+      url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/sync-past-anime-data/winter/2025?key=sync2025',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
       )
-    ) as request_id;
+    ) AS request_id;
   $$
 );
 
@@ -35,12 +35,12 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-      url := 'https://kgiuycrbdctbbuvtlyro.supabase.co/functions/v1/sync-past-anime-data/spring/2025?key=sync2025',
+      url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/sync-past-anime-data/spring/2025?key=sync2025',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
       )
-    ) as request_id;
+    ) AS request_id;
   $$
 );
 
@@ -53,12 +53,12 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-      url := 'https://kgiuycrbdctbbuvtlyro.supabase.co/functions/v1/sync-past-anime-data/summer/2025?key=sync2025',
+      url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/sync-past-anime-data/summer/2025?key=sync2025',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
       )
-    ) as request_id;
+    ) AS request_id;
   $$
 );
 
@@ -71,12 +71,12 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-      url := 'https://kgiuycrbdctbbuvtlyro.supabase.co/functions/v1/sync-past-anime-data/fall/2025?key=sync2025',
+      url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/sync-past-anime-data/fall/2025?key=sync2025',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
       )
-    ) as request_id;
+    ) AS request_id;
   $$
 );
 

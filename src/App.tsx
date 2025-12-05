@@ -10,6 +10,7 @@ import MostAnticipatedPage from "./pages/MostAnticipatedPage";
 import { MissingEpisodesPage } from "./pages/MissingEpisodesPage";
 import AnimeDetailsPage from "./pages/AnimeDetailsPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
+import AdminSyncPage from "./pages/AdminSyncPage";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
 
@@ -213,6 +214,7 @@ function AppContent() {
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
           <Route path="/anime/:id" element={<AnimeDetailsPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
+          <Route path="/admin-sync" element={<AdminSyncPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>

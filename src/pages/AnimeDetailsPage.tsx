@@ -32,11 +32,15 @@ export default function AnimeDetailsPage() {
         console.log(
           "[AnimeDetails] 📊 Searching in anticipated_animes...",
         );
-        let { data: anticipatedData } = await supabase
+        let { data: anticipatedData, error: anticipatedError } = await supabase
           .from("anticipated_animes")
           .select("*")
           .eq("anime_id", animeId)
-          .single();
+          .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+
+        if (anticipatedError) {
+          console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
+        }
 
         if (anticipatedData) {
           console.log(
@@ -60,11 +64,15 @@ export default function AnimeDetailsPage() {
           console.log(
             "[AnimeDetails] 📊 Searching in season_rankings...",
           );
-          let { data: seasonData } = await supabase
+          let { data: seasonData, error: seasonError } = await supabase
             .from("season_rankings")
             .select("*")
             .eq("anime_id", animeId)
-            .single();
+            .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+
+          if (seasonError) {
+            console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
+          }
 
           if (seasonData) {
             console.log(
@@ -89,7 +97,7 @@ export default function AnimeDetailsPage() {
               .eq("anime_id", animeId)
               .order("episode_number", { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
 
             if (weeklyEpisodeData) {
               console.log(

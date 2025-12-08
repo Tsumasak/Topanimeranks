@@ -25,7 +25,7 @@ export default function AdminSyncPage() {
     addLog('This may take 5-15 minutes. Please wait...', 'warning');
     
     try {
-      const url = `https://${projectId}.supabase.co/functions/v1/server/make-server-c1d1bfd8/sync-past/${season}/${year}?key=sync2025`;
+      const url = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/sync-past/${season}/${year}?key=sync2025`;
       
       addLog('Making request to server...', 'info');
       
@@ -37,23 +37,19 @@ export default function AdminSyncPage() {
         }
       });
       
-      // Debug: Log response status and headers
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type');
       addLog(`Response status: ${response.status}`, 'info');
-      addLog(`Response Content-Type: ${response.headers.get('content-type')}`, 'info');
+      addLog(`Response Content-Type: ${contentType}`, 'info');
       
-      // Get response text first to debug
-      const responseText = await response.text();
-      addLog(`Response (first 200 chars): ${responseText.substring(0, 200)}`, 'info');
-      
-      // Try to parse as JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        addLog(`❌ JSON PARSE ERROR: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`, 'error');
-        addLog(`Full response: ${responseText}`, 'error');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        addLog(`❌ Response is not JSON. First 200 chars: ${text.substring(0, 200)}`, 'error');
         return;
       }
+      
+      // Parse JSON
+      const data = await response.json();
       
       if (data.success) {
         addLog(`✅ SUCCESS: ${data.message}`, 'success');

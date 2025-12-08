@@ -155,6 +155,7 @@ export async function enrichEpisodes(supabase: any) {
         const { error: updateError } = await supabase
           .from('weekly_episodes')
           .update({
+            episode_id: `${episode.anime_id}_${episode.episode_number}`, // IMPORTANTE: Adicionar episode_id único
             anime_title_english: animeData.anime_title_english,
             anime_image_url: animeData.anime_image_url,
             from_url: animeData.from_url,

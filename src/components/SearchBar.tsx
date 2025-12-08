@@ -80,6 +80,13 @@ export function SearchBar({ isMobile = false, onClose }: SearchBarProps) {
           throw new Error('Search failed');
         }
 
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('[SearchBar] Response is not JSON:', text.substring(0, 200));
+          throw new Error('Response is not JSON');
+        }
+
         const data = await response.json();
         console.log('[SearchBar] Response:', data); // Debug
         setResults(data.results || []);

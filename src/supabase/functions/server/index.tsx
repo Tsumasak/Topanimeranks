@@ -208,13 +208,13 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get ALL episodes WITH SCORE (episode_score IS NOT NULL)
-    // Filter by CURRENT SEASON and YEAR
+    // IMPORTANTE: Para animes Currently Airing, buscar de TODAS as seasons
+    // Para animes Finished Airing, buscar apenas da season/year atual
     const { data, error } = await supabase
       .from('weekly_episodes')
-      .select('week_number, episode_score')
+      .select('week_number, episode_score, status, season, year')
       .not('episode_score', 'is', null)
-      .eq('season', CURRENT_SEASON)
-      .eq('year', CURRENT_YEAR)
+      .or(`status.eq.Currently Airing,and(season.eq.${CURRENT_SEASON},year.eq.${CURRENT_YEAR})`)
       .order('week_number', { ascending: true });
 
     if (error) {
@@ -279,12 +279,14 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
     // Fetch weekly episodes with filters
     console.log(`🔍 Fetching weekly episodes for week ${weekNumber}...`);
+    
+    // IMPORTANTE: Para animes Currently Airing, buscar de TODAS as seasons
+    // Para animes Finished Airing, buscar apenas da season/year atual
     const { data: weeklyData, error: weeklyError } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
-      .eq('season', CURRENT_SEASON)
-      .eq('year', CURRENT_YEAR)
+      .or(`status.eq.Currently Airing,and(season.eq.${CURRENT_SEASON},year.eq.${CURRENT_YEAR})`)
       .order('position_in_week', { ascending: true });
 
     if (weeklyError) {
@@ -296,7 +298,7 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       }, 200);
     }
 
-    console.log(`[Server] Week ${weekNumber} (${CURRENT_SEASON} ${CURRENT_YEAR}): ${weeklyData?.length || 0} episodes with scores (N/A episodes hidden)`);
+    console.log(`[Server] Week ${weekNumber}: ${weeklyData?.length || 0} episodes (Currently Airing from any season + Finished from ${CURRENT_SEASON} ${CURRENT_YEAR})`);
     
     // Debug: Log date fields from first episode
     if (weeklyData && weeklyData.length > 0) {

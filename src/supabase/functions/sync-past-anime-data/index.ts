@@ -260,14 +260,14 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 // Season e Year para filtrar
                 season: season.toLowerCase(),
                 year: year,
-                // Colunas singulares (original)
-                demographic: anime.demographics || [],
-                genre: anime.genres || [],
-                theme: anime.themes || [],
-                // Colunas plurais (search indexes)
-                demographics: anime.demographics || [],
-                genres: anime.genres || [],
-                themes: anime.themes || [],
+                // Colunas singulares (para compatibilidade) - Salvar como JSONB
+                demographic: anime.demographics && anime.demographics.length > 0 ? anime.demographics : [],
+                genre: anime.genres && anime.genres.length > 0 ? anime.genres : [],
+                theme: anime.themes && anime.themes.length > 0 ? anime.themes : [],
+                // Colunas plurais (search indexes) - Salvar como JSONB
+                demographics: anime.demographics && anime.demographics.length > 0 ? anime.demographics : [],
+                genres: anime.genres && anime.genres.length > 0 ? anime.genres : [],
+                themes: anime.themes && anime.themes.length > 0 ? anime.themes : [],
                 aired_at: episode.aired ? new Date(episode.aired).toISOString() : null,
               };
               
@@ -545,6 +545,124 @@ app.get("/:season/:year", async (c) => {
 
 // POST endpoint for cron jobs
 app.post("/:season/:year", async (c) => {
+  try {
+    // Simple security key to prevent abuse
+    const key = c.req.query('key');
+    if (key !== 'sync2025') {
+      return c.json({
+        success: false,
+        error: "Missing or invalid security key. Add ?key=sync2025 to the URL"
+      }, 401);
+    }
+    
+    const season = c.req.param('season');
+    const year = parseInt(c.req.param('year'));
+    
+    if (!season || !year || isNaN(year)) {
+      return c.json({
+        success: false,
+        error: "Invalid season or year parameter"
+      }, 400);
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
+    
+    const result = await syncPastSeasons(supabase, season, year);
+
+    return c.json({
+      success: result.success,
+      totalAnimes: result.totalAnimes,
+      totalEpisodes: result.totalEpisodes,
+      insertedEpisodes: result.insertedEpisodes,
+      updatedEpisodes: result.updatedEpisodes,
+      skippedEpisodes: result.skippedEpisodes,
+      errors: result.errors,
+      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
+    });
+
+  } catch (error) {
+    console.error("❌ Sync PAST SEASONS error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    }, 500);
+  }
+});
+
+// POST endpoint with /sync-past-anime-data prefix for cron jobs
+app.post("/sync-past-anime-data/:season/:year", async (c) => {
+  try {
+    // Simple security key to prevent abuse
+    const key = c.req.query('key');
+    if (key !== 'sync2025') {
+      return c.json({
+        success: false,
+        error: "Missing or invalid security key. Add ?key=sync2025 to the URL"
+      }, 401);
+    }
+    
+    const season = c.req.param('season');
+    const year = parseInt(c.req.param('year'));
+    
+    if (!season || !year || isNaN(year)) {
+      return c.json({
+        success: false,
+        error: "Invalid season or year parameter"
+      }, 400);
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
+    
+    const result = await syncPastSeasons(supabase, season, year);
+
+    return c.json({
+      success: result.success,
+      totalAnimes: result.totalAnimes,
+      totalEpisodes: result.totalEpisodes,
+      insertedEpisodes: result.insertedEpisodes,
+      updatedEpisodes: result.updatedEpisodes,
+      skippedEpisodes: result.skippedEpisodes,
+      errors: result.errors,
+      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
+    });
+
+  } catch (error) {
+    console.error("❌ Sync PAST SEASONS error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    }, 500);
+  }
+});
+
+// GET endpoint with /sync-past-anime-data prefix
+app.get("/sync-past-anime-data/:season/:year", async (c) => {
   try {
     // Simple security key to prevent abuse
     const key = c.req.query('key');

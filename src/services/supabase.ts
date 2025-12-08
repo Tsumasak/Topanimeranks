@@ -227,6 +227,66 @@ export async function getWeeklyEpisodes(
   };
 }
 
+// ============================================
+// EPISODE RANK CALCULATION WITH CACHE
+// ============================================
+
+// Cache para evitar queries repetidas por week
+const weekRankingsCache = new Map<number, Array<{ episode_id: string; episode_score: number }>>();
+
+/**
+ * Calcula o rank de um episódio dentro da sua week baseado no episode_score
+ * Usa cache por week_number para evitar queries repetidas
+ */
+export async function getEpisodeRankInWeek(
+  weekNumber: number,
+  episodeId: string,
+  episodeScore: number
+): Promise<number> {
+  try {
+    if (!weekRankingsCache.has(weekNumber)) {
+      const { data, error } = await supabase
+        .from('weekly_episodes')
+        .select('episode_id, episode_score')
+        .eq('week_number', weekNumber)
+        .not('episode_score', 'is', null)
+        .order('episode_score', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching week rankings:', error);
+        return 0;
+      }
+      
+      weekRankingsCache.set(weekNumber, data || []);
+    }
+    
+    const rankings = weekRankingsCache.get(weekNumber) || [];
+    const position = rankings.findIndex(ep => ep.episode_id === episodeId);
+    
+    if (position === -1) {
+      const positionByScore = rankings.findIndex(ep => ep.episode_score === episodeScore);
+      return positionByScore !== -1 ? positionByScore + 1 : 0;
+    }
+    
+    return position + 1;
+    
+  } catch (error) {
+    console.error('Error calculating episode rank:', error);
+    return 0;
+  }
+}
+
+/**
+ * Limpa o cache de rankings (útil quando dados são atualizados)
+ */
+export function clearWeekRankingsCache(weekNumber?: number) {
+  if (weekNumber !== undefined) {
+    weekRankingsCache.delete(weekNumber);
+  } else {
+    weekRankingsCache.clear();
+  }
+}
+
 /**
  * Merge manual episodes with API data
  * Note: Manual episodes are already merged in JikanService.getWeekData

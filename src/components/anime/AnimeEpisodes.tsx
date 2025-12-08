@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 interface Episode {
   id: number;
   anime_id: number;
+  episode_id?: string; // Add episode_id to interface
   from_url?: string;
   episode_number: number;
   episode_name: string;
@@ -40,7 +41,14 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
     const weekEpisodes = weeklyData[episode.week_number];
     if (!weekEpisodes || !Array.isArray(weekEpisodes)) return null;
 
-    const rank = weekEpisodes.findIndex((ep: any) => ep.anime_id === episode.anime_id) + 1;
+    // Match by episode_id (anime_id + episode_number) instead of just anime_id
+    const episodeId = episode.episode_id || `${episode.anime_id}_${episode.episode_number}`;
+    
+    const rank = weekEpisodes.findIndex((ep: any) => {
+      const epId = ep.episode_id || `${ep.anime_id}_${ep.episode_number}`;
+      return epId === episodeId;
+    }) + 1;
+    
     return rank > 0 ? rank : null;
   };
 

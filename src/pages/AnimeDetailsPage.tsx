@@ -207,18 +207,15 @@ export default function AnimeDetailsPage() {
           const weeklyDataMap: Record<number, any[]> = {};
           
           for (const weekNum of weeks) {
-            // Fetch all episodes from this week (ordered by score like in WeekControl)
             const { data: weekEpisodes } = await supabase
               .from("weekly_episodes")
               .select("*")
               .eq("week_number", weekNum)
               .not("episode_score", "is", null)
-              .order("episode_score", { ascending: false })
-              .order("position_in_week", { ascending: true });
+              .order("episode_score", { ascending: false });
 
             if (weekEpisodes) {
               weeklyDataMap[weekNum] = weekEpisodes;
-              console.log(`[AnimeDetails] ✅ Week ${weekNum}: ${weekEpisodes.length} episodes`);
             }
 
             // Also fetch previous week for trend calculation
@@ -228,12 +225,10 @@ export default function AnimeDetailsPage() {
                 .select("*")
                 .eq("week_number", weekNum - 1)
                 .not("episode_score", "is", null)
-                .order("episode_score", { ascending: false })
-                .order("position_in_week", { ascending: true });
+                .order("episode_score", { ascending: false });
 
               if (prevWeekEpisodes) {
                 weeklyDataMap[weekNum - 1] = prevWeekEpisodes;
-                console.log(`[AnimeDetails] ✅ Week ${weekNum - 1}: ${prevWeekEpisodes.length} episodes (prev)`);
               }
             }
           }

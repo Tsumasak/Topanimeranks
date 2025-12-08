@@ -2,7 +2,7 @@ import { Hono } from "npm:hono@4";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { enrichEpisodes } from "./enrich.tsx";
+import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
 
@@ -287,7 +287,8 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       .select('*')
       .eq('week_number', weekNumber)
       .or(`status.eq.Currently Airing,and(season.eq.${CURRENT_SEASON},year.eq.${CURRENT_YEAR})`)
-      .order('position_in_week', { ascending: true });
+      .not('episode_score', 'is', null) // Apenas episódios com score
+      .order('episode_score', { ascending: false }); // Ordenar por score DESC (maior = melhor)
 
     if (weeklyError) {
       console.error("Error fetching weekly episodes:", weeklyError);
@@ -298,7 +299,7 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       }, 200);
     }
 
-    console.log(`[Server] Week ${weekNumber}: ${weeklyData?.length || 0} episodes (Currently Airing from any season + Finished from ${CURRENT_SEASON} ${CURRENT_YEAR})`);
+    console.log(`[Server] Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
     
     // Debug: Log date fields from first episode
     if (weeklyData && weeklyData.length > 0) {
@@ -492,6 +493,76 @@ app.post("/make-server-c1d1bfd8/enrich-episodes", async (c) => {
 
   } catch (error) {
     console.error("❌ Enrich episodes error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// ============================================
+// RECALCULATE POSITIONS ENDPOINT (MANUAL)
+// ============================================
+// Recalcula as posições de ranking (position_in_week) de TODAS as weeks
+// baseado no episode_score. Use quando as posições estiverem erradas.
+app.post("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log("🔢 Iniciando recálculo de posições...");
+    
+    await recalculatePositions(supabase);
+
+    return c.json({
+      success: true,
+      message: "Posições recalculadas com sucesso!"
+    });
+
+  } catch (error) {
+    console.error("❌ Recalculate positions error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// GET version for easy browser testing
+app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log("🔢 Iniciando recálculo de posições...");
+    
+    await recalculatePositions(supabase);
+
+    return c.json({
+      success: true,
+      message: "Posições recalculadas com sucesso!"
+    });
+
+  } catch (error) {
+    console.error("❌ Recalculate positions error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

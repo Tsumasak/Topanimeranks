@@ -185,6 +185,10 @@ export async function enrichEpisodes(supabase: any) {
     
     console.log(`🎉 Enriquecimento concluído: ${enriched} sucesso, ${errors} erros`);
     
+    // IMPORTANTE: Recalcular posições após enriquecimento
+    console.log(`🔢 Recalculando posições de ranking...`);
+    await recalculatePositions(supabase);
+    
     return {
       enriched,
       errors,
@@ -198,5 +202,80 @@ export async function enrichEpisodes(supabase: any) {
       errors: 1,
       message: error instanceof Error ? error.message : "Erro desconhecido"
     };
+  }
+}
+
+// ============================================
+// RECALCULATE POSITIONS - Calcular position_in_week
+// ============================================
+// Esta função recalcula as posições de TODAS as weeks
+// baseado no episode_score (maior score = posição 1)
+export async function recalculatePositions(supabase: any) {
+  console.log("🔢 Iniciando recálculo de posições...");
+  
+  try {
+    // 1. Buscar TODAS as weeks que existem
+    const { data: allEpisodes, error: fetchError } = await supabase
+      .from('weekly_episodes')
+      .select('id, week_number, episode_score')
+      .not('episode_score', 'is', null)
+      .order('week_number', { ascending: true })
+      .order('episode_score', { ascending: false });
+    
+    if (fetchError) {
+      console.error("❌ Erro ao buscar episódios:", fetchError);
+      return;
+    }
+    
+    if (!allEpisodes || allEpisodes.length === 0) {
+      console.log("⚠️ Nenhum episódio com score encontrado");
+      return;
+    }
+    
+    // 2. Agrupar por week_number
+    const weekMap = new Map<number, any[]>();
+    allEpisodes.forEach((ep: any) => {
+      if (!weekMap.has(ep.week_number)) {
+        weekMap.set(ep.week_number, []);
+      }
+      weekMap.get(ep.week_number)!.push(ep);
+    });
+    
+    console.log(`📊 Encontradas ${weekMap.size} weeks com episódios`);
+    
+    // 3. Para cada week, recalcular posições
+    let updatedCount = 0;
+    for (const [weekNumber, episodes] of weekMap.entries()) {
+      // Ordenar por episode_score DESC (maior score = posição 1)
+      const sortedEpisodes = episodes.sort((a, b) => {
+        const scoreA = parseFloat(a.episode_score) || 0;
+        const scoreB = parseFloat(b.episode_score) || 0;
+        return scoreB - scoreA; // DESC
+      });
+      
+      // Atualizar posições
+      for (let i = 0; i < sortedEpisodes.length; i++) {
+        const episode = sortedEpisodes[i];
+        const newPosition = i + 1; // Posição começa em 1
+        
+        const { error: updateError } = await supabase
+          .from('weekly_episodes')
+          .update({ position_in_week: newPosition })
+          .eq('id', episode.id);
+        
+        if (updateError) {
+          console.error(`❌ Erro ao atualizar posição do episódio ${episode.id}:`, updateError);
+        } else {
+          updatedCount++;
+        }
+      }
+      
+      console.log(`✅ Week ${weekNumber}: ${sortedEpisodes.length} posições recalculadas`);
+    }
+    
+    console.log(`🎉 Recálculo concluído: ${updatedCount} episódios atualizados em ${weekMap.size} weeks`);
+    
+  } catch (error) {
+    console.error("❌ Erro ao recalcular posições:", error);
   }
 }

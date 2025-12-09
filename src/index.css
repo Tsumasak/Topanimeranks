@@ -804,6 +804,10 @@
     height: calc(var(--spacing) * 40);
   }
 
+  .h-\[2px\] {
+    height: 2px;
+  }
+
   .h-\[26px\] {
     height: 26px;
   }

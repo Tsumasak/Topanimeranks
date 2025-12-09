@@ -79,8 +79,8 @@ export default function AdminSyncPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-5" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <div className="bg-white rounded-[20px] p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] max-w-[600px] w-full">
-        <h1 className="text-[#333] mb-2.5 text-[28px]">🔄 Sync Past Seasons</h1>
-        <p className="text-[#666] mb-7 text-[14px]">Populate episodes from 2025 seasons (Winter, Spring, Summer)</p>
+        <h1 className="text-[#333] mb-2.5 text-[28px]">🔄 Sync Seasons</h1>
+        <p className="text-[#666] mb-7 text-[14px]">Populate episodes and rankings from 2025 seasons</p>
         
         <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px] mb-7">
           <button
@@ -105,6 +105,14 @@ export default function AdminSyncPage() {
             className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
           >
             {syncing.summer ? '⏳ Syncing...' : '☀️ Summer 2025'}
+          </button>
+          
+          <button
+            onClick={() => syncSeason('fall', 2025)}
+            disabled={syncing.fall}
+            className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
+          >
+            {syncing.fall ? '⏳ Syncing...' : '🍂 Fall 2025'}
           </button>
         </div>
         

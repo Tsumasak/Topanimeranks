@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
+import { getEpisodeWeekNumber } from "./season-utils.tsx";
 
 const app = new Hono();
 
@@ -563,6 +564,107 @@ app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
   } catch (error) {
     console.error("❌ Recalculate positions error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// ============================================
+// FIX WEEK NUMBERS ENDPOINT (MANUAL)
+// ============================================
+// Recalcula os week_numbers de TODOS os episódios usando o sistema de seasons
+// Baseado na data de aired_at de cada episódio
+app.get("/make-server-c1d1bfd8/fix-week-numbers", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log("🔧 Iniciando recálculo de week_numbers usando sistema de seasons...");
+    
+    // Buscar TODOS os episódios que têm data de aired_at
+    const { data: episodes, error: fetchError } = await supabase
+      .from('weekly_episodes')
+      .select('id, anime_id, episode_number, aired_at, anime_title_english')
+      .not('aired_at', 'is', null);
+    
+    if (fetchError) {
+      console.error("❌ Erro ao buscar episódios:", fetchError);
+      return c.json({
+        success: false,
+        error: fetchError.message
+      }, 500);
+    }
+    
+    if (!episodes || episodes.length === 0) {
+      console.log("⚠️ Nenhum episódio com aired_at encontrado");
+      return c.json({
+        success: true,
+        message: "Nenhum episódio para recalcular",
+        updated: 0
+      });
+    }
+    
+    console.log(`📊 Encontrados ${episodes.length} episódios para recalcular`);
+    
+    let updated = 0;
+    let errors = 0;
+    
+    // Recalcular week_number para cada episódio
+    for (const episode of episodes) {
+      try {
+        const airedDate = new Date(episode.aired_at);
+        
+        // Usar função de season para calcular week_number
+        const { season, year, weekNumber } = getEpisodeWeekNumber(airedDate);
+        
+        console.log(`  📅 ${episode.anime_title_english || 'Unknown'} EP${episode.episode_number}: ${season} ${year} Week ${weekNumber}`);
+        
+        // Atualizar no banco
+        const { error: updateError } = await supabase
+          .from('weekly_episodes')
+          .update({ 
+            week_number: weekNumber,
+            season: season,
+            year: year
+          })
+          .eq('id', episode.id);
+        
+        if (updateError) {
+          console.error(`❌ Erro ao atualizar episódio ${episode.id}:`, updateError);
+          errors++;
+        } else {
+          updated++;
+        }
+        
+      } catch (error) {
+        console.error(`❌ Erro ao processar episódio ${episode.id}:`, error);
+        errors++;
+      }
+    }
+    
+    console.log(`🎉 Recálculo concluído: ${updated} episódios atualizados, ${errors} erros`);
+    
+    return c.json({
+      success: true,
+      message: `Week numbers recalculados com sucesso!`,
+      total: episodes.length,
+      updated,
+      errors
+    });
+
+  } catch (error) {
+    console.error("❌ Fix week numbers error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

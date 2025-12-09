@@ -2,6 +2,7 @@
 
 import { Badge } from '../ui/badge';
 import { Link } from 'react-router-dom';
+import { getEpisodeSeasonInfo } from '../../utils/seasons';
 
 interface Episode {
   id: number;
@@ -32,6 +33,16 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  // Get season info for an episode
+  const getSeasonInfo = (airedDate: string) => {
+    try {
+      return getEpisodeSeasonInfo(airedDate);
+    } catch (error) {
+      console.error('Error getting season info:', error);
+      return null;
+    }
   };
 
   // Calculate dynamic rank for an episode
@@ -176,7 +187,20 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                 <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--rating-text)' }}>
                   <span>Aired: {formatDate(episode.aired_at)}</span>
                   <span>•</span>
-                  <span>Week {episode.week_number}</span>
+                  {(() => {
+                    const seasonInfo = getSeasonInfo(episode.aired_at);
+                    if (seasonInfo) {
+                      return (
+                        <>
+                          <span>{seasonInfo.seasonDisplay}</span>
+                          <span>•</span>
+                          <span>Week {seasonInfo.weekInSeason}</span>
+                        </>
+                      );
+                    } else {
+                      return <span>Week {episode.week_number}</span>;
+                    }
+                  })()}
                   {dynamicRank && (
                     <>
                       <span>•</span>

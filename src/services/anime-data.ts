@@ -92,6 +92,13 @@ export class AnimeDataService {
         throw new Error(`Server responded with ${response.status}`);
       }
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[AnimeData] Response is not JSON:', text.substring(0, 200));
+        throw new Error('Response is not JSON');
+      }
+
       const result = await response.json();
 
       if (!result.success || !result.data || result.data.length === 0) {
@@ -190,6 +197,13 @@ export class AnimeDataService {
         throw new Error(`Server responded with ${response.status}`);
       }
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[AnimeData] Response is not JSON:', text.substring(0, 200));
+        throw new Error('Response is not JSON');
+      }
+
       const result = await response.json();
 
       if (!result.success || !result.data || result.data.length === 0) {
@@ -253,6 +267,13 @@ export class AnimeDataService {
         throw new Error(`Server responded with ${response.status}`);
       }
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[AnimeData] Response is not JSON:', text.substring(0, 200));
+        throw new Error('Response is not JSON');
+      }
+
       const result = await response.json();
 
       if (!result.success || !result.data || result.data.length === 0) {
@@ -304,6 +325,17 @@ export class AnimeDataService {
         },
         body: JSON.stringify({ sync_type: syncType }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[AnimeData] Response is not JSON:', text.substring(0, 200));
+        throw new Error('Response is not JSON');
+      }
 
       const result = await response.json();
 

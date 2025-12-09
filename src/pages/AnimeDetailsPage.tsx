@@ -68,23 +68,27 @@ export default function AnimeDetailsPage() {
             .from("season_rankings")
             .select("*")
             .eq("anime_id", animeId)
-            .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+            .order("year", { ascending: false }) // Get most recent season first
+            .limit(1); // Get only one result
 
           if (seasonError) {
             console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
           }
 
-          if (seasonData) {
+          // seasonData is now an array, get the first element
+          const firstSeasonData = seasonData && seasonData.length > 0 ? seasonData[0] : null;
+
+          if (firstSeasonData) {
             console.log(
               "[AnimeDetails] ✅ Found in season_rankings",
             );
-            setAnime(seasonData);
+            setAnime(firstSeasonData);
 
             // Set dynamic background
-            if ((seasonData as any).image_url) {
+            if ((firstSeasonData as any).image_url) {
               document.documentElement.style.setProperty(
                 "--bg-image",
-                `url(${(seasonData as any).image_url})`,
+                `url(${(firstSeasonData as any).image_url})`,
               );
             }
           } else {
@@ -96,30 +100,39 @@ export default function AnimeDetailsPage() {
               .select("*")
               .eq("anime_id", animeId)
               .order("episode_number", { ascending: false })
-              .limit(1)
-              .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+              .limit(1); // Get only most recent episode
 
-            if (weeklyEpisodeData) {
+            // weeklyEpisodeData is now an array, get the first element
+            const firstWeeklyEpisode = weeklyEpisodeData && weeklyEpisodeData.length > 0 ? weeklyEpisodeData[0] : null;
+
+            if (firstWeeklyEpisode) {
               console.log(
                 "[AnimeDetails] ✅ Found in weekly_episodes",
               );
               // Transform weekly_episodes structure to match expected format
               setAnime({
-                anime_id: (weeklyEpisodeData as any).anime_id,
-                title: (weeklyEpisodeData as any).anime_title,
-                title_english: (weeklyEpisodeData as any).anime_title,
-                image_url: (weeklyEpisodeData as any).anime_image,
-                score: (weeklyEpisodeData as any).episode_score,
-                members: null,
-                episodes: (weeklyEpisodeData as any).episode_number,
-                type: "TV",
+                anime_id: (firstWeeklyEpisode as any).anime_id,
+                title: (firstWeeklyEpisode as any).anime_title_english || (firstWeeklyEpisode as any).anime_title,
+                title_english: (firstWeeklyEpisode as any).anime_title_english || (firstWeeklyEpisode as any).anime_title,
+                image_url: (firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image,
+                score: (firstWeeklyEpisode as any).episode_score || (firstWeeklyEpisode as any).score,
+                anime_score: (firstWeeklyEpisode as any).score,
+                members: (firstWeeklyEpisode as any).members,
+                episodes: (firstWeeklyEpisode as any).episode_number,
+                type: (firstWeeklyEpisode as any).type || "TV",
+                season: (firstWeeklyEpisode as any).season,
+                year: (firstWeeklyEpisode as any).year,
+                status: (firstWeeklyEpisode as any).status,
+                genres: (firstWeeklyEpisode as any).genre || (firstWeeklyEpisode as any).genres || [],
+                themes: (firstWeeklyEpisode as any).theme || (firstWeeklyEpisode as any).themes || [],
+                demographics: (firstWeeklyEpisode as any).demographic || (firstWeeklyEpisode as any).demographics || [],
               });
 
               // Set dynamic background
-              if ((weeklyEpisodeData as any).anime_image) {
+              if ((firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image) {
                 document.documentElement.style.setProperty(
                   "--bg-image",
-                  `url(${(weeklyEpisodeData as any).anime_image})`,
+                  `url(${(firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image})`,
                 );
               }
             } else {
@@ -209,15 +222,30 @@ export default function AnimeDetailsPage() {
           setEpisodes(episodesData);
 
           // Fetch all episodes for each week to calculate ranks
-          const weeks = [...new Set(episodesData.map((ep: any) => ep.week_number))];
-          console.log("[AnimeDetails] 📊 Fetching weekly data for weeks:", weeks);
+          // Group episodes by season/year/week to handle correctly
+          const seasonWeekGroups = new Map<string, { season: string; year: number; weekNum: number }>();
+          episodesData.forEach((ep: any) => {
+            const key = `${ep.season}-${ep.year}-${ep.week_number}`;
+            if (!seasonWeekGroups.has(key)) {
+              seasonWeekGroups.set(key, {
+                season: ep.season,
+                year: ep.year,
+                weekNum: ep.week_number
+              });
+            }
+          });
+
+          console.log("[AnimeDetails] 📊 Fetching weekly data for season/year/weeks:", Array.from(seasonWeekGroups.values()));
           
           const weeklyDataMap: Record<number, any[]> = {};
           
-          for (const weekNum of weeks) {
+          for (const { season, year, weekNum } of seasonWeekGroups.values()) {
+            // Fetch episodes for this specific season/year/week combination
             const { data: weekEpisodes } = await supabase
               .from("weekly_episodes")
               .select("*")
+              .eq("season", season)
+              .eq("year", year)
               .eq("week_number", weekNum)
               .not("episode_score", "is", null)
               .order("episode_score", { ascending: false });
@@ -226,11 +254,13 @@ export default function AnimeDetailsPage() {
               weeklyDataMap[weekNum] = weekEpisodes;
             }
 
-            // Also fetch previous week for trend calculation
+            // Also fetch previous week for trend calculation (within same season)
             if (weekNum > 1 && !weeklyDataMap[weekNum - 1]) {
               const { data: prevWeekEpisodes } = await supabase
                 .from("weekly_episodes")
                 .select("*")
+                .eq("season", season)
+                .eq("year", year)
                 .eq("week_number", weekNum - 1)
                 .not("episode_score", "is", null)
                 .order("episode_score", { ascending: false });

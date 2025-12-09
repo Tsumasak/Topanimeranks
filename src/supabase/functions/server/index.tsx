@@ -208,14 +208,20 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Get ALL episodes WITH SCORE (episode_score IS NOT NULL)
-    // IMPORTANTE: Para animes Currently Airing, buscar de TODAS as seasons
-    // Para animes Finished Airing, buscar apenas da season/year atual
+    // Calcular a week atual baseada na data de hoje
+    const today = new Date();
+    const { season: currentSeason, year: currentYear, weekNumber: currentWeekNumber } = getEpisodeWeekNumber(today);
+    
+    console.log(`[Server] 📅 Hoje: ${today.toISOString().split('T')[0]} = ${currentSeason} ${currentYear} Week ${currentWeekNumber}`);
+
+    // Buscar APENAS episódios da season/year ATUAL com score
     const { data, error } = await supabase
       .from('weekly_episodes')
-      .select('week_number, episode_score, status, season, year')
+      .select('week_number, episode_score, status, season, year, aired_at')
+      .eq('season', CURRENT_SEASON)
+      .eq('year', CURRENT_YEAR)
       .not('episode_score', 'is', null)
-      .or(`status.eq.Currently Airing,and(season.eq.${CURRENT_SEASON},year.eq.${CURRENT_YEAR})`)
+      .lte('week_number', currentWeekNumber) // Apenas weeks até a atual (não mostrar futuras)
       .order('week_number', { ascending: true });
 
     if (error) {
@@ -250,6 +256,9 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       success: true,
       weeks: validWeeks,
       latestWeek: latestWeek,
+      currentWeek: currentWeekNumber,
+      currentSeason: currentSeason,
+      currentYear: currentYear,
       weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count }))
     });
 
@@ -279,15 +288,15 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Fetch weekly episodes with filters
-    console.log(`🔍 Fetching weekly episodes for week ${weekNumber}...`);
+    console.log(`🔍 Fetching weekly episodes for ${CURRENT_SEASON} ${CURRENT_YEAR} Week ${weekNumber}...`);
     
-    // IMPORTANTE: Para animes Currently Airing, buscar de TODAS as seasons
-    // Para animes Finished Airing, buscar apenas da season/year atual
+    // Buscar APENAS episódios da season/year ATUAL
     const { data: weeklyData, error: weeklyError } = await supabase
       .from('weekly_episodes')
       .select('*')
+      .eq('season', CURRENT_SEASON)
+      .eq('year', CURRENT_YEAR)
       .eq('week_number', weekNumber)
-      .or(`status.eq.Currently Airing,and(season.eq.${CURRENT_SEASON},year.eq.${CURRENT_YEAR})`)
       .not('episode_score', 'is', null) // Apenas episódios com score
       .order('episode_score', { ascending: false }); // Ordenar por score DESC (maior = melhor)
 
@@ -300,22 +309,28 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       }, 200);
     }
 
-    console.log(`[Server] Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
+    console.log(`[Server] ${CURRENT_SEASON} ${CURRENT_YEAR} Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
     
-    // Debug: Log date fields from first episode
+    // Debug: Log some episode info
     if (weeklyData && weeklyData.length > 0) {
       const firstEp = weeklyData[0];
-      console.log(`[Server] First episode date fields:`, {
-        week_start_date: firstEp.week_start_date,
-        week_end_date: firstEp.week_end_date,
-        week_number: firstEp.week_number
+      console.log(`[Server] First episode:`, {
+        anime: firstEp.anime_title_english,
+        episode: firstEp.episode_number,
+        score: firstEp.episode_score,
+        season: firstEp.season,
+        year: firstEp.year,
+        week: firstEp.week_number,
+        aired_at: firstEp.aired_at
       });
     }
 
     return c.json({
       success: true,
       data: weeklyData || [],
-      count: weeklyData?.length || 0
+      count: weeklyData?.length || 0,
+      season: CURRENT_SEASON,
+      year: CURRENT_YEAR
     });
 
   } catch (error) {

@@ -162,7 +162,7 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
 
         return (
           <div className="space-y-6">
-            {seasonGroups.map((group, groupIndex) => (
+            {seasonGroups.map((group) => (
               <div key={`${group.season}-${group.year}`} className="space-y-3">
                 {/* Season Separator - only show if there are multiple seasons */}
                 {seasonGroups.length > 1 && (

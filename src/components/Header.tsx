@@ -75,7 +75,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                 onClick={() => onPageChange?.('season')}
                 className="theme-nav-link transition-colors"
               >
-                Top Season Animes
+                Top Animes
               </button>
               <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 

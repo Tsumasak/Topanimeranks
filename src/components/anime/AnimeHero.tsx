@@ -114,7 +114,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       />
 
       {/* Content */}
-      <div className="relative z-10 w-full md:container md:mx-auto md:px-[24px] py-[24px] p-[24px] px-[0px]">
+      <div className="relative z-10 w-full md:container md:mx-auto md:px-[24px] py-[24px]">
         {/* Breadcrumb */}
         <AnimeBreadcrumb
           season={anime.season}
@@ -122,7 +122,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           animeTitle={anime.title_english || anime.title}
         />
 
-        <div className="flex flex-col md:flex-row gap-8 items-center md:items-start mt-6 px-6 p-[0px]">
+        <div className="flex flex-col md:flex-row gap-8 items-center md:items-start mt-6 px-6 md:px-0">
           {/* Poster */}
           <div className="flex-shrink-0 mx-auto md:mx-0">
             <div
@@ -388,28 +388,57 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.9)" }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 gap-4"
+          style={{ 
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            animation: "fadeIn 0.3s ease-in-out"
+          }}
           onClick={() => setLightboxOpen(false)}
         >
-          {/* Close Button */}
+          {/* Image */}
+          <div style={{ animation: "zoomIn 0.3s ease-in-out" }}>
+            <img
+              src={anime.image_url}
+              alt={anime.title_english || anime.title}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          {/* Close Button - Below Image */}
           <button
             onClick={() => setLightboxOpen(false)}
-            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors"
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
             style={{ color: "white" }}
+            aria-label="Close lightbox"
           >
-            <X className="h-8 w-8" />
+            <X className="h-6 w-6" strokeWidth={2.5} />
+            <span className="font-semibold">Close</span>
           </button>
-
-          {/* Image */}
-          <img
-            src={anime.image_url}
-            alt={anime.title_english || anime.title}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
         </div>
       )}
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes zoomIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 }

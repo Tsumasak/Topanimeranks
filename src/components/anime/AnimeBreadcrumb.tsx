@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 
 interface AnimeBreadcrumbProps {
   season?: string;
@@ -9,40 +9,50 @@ interface AnimeBreadcrumbProps {
   animeTitle: string;
 }
 
-export function AnimeBreadcrumb({ season, year, animeTitle }: AnimeBreadcrumbProps) {
+export function AnimeBreadcrumb({
+  season,
+  year,
+  animeTitle,
+}: AnimeBreadcrumbProps) {
   // Capitalize season
-  const formattedSeason = season 
+  const formattedSeason = season
     ? season.charAt(0).toUpperCase() + season.slice(1)
     : null;
 
   return (
-    <nav className="flex items-center gap-2 text-sm overflow-hidden px-[24px] py-[0px]">
-      <Link 
-        to="/home" 
+    <nav className="flex items-center gap-2 text-sm overflow-hidden">
+      <Link
+        to="/home"
         className="hover:opacity-70 transition-opacity shrink-0"
-        style={{ color: 'var(--rating-text)' }}
+        style={{ color: "var(--rating-text)" }}
       >
         Home
       </Link>
-      
-      <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--rating-text)' }} />
-      
+
+      <ChevronRight
+        className="h-4 w-4 shrink-0"
+        style={{ color: "var(--rating-text)" }}
+      />
+
       {formattedSeason && year ? (
         <>
-          <Link 
-            to={`/search?q=${formattedSeason}`} 
+          <Link
+            to={`/search?q=${formattedSeason}`}
             className="hover:opacity-70 transition-opacity shrink-0"
-            style={{ color: 'var(--rating-text)' }}
+            style={{ color: "var(--rating-text)" }}
           >
             {formattedSeason} {year}
           </Link>
-          <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--rating-text)' }} />
+          <ChevronRight
+            className="h-4 w-4 shrink-0"
+            style={{ color: "var(--rating-text)" }}
+          />
         </>
       ) : null}
-      
-      <span 
-        className="font-bold truncate min-w-0" 
-        style={{ color: 'var(--rating-text)' }}
+
+      <span
+        className="font-bold truncate min-w-0"
+        style={{ color: "var(--rating-text)" }}
         title={animeTitle}
       >
         {animeTitle}

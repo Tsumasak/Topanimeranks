@@ -731,14 +731,14 @@ export function HomePage() {
                   fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
                   textTransform: "uppercase",
                   letterSpacing: "0.3px",
-                  backgroundColor: "rgba(255, 193, 7, 0.1)",
+                  backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                  e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                   e.currentTarget.style.transform = "scale(1.05)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                  e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                   e.currentTarget.style.transform = "scale(1)";
                 }}
               >
@@ -948,14 +948,14 @@ export function HomePage() {
                     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
                     textTransform: "uppercase",
                     letterSpacing: "0.3px",
-                    backgroundColor: "rgba(255, 193, 7, 0.1)",
+                    backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                    e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                     e.currentTarget.style.transform = "scale(1.05)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                    e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                     e.currentTarget.style.transform = "scale(1)";
                   }}
                 >
@@ -1169,14 +1169,14 @@ export function HomePage() {
                     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
                     textTransform: "uppercase",
                     letterSpacing: "0.3px",
-                    backgroundColor: "rgba(255, 193, 7, 0.1)",
+                    backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                    e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                     e.currentTarget.style.transform = "scale(1.05)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                    e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                     e.currentTarget.style.transform = "scale(1)";
                   }}
                 >
@@ -1368,8 +1368,7 @@ export function HomePage() {
             className="font-['Arial'] leading-[16px] text-[12px] text-center break-words max-w-full"
             style={{ color: "var(--rating-text)" }}
           >
-            Top Anime Ranks is a property of GR Design de
-            Produtos, Ltd. &copy;2025 All Rights Reserved.
+          
           </p>
           <div className="flex gap-[24px] items-start justify-center">
             <a

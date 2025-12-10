@@ -361,7 +361,7 @@ export default function AnimeDetailsPage() {
         <AnimeStats anime={anime} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          <div className="space-y-8">
+          <div className="space-y-8 lg:sticky lg:top-[106px] lg:self-start">
             {anime.synopsis && (
               <AnimeSynopsis synopsis={anime.synopsis} />
             )}

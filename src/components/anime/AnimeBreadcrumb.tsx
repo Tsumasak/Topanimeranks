@@ -30,7 +30,7 @@ export function AnimeBreadcrumb({ season, year, animeTitle }: AnimeBreadcrumbPro
       {formattedSeason && year ? (
         <>
           <Link 
-            to={`/home?season=${season}&year=${year}`} 
+            to={`/search?q=${formattedSeason}`} 
             className="hover:opacity-70 transition-opacity shrink-0"
             style={{ color: 'var(--rating-text)' }}
           >

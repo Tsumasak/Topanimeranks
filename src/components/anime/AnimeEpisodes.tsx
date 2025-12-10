@@ -235,8 +235,6 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                       </div>
 
                       <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--rating-text)' }}>
-                        <span>Aired: {formatDate(episode.aired_at)}</span>
-                        <span>•</span>
                         {(() => {
                           const seasonInfo = getSeasonInfo(episode.aired_at);
                           if (seasonInfo) {
@@ -244,11 +242,19 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                               <>
                                 <span>{seasonInfo.seasonDisplay}</span>
                                 <span>•</span>
+                                <span>Aired: {formatDate(episode.aired_at)}</span>
+                                <span>•</span>
                                 <span>Week {seasonInfo.weekInSeason}</span>
                               </>
                             );
                           }
-                          return <span>Week {episode.week_number}</span>;
+                          return (
+                            <>
+                              <span>Aired: {formatDate(episode.aired_at)}</span>
+                              <span>•</span>
+                              <span>Week {episode.week_number}</span>
+                            </>
+                          );
                         })()}
                         {dynamicRank && (
                           <>

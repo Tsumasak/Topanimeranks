@@ -7,24 +7,24 @@ interface AnimeStatsProps {
 export function AnimeStats({ anime }: AnimeStatsProps) {
   const stats = [
     {
-      label: "Rating",
+      label: "MyAnimeList Rating",
       value:
         anime.score || anime.anime_score
           ? (anime.score || anime.anime_score).toFixed(2)
           : "N/A",
     },
     {
-      label: "Members on MAL",
+      label: "MyAnimeList Members",
       value: anime.members
         ? anime.members.toLocaleString()
         : "N/A",
     },
     {
-      label: "Overall Rank",
+      label: "MyAnimeList Rank",
       value: anime.rank ? `#${anime.rank}` : "N/A",
     },
     {
-      label: "Popularity",
+      label: "Popularity on MyAnimeList",
       value: anime.popularity ? `#${anime.popularity}` : "N/A",
     },
   ];

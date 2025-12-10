@@ -1369,7 +1369,7 @@ export function HomePage() {
             style={{ color: "var(--rating-text)" }}
           >
             Top Anime Ranks is a property of GR Design de
-            Produtos, Ltd. ©2025 All Rights Reserved.
+            Produtos, Ltd. &copy;2025 All Rights Reserved.
           </p>
           <div className="flex gap-[24px] items-start justify-center">
             <a

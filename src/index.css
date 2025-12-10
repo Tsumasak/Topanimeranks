@@ -448,6 +448,10 @@
     top: calc(var(--spacing) * 2);
   }
 
+  .top-6 {
+    top: calc(var(--spacing) * 6);
+  }
+
   .top-\[72px\] {
     top: 72px;
   }
@@ -849,6 +853,10 @@
     max-height: 400px;
   }
 
+  .max-h-full {
+    max-height: 100%;
+  }
+
   .min-h-\[16px\] {
     min-height: 16px;
   }
@@ -879,6 +887,10 @@
 
   .w-6 {
     width: calc(var(--spacing) * 6);
+  }
+
+  .w-8 {
+    width: calc(var(--spacing) * 8);
   }
 
   .w-10 {
@@ -1618,6 +1630,10 @@
     fill: oklch(.205 0 0);
   }
 
+  .object-contain {
+    object-fit: contain;
+  }
+
   .object-cover {
     object-fit: cover;
   }
@@ -1662,10 +1678,6 @@
     padding: 24px;
   }
 
-  .px-0 {
-    padding-inline: calc(var(--spacing) * 0);
-  }
-
   .px-1 {
     padding-inline: calc(var(--spacing) * 1);
   }
@@ -1696,6 +1708,10 @@
 
   .px-6 {
     padding-inline: calc(var(--spacing) * 6);
+  }
+
+  .px-\[0px\] {
+    padding-inline: 0;
   }
 
   .px-\[12px\] {
@@ -2412,6 +2428,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-white\/10:hover {
+      background-color: #ffffff1a;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-white\/10:hover {
+        background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:text-\[var\(--text-primary\)\]:hover {
       color: var(--text-primary);
     }
@@ -2438,6 +2466,12 @@
   @media (hover: hover) {
     .hover\:opacity-80:hover {
       opacity: .8;
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:opacity-90:hover {
+      opacity: .9;
     }
   }
 
@@ -2855,6 +2889,18 @@
   }
 
   @media (width >= 64rem) {
+    .lg\:sticky {
+      position: sticky;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .lg\:top-\[106px\] {
+      top: 106px;
+    }
+  }
+
+  @media (width >= 64rem) {
     .lg\:col-span-2 {
       grid-column: span 2 / span 2;
     }
@@ -2881,6 +2927,12 @@
   @media (width >= 64rem) {
     .lg\:flex-row {
       flex-direction: row;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .lg\:self-start {
+      align-self: flex-start;
     }
   }
 

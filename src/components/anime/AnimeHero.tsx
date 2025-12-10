@@ -1,6 +1,7 @@
 "use client";
 
-import { Share2, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Share2, ExternalLink, X } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import {
@@ -15,6 +16,8 @@ interface AnimeHeroProps {
 }
 
 export function AnimeHero({ anime }: AnimeHeroProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
   const handleShare = async () => {
     const shareData = {
       title: anime.title_english || anime.title,
@@ -111,7 +114,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       />
 
       {/* Content */}
-      <div className="relative z-10 w-full md:container md:mx-auto px-0 md:px-[24px] py-[24px] p-[24px]">
+      <div className="relative z-10 w-full md:container md:mx-auto md:px-[24px] py-[24px] p-[24px] px-[0px]">
         {/* Breadcrumb */}
         <AnimeBreadcrumb
           season={anime.season}
@@ -123,12 +126,13 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           {/* Poster */}
           <div className="flex-shrink-0 mx-auto md:mx-0">
             <div
-              className="w-64 rounded-lg overflow-hidden border-2"
+              className="w-64 rounded-lg overflow-hidden border-2 cursor-pointer hover:opacity-90 transition-opacity"
               style={{
                 borderColor: "var(--card-border)",
                 boxShadow:
                   "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
+              onClick={() => setLightboxOpen(true)}
             >
               <ImageWithFallback
                 src={anime.image_url}
@@ -380,6 +384,32 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.9)" }}
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors"
+            style={{ color: "white" }}
+          >
+            <X className="h-8 w-8" />
+          </button>
+
+          {/* Image */}
+          <img
+            src={anime.image_url}
+            alt={anime.title_english || anime.title}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

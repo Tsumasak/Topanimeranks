@@ -379,7 +379,7 @@ function HomeAnimeCard({
         className={`relative flex-grow flex flex-col justify-between ${contentGradient}`}
       >
         {/* Badge - Centered at top, overlapping image */}
-        <div className="absolute left-4 -top-[24px] flex items-center justify-center w-12 h-12">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-[24px] flex items-center justify-center w-12 h-12">
           {data.rank === 1 ? (
             <GoldBadge />
           ) : data.rank === 2 ? (
@@ -716,27 +716,40 @@ export function HomePage() {
           <div className="flex flex-col gap-2 w-full">
             <div className="flex items-center justify-between gap-4 w-full">
               <p
-                className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words"
-                style={{ color: "var(--foreground)" }}
+                className="leading-[32px] text-[20px] md:text-[30px] break-words"
+                style={{
+                  color: "var(--foreground)",
+                  fontWeight: "bold",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+                }}
               >
-                Weekly Anime Episodes -{" "}
-                <span style={{ color: "var(--rating-yellow)" }}>
-                  Week {displayedWeekNumber}
-                </span>
+                Weekly Anime Episodes
               </p>
               <Link
                 to="/ranks"
-                className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                className="md:hidden leading-[16px] text-[12px] whitespace-nowrap rounded px-2 py-1 transition-all duration-200"
                 style={{
                   color: "var(--rating-yellow)",
-                  fontWeight: 700,
+                  fontWeight: "bold",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.3px",
+                  backgroundColor: "rgba(255, 193, 7, 0.1)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                  e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                View All
+                View All &gt;
               </Link>
             </div>
             <p
-              className="font-['Arial'] leading-[16px] text-[12px] break-words"
+              className="font-['Arial'] leading-[16px] text-[12px] break-words hidden"
               style={{ color: "var(--rating-text)" }}
             >
               {weekPeriod || "Loading period..."}
@@ -918,34 +931,42 @@ export function HomePage() {
           {/* Top Animes - Fall 2025 */}
           <div className="flex flex-col gap-[18px] lg:flex-1 w-full">
             <div className="flex flex-col gap-2 w-full">
-              <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center justify-between gap-4 w-full font-bold not-italic no-underline font-normal">
                 <p
-                  className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words"
+                  className="leading-[32px] text-[20px] md:text-[30px] break-words"
                   style={{
                     color: "var(--foreground)",
-                    fontWeight: 700,
+                    fontWeight: "bold",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
                   }}
                 >
-                  Top Animes -{" "}
-                  <span
-                    style={{ color: "var(--rating-yellow)" }}
-                  >
-                    Fall 2025
-                  </span>
+                  Top Animes
                 </p>
                 <Link
                   to="/top-season-animes"
-                  className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                  className="md:hidden leading-[16px] text-[12px] whitespace-nowrap rounded px-2 py-1 transition-all duration-200"
                   style={{
                     color: "var(--rating-yellow)",
-                    fontWeight: 700,
+                    fontWeight: "bold",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.3px",
+                    backgroundColor: "rgba(255, 193, 7, 0.1)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                    e.currentTarget.style.transform = "scale(1)";
                   }}
                 >
-                  View All
+                  View All &gt;
                 </Link>
               </div>
               <p
-                className="font-['Arial'] leading-[16px] text-[12px] break-words"
+                className="font-['Arial'] leading-[16px] text-[12px] break-words hidden"
                 style={{ color: "var(--rating-text)" }}
               >
                 Highest rated animes of the season and worth
@@ -1133,32 +1154,40 @@ export function HomePage() {
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between gap-4 w-full">
                 <p
-                  className="font-['Arial'] font-bold leading-[32px] text-[24px] md:text-[30px] break-words"
+                  className="leading-[32px] text-[20px] md:text-[30px] break-words"
                   style={{
                     color: "var(--foreground)",
-                    fontWeight: 700,
+                    fontWeight: "bold",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
                   }}
                 >
-                  Most Anticipated Animes -{" "}
-                  <span
-                    style={{ color: "var(--rating-yellow)" }}
-                  >
-                    Winter 2026
-                  </span>
+                  Most Anticipated Animes
                 </p>
                 <Link
                   to="/most-anticipated-animes"
-                  className="md:hidden font-['Arial'] font-bold leading-[20px] text-[16px] hover:opacity-80 transition-opacity whitespace-nowrap"
+                  className="md:hidden leading-[16px] text-[12px] whitespace-nowrap rounded px-2 py-1 transition-all duration-200"
                   style={{
                     color: "var(--rating-yellow)",
-                    fontWeight: 700,
+                    fontWeight: "bold",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.3px",
+                    backgroundColor: "rgba(255, 193, 7, 0.1)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.2)";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 193, 7, 0.1)";
+                    e.currentTarget.style.transform = "scale(1)";
                   }}
                 >
-                  View All
+                  View All &gt;
                 </Link>
               </div>
               <p
-                className="font-['Arial'] leading-[16px] text-[12px] break-words"
+                className="font-['Arial'] leading-[16px] text-[12px] break-words hidden"
                 style={{ color: "var(--rating-text)" }}
               >
                 Most anticipated animes of the upcoming seasons.

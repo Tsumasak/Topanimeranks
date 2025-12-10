@@ -339,6 +339,18 @@ b, strong, .font-bold {
   font-weight: 700 !important;
 }
 
+/* Fix Arial:Bold from Figma imports - this is invalid syntax but needs to work */
+[class*="Arial:Bold"] {
+  font-family: Arial, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+/* Ensure font-['Arial'] with font-bold class works correctly */
+[class*="Arial"].font-bold {
+  font-family: Arial, sans-serif !important;
+  font-weight: 700 !important;
+}
+
 /* Mobile Menu Styles */
 .hamburger-button {
   display: none;

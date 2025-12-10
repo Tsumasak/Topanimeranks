@@ -458,8 +458,6 @@ export function HomePage() {
     HomeCardData[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [displayedWeekNumber, setDisplayedWeekNumber] =
-    useState(1);
   const [weekPeriod, setWeekPeriod] = useState("");
 
   // Animation keys for smooth entry animations
@@ -619,7 +617,6 @@ export function HomePage() {
               url: `/anime/${episode.animeId}`,
             }));
           setTopEpisodes(topWeekly);
-          setDisplayedWeekNumber(weekToShow);
 
           // Format week period
           const weekConfig = WEEKS_DATA.find(

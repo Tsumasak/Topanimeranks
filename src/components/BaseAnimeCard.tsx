@@ -31,7 +31,7 @@ export default function BaseAnimeCard({
   demographics = [],
   genres = [],
   themes = [],
-  positionChange,
+  positionChange: _positionChange, // Prefixed with _ to indicate intentionally unused
   animeId,
   hideRank = false,
   season,

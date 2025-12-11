@@ -23,7 +23,7 @@ interface BaseAnimeCardProps {
 export default function BaseAnimeCard({ 
   rank, 
   title, 
-  subtitle, 
+  subtitle: _subtitle, // Prefixed with _ to indicate intentionally unused
   imageUrl, 
   linkUrl = "#", 
   bottomText,
@@ -123,23 +123,6 @@ export default function BaseAnimeCard({
 
   // Determine anime type tag styling
   const typeTagStyle = animeType ? getTypeClass(animeType) : 'tag-default';
-
-  // Generate trend indicator based on position change
-  const getTrendIndicator = () => {
-    if (positionChange === null || positionChange === undefined) {
-      return { symbol: '🆕', text: 'NEW', color: '#3b82f6' }; // Blue for new
-    }
-    
-    if (positionChange > 0) {
-      return { symbol: '▲', text: `${positionChange}`, color: '#22c55e' }; // Green triangle up
-    } else if (positionChange < 0) {
-      return { symbol: '▼', text: `${Math.abs(positionChange)}`, color: '#ef4444' }; // Red triangle down
-    } else {
-      return { symbol: '=', text: '0', color: '#6b7280' }; // Gray for same
-    }
-  };
-
-  const trendInfo = getTrendIndicator();
 
   return (
     <Link 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { getTypeClass, getDemographicClass } from '../utils/tagHelpers';
 
 interface AnticipatedAnimeCardProps {
   rank: number;
@@ -132,7 +133,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
         <div className="absolute top-2 right-2 flex flex-row gap-1">
           {/* Anime Type Tag */}
           {animeType && (
-            <div className={`px-3 py-1 rounded-full text-xs ${animeType === 'TV' ? 'tag-tv' : animeType === 'ONA' ? 'tag-ona' : 'tag-default'}`}>
+            <div className={`px-3 py-1 rounded-full text-xs ${getTypeClass(animeType)}`}>
               {animeType}
             </div>
           )}
@@ -141,13 +142,7 @@ const AnticipatedAnimeCard: React.FC<AnticipatedAnimeCardProps> = ({
           {demographics && demographics.length > 0 && (() => {
             const demographic: string = typeof demographics[0] === 'string' ? demographics[0] : (demographics[0] as any)?.name;
             return demographic ? (
-              <div className={`px-3 py-1 rounded-full text-xs ${
-                demographic.toLowerCase() === 'seinen' ? 'tag-seinen' :
-                demographic.toLowerCase() === 'shounen' ? 'tag-shounen' :
-                demographic.toLowerCase() === 'shoujo' ? 'tag-shoujo' :
-                demographic.toLowerCase() === 'josei' ? 'tag-josei' :
-                'tag-demo-default'
-              }`}>
+              <div className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(demographic)}`}>
                 {demographic}
               </div>
             ) : null;

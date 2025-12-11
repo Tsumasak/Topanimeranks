@@ -1,5 +1,6 @@
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Link } from 'react-router-dom';
+import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';
 
 interface BaseAnimeCardProps {
   rank: number;
@@ -121,23 +122,7 @@ export default function BaseAnimeCard({
   );
 
   // Determine anime type tag styling
-  let typeTagStyle = 'tag-default';
-  if (animeType === 'TV') {
-    typeTagStyle = 'tag-tv';
-  } else if (animeType === 'ONA') {
-    typeTagStyle = 'tag-ona';
-  }
-
-  // Determine demographics tag styling
-  const getDemographicsTagStyle = (demographic: string) => {
-    switch (demographic.toLowerCase()) {
-      case 'seinen': return 'tag-seinen';
-      case 'shounen': return 'tag-shounen';
-      case 'shoujo': return 'tag-shoujo';
-      case 'josei': return 'tag-josei';
-      default: return 'tag-demo-default';
-    }
-  };
+  const typeTagStyle = animeType ? getTypeClass(animeType) : 'tag-default';
 
   // Generate trend indicator based on position change
   const getTrendIndicator = () => {
@@ -180,7 +165,7 @@ export default function BaseAnimeCard({
           
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (
-            <div className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(demographics[0])}`}>
+            <div className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(demographics[0])}`}>
               {demographics[0]}
             </div>
           )}
@@ -206,51 +191,15 @@ export default function BaseAnimeCard({
                   </div>
                 </div>
               )}
-              
-              {/* Trend Indicator - Below rank - Always show (including NEW) */}
-              <div 
-                className="mt-1 px-1 py-0.5 rounded text-xs flex items-center justify-center gap-1 min-h-[16px]"
-                style={{ color: trendInfo.color }}
-              >
-                <span className="font-bold text-[14px] text-[13px]">{trendInfo.symbol}</span>
-                <span className="text-[14px] font-bold">{trendInfo.text}</span>
-              </div>
             </div>
           )}
           
           <div className={`relative flex flex-col ${hideRank ? '' : 'ml-4'} flex-grow`}>
             <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
             
-            {/* Season Tag - Show if season and year are provided */}
-            {season && year && (
-              <div className="mb-2">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs ${
-                    season.toLowerCase() === "winter"
-                      ? "tag-winter"
-                      : season.toLowerCase() === "summer"
-                        ? "tag-summer"
-                        : season.toLowerCase() === "fall"
-                          ? "tag-fall"
-                          : season.toLowerCase() === "spring"
-                            ? "tag-spring"
-                            : "tag-default"
-                  }`}
-                >
-                  {season.charAt(0).toUpperCase() + season.slice(1)} {year}
-                </span>
-              </div>
-            )}
-            
-            {subtitle && (
-              <p className="text-sm leading-[1.1] mb-2" style={{color: 'var(--foreground)'}}>
-                {subtitle}
-              </p>
-            )}
-            
             {/* Genres + Themes Tags - Combine and show first 3 total */}
             {((genres && genres.length > 0) || (themes && themes.length > 0)) && (
-              <div className="flex gap-1 flex-wrap">
+              <div className="flex gap-1 flex-wrap mb-2">
                 {[...genres, ...themes].slice(0, 3).map((tag, index) => (
                   <span 
                     key={index} 
@@ -262,6 +211,18 @@ export default function BaseAnimeCard({
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+            
+            {/* Season Tag - show in search results when hideRank is true */}
+            {hideRank && season && (
+              <div className="flex gap-1">
+                <span className={`px-2.5 py-1 text-xs rounded-full ${getSeasonClass(season)}`}>
+                  {season.toLowerCase() === 'upcoming' && year === 9999 
+                    ? 'Upcoming'
+                    : `${season.charAt(0).toUpperCase() + season.slice(1).toLowerCase()} ${year}`
+                  }
+                </span>
               </div>
             )}
           </div>

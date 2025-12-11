@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { WEEKS_DATA } from "../config/weeks";
+import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
 import {
   projectId,
   publicAnonKey,
@@ -24,6 +25,8 @@ interface HomeCardData {
   genres?: string[];
   themes?: string[];
   url?: string;
+  season?: string;
+  year?: number;
 }
 
 function HomeAnimeCard({
@@ -185,29 +188,8 @@ function HomeAnimeCard({
     </svg>
   );
 
-  // Determine anime type tag styling (same as BaseAnimeCard)
-  let typeTagStyle = "tag-default";
-  if (data.animeType === "TV") {
-    typeTagStyle = "tag-tv";
-  } else if (data.animeType === "ONA") {
-    typeTagStyle = "tag-ona";
-  }
-
-  // Determine demographics tag styling (same as BaseAnimeCard)
-  const getDemographicsTagStyle = (demographic: string) => {
-    switch (demographic.toLowerCase()) {
-      case "seinen":
-        return "tag-seinen";
-      case "shounen":
-        return "tag-shounen";
-      case "shoujo":
-        return "tag-shoujo";
-      case "josei":
-        return "tag-josei";
-      default:
-        return "tag-demo-default";
-    }
-  };
+  // Use shared tag helper functions
+  const typeTagStyle = data.animeType ? getTypeClass(data.animeType) : "tag-default";
 
   // OLD LAYOUT for Weekly Episodes (original design)
   if (isEpisode) {
@@ -241,7 +223,7 @@ function HomeAnimeCard({
             {data.demographics &&
               data.demographics.length > 0 && (
                 <div
-                  className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(data.demographics[0])}`}
+                  className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(data.demographics[0])}`}
                 >
                   {data.demographics[0]}
                 </div>
@@ -366,7 +348,7 @@ function HomeAnimeCard({
           {data.demographics &&
             data.demographics.length > 0 && (
               <div
-                className={`px-3 py-1 rounded-full text-xs ${getDemographicsTagStyle(data.demographics[0])}`}
+                className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(data.demographics[0])}`}
               >
                 {data.demographics[0]}
               </div>
@@ -422,6 +404,27 @@ function HomeAnimeCard({
                     {tag}
                   </span>
                 ))}
+            </div>
+          )}
+
+          {/* Season Tag - Show below genres/themes */}
+          {data.season && data.year && (
+            <div className="mt-2">
+              <span
+                className={`px-3 py-1 rounded-full text-xs ${
+                  data.season.toLowerCase() === "winter"
+                    ? "tag-winter"
+                    : data.season.toLowerCase() === "summer"
+                      ? "tag-summer"
+                      : data.season.toLowerCase() === "fall"
+                        ? "tag-fall"
+                        : data.season.toLowerCase() === "spring"
+                          ? "tag-spring"
+                          : "tag-default"
+                }`}
+              >
+                {data.season.charAt(0).toUpperCase() + data.season.slice(1)} {data.year}
+              </span>
             </div>
           )}
         </div>
@@ -501,6 +504,8 @@ export function HomePage() {
               genres: anime.genres?.map((g) => g.name) || [],
               themes: anime.themes?.map((t) => t.name) || [],
               url: `/anime/${anime.mal_id}`,
+              season: anime.season || "fall",
+              year: anime.year || 2025,
             }));
           setTopSeasonAnimes(topSeason);
 
@@ -546,6 +551,8 @@ export function HomePage() {
                   )
                 : [],
               url: anime.url, // ✅ Already has correct path /anime/${id}
+              season: anime.season || "winter",
+              year: anime.year || 2026,
             }));
           setAnticipated(topAnticipated);
         }

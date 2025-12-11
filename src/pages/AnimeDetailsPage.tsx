@@ -6,11 +6,13 @@ import { AnimeStats } from "../components/anime/AnimeStats";
 import { AnimeSynopsis } from "../components/anime/AnimeSynopsis";
 import { AnimeInfo } from "../components/anime/AnimeInfo";
 import { AnimeEpisodes } from "../components/anime/AnimeEpisodes";
+import { AnimeVideos } from "../components/anime/AnimeVideos";
 
 export default function AnimeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<any>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
+  const [videos, setVideos] = useState<any>(null);
   const [weeklyData, setWeeklyData] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -27,16 +29,23 @@ export default function AnimeDetailsPage() {
 
       try {
         const animeId = parseInt(id);
+        
+        // Declare variables at function scope so they can be accessed later
+        let anticipatedData: any = null;
+        let firstSeasonData: any = null;
+        let firstWeeklyEpisode: any = null;
 
         // Priority search: anticipated_animes -> season_rankings -> weekly_episodes
         console.log(
           "[AnimeDetails] 📊 Searching in anticipated_animes...",
         );
-        let { data: anticipatedData, error: anticipatedError } = await supabase
+        let { data: anticipatedResult, error: anticipatedError } = await supabase
           .from("anticipated_animes")
           .select("*")
           .eq("anime_id", animeId)
           .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+
+        anticipatedData = anticipatedResult;
 
         if (anticipatedError) {
           console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
@@ -76,7 +85,7 @@ export default function AnimeDetailsPage() {
           }
 
           // seasonData is now an array, get the first element
-          const firstSeasonData = seasonData && seasonData.length > 0 ? seasonData[0] : null;
+          firstSeasonData = seasonData && seasonData.length > 0 ? seasonData[0] : null;
 
           if (firstSeasonData) {
             console.log(
@@ -103,7 +112,7 @@ export default function AnimeDetailsPage() {
               .limit(1); // Get only most recent episode
 
             // weeklyEpisodeData is now an array, get the first element
-            const firstWeeklyEpisode = weeklyEpisodeData && weeklyEpisodeData.length > 0 ? weeklyEpisodeData[0] : null;
+            firstWeeklyEpisode = weeklyEpisodeData && weeklyEpisodeData.length > 0 ? weeklyEpisodeData[0] : null;
 
             if (firstWeeklyEpisode) {
               console.log(
@@ -274,6 +283,58 @@ export default function AnimeDetailsPage() {
           setWeeklyData(weeklyDataMap);
         }
 
+        // Fetch videos from Jikan API for Movie/Special/OVA types
+        // Check after anime is set
+        let currentAnimeType = anime?.type;
+        
+        // If anime is not yet set (from state), get it from the data we just fetched
+        if (!currentAnimeType) {
+          if (anticipatedData) {
+            currentAnimeType = (anticipatedData as any).type;
+          } else if (firstSeasonData) {
+            currentAnimeType = (firstSeasonData as any).type;
+          } else if (firstWeeklyEpisode) {
+            currentAnimeType = (firstWeeklyEpisode as any).type;
+          }
+        }
+        
+        const isMovieType = ['Movie', 'Special', 'OVA'].includes(currentAnimeType || '');
+        
+        console.log(`[AnimeDetails] 🎬 Anime type: ${currentAnimeType}, isMovieType: ${isMovieType}`);
+        
+        if (isMovieType) {
+          console.log(`[AnimeDetails] 🎥 Fetching videos from Jikan API (${currentAnimeType} type detected)...`);
+          try {
+            const videosResponse = await fetch(
+              `https://api.jikan.moe/v4/anime/${animeId}/videos`
+            );
+            
+            if (videosResponse.ok) {
+              // Check if response is actually JSON
+              const contentType = videosResponse.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                console.error(`[AnimeDetails] ❌ Videos API returned non-JSON response. Content-Type: ${contentType}`);
+                throw new Error('Response is not JSON');
+              }
+              
+              const videosData = await videosResponse.json();
+              console.log(`[AnimeDetails] ✅ Videos response:`, videosData);
+              console.log(`[AnimeDetails] ✅ Videos data structure:`, videosData.data);
+              
+              // Check if promo videos exist and log their structure
+              if (videosData.data?.promo && videosData.data.promo.length > 0) {
+                console.log(`[AnimeDetails] ✅ First promo video:`, videosData.data.promo[0]);
+              }
+              
+              setVideos(videosData.data);
+            } else {
+              console.error(`[AnimeDetails] ❌ Videos API returned status ${videosResponse.status}`);
+            }
+          } catch (videoError) {
+            console.error("[AnimeDetails] ❌ Error fetching videos from Jikan:", videoError);
+          }
+        }
+
         setLoading(false);
       } catch (error) {
         console.error(
@@ -371,11 +432,19 @@ export default function AnimeDetailsPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <AnimeEpisodes
-              episodes={episodes}
-              animeId={anime.anime_id}
-              weeklyData={weeklyData}
-            />
+            {/* Show Videos for Movie/Special/OVA types, Episodes for TV/ONA */}
+            {videos ? (
+              <AnimeVideos 
+                videos={videos} 
+                animeTitle={anime.title_english || anime.title}
+              />
+            ) : (
+              <AnimeEpisodes
+                episodes={episodes}
+                animeId={anime.anime_id}
+                weeklyData={weeklyData}
+              />
+            )}
           </div>
         </div>
       </div>

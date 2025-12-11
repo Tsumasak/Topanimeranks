@@ -1,5 +1,7 @@
 'use client';
 
+import { getTypeClass, getSeasonClass, getStatusClass, getDemographicClass } from '../../utils/tagHelpers';
+
 interface AnimeInfoProps {
   anime: any;
 }
@@ -20,46 +22,6 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
       day: 'numeric',
       year: 'numeric',
     });
-  };
-
-  // Get type tag class (same as Hero)
-  const getTypeClass = (type: string) => {
-    const typeLower = type?.toLowerCase();
-    if (typeLower === 'tv') return 'tag-tv';
-    if (typeLower === 'ona') return 'tag-ona';
-    if (typeLower === 'movie') return 'tag-movie';
-    if (typeLower === 'special') return 'tag-special';
-    if (typeLower === 'ova') return 'tag-ova';
-    return 'tag-default';
-  };
-
-  // Get season tag class (same as Hero)
-  const getSeasonClass = (season: string) => {
-    const seasonLower = season?.toLowerCase();
-    if (seasonLower === 'winter') return 'tag-winter';
-    if (seasonLower === 'summer') return 'tag-summer';
-    if (seasonLower === 'fall') return 'tag-fall';
-    if (seasonLower === 'spring') return 'tag-spring';
-    return 'tag-default';
-  };
-
-  // Get status tag class
-  const getStatusClass = (status: string) => {
-    const statusLower = status?.toLowerCase();
-    if (statusLower?.includes('airing')) return 'tag-ona'; // Green for airing
-    if (statusLower?.includes('finished')) return 'tag-default';
-    if (statusLower?.includes('upcoming')) return 'tag-tv'; // Blue for upcoming
-    return 'tag-default';
-  };
-
-  // Get demographic tag class (same as Hero)
-  const getDemographicClass = (demo: string) => {
-    const demoLower = demo?.toLowerCase();
-    if (demoLower === 'seinen') return 'tag-seinen';
-    if (demoLower === 'shounen') return 'tag-shounen';
-    if (demoLower === 'shoujo') return 'tag-shoujo';
-    if (demoLower === 'josei') return 'tag-josei';
-    return 'tag-demo-default';
   };
 
   return (

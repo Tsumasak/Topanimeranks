@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Share2, ExternalLink, X } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { getTypeClass, getSeasonClass, getDemographicClass } from "../../utils/tagHelpers";
 import {
   Tooltip,
   TooltipContent,
@@ -73,24 +74,6 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
     ...(anime.genres?.map((g: any) => g.name || g) || []),
     ...(anime.themes?.map((t: any) => t.name || t) || []),
   ].slice(0, 5); // Limit to 5 tags
-
-  // Get demographic tag class
-  const getDemographicClass = (demo: string) => {
-    const demoLower = demo?.toLowerCase();
-    if (demoLower === "seinen") return "tag-seinen";
-    if (demoLower === "shounen") return "tag-shounen";
-    if (demoLower === "shoujo") return "tag-shoujo";
-    if (demoLower === "josei") return "tag-josei";
-    return "tag-demo-default";
-  };
-
-  // Get type tag class
-  const getTypeClass = (type: string) => {
-    const typeLower = type?.toLowerCase();
-    if (typeLower === "tv") return "tag-tv";
-    if (typeLower === "ona") return "tag-ona";
-    return "tag-default";
-  };
 
   // MyAnimeList link
   const malLink = `https://myanimelist.net/anime/${anime.anime_id}`;
@@ -235,18 +218,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 {anime.season && anime.year && (
                   <span
                     className={`px-3 py-1 rounded-full text-xs ${
-                      anime.season.toLowerCase() === "winter"
-                        ? "tag-winter"
-                        : anime.season.toLowerCase() ===
-                            "summer"
-                          ? "tag-summer"
-                          : anime.season.toLowerCase() ===
-                              "fall"
-                            ? "tag-fall"
-                            : anime.season.toLowerCase() ===
-                                "spring"
-                              ? "tag-spring"
-                              : "tag-default"
+                      getSeasonClass(anime.season)
                     }`}
                   >
                     {anime.season.charAt(0).toUpperCase() +

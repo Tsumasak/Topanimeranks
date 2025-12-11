@@ -31,9 +31,12 @@
   --rating-blue: #06b6d4;
   --rank-background: #3b82f6;
   --rank-text: #ffffff;
-  --tag-tv-background: #1d4ed8;
+  --tag-tv-background: #2563eb;
   --tag-ona-background: #059669;
-  --tag-default-background: #4b5563;
+  --tag-movie-background: #dc2626;
+  --tag-special-background: #c026d3;
+  --tag-ova-background: #0891b2;
+  --tag-default-background: #374151;
   --rank-4plus-background: #6b7280;
   --tag-seinen-background: #7c3aed;
   --tag-shounen-background: #1d4ed8;
@@ -78,6 +81,7 @@
   --rank-text: #ffffff;
   --tag-tv-background: #2563eb;
   --tag-ona-background: #059669;
+  --tag-movie-background: #dc2626;
   --tag-default-background: #374151;
   --rank-4plus-background: #4b5563;
   --tag-seinen-background: #7c3aed;
@@ -123,6 +127,7 @@
   --rank-text: #ffffff;
   --tag-tv-background: #2563eb;
   --tag-ona-background: #059669;
+  --tag-movie-background: #dc2626;
   --tag-default-background: #374151;
   --rank-4plus-background: #4b5563;
   --tag-seinen-background: #7c3aed;
@@ -218,6 +223,21 @@ body {
 
 .tag-ona {
   background: var(--tag-ona-background);
+  color: #ffffff;
+}
+
+.tag-movie {
+  background: var(--tag-movie-background);
+  color: #ffffff;
+}
+
+.tag-special {
+  background: var(--tag-special-background);
+  color: #ffffff;
+}
+
+.tag-ova {
+  background: var(--tag-ova-background);
   color: #ffffff;
 }
 

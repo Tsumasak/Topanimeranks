@@ -342,6 +342,64 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
   }
 });
 
+// DEBUG: Get all episodes for a specific anime
+app.get("/make-server-c1d1bfd8/debug-anime/:animeId", async (c) => {
+  try {
+    const animeId = parseInt(c.req.param('animeId'));
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    console.log(`🔍 DEBUG: Fetching ALL episodes for anime ${animeId}...`);
+    
+    // Buscar TODOS os episódios deste anime (sem filtros)
+    const { data: allEpisodes, error: allError } = await supabase
+      .from('weekly_episodes')
+      .select('*')
+      .eq('anime_id', animeId)
+      .order('episode_number', { ascending: false });
+
+    if (allError) {
+      console.error("Error fetching anime episodes:", allError);
+      return c.json({
+        success: false,
+        error: allError.message
+      }, 500);
+    }
+
+    console.log(`[DEBUG] Found ${allEpisodes?.length || 0} episodes for anime ${animeId}`);
+    
+    // Log detalhes de cada episódio
+    allEpisodes?.forEach(ep => {
+      console.log(`[DEBUG] EP${ep.episode_number}: Score=${ep.episode_score}, Week=${ep.week_number}, Season=${ep.season} ${ep.year}, Aired=${ep.aired_at}`);
+    });
+
+    return c.json({
+      success: true,
+      animeId: animeId,
+      totalEpisodes: allEpisodes?.length || 0,
+      episodes: allEpisodes || [],
+      currentSeason: CURRENT_SEASON,
+      currentYear: CURRENT_YEAR
+    });
+
+  } catch (error) {
+    console.error("❌ Debug anime error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
 // Get season rankings data
 app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
   try {

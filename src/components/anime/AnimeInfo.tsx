@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { getTypeClass, getSeasonClass, getStatusClass, getDemographicClass } from '../../utils/tagHelpers';
 
 interface AnimeInfoProps {

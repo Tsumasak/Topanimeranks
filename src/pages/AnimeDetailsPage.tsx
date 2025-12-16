@@ -222,18 +222,24 @@ export default function AnimeDetailsPage() {
           .from("weekly_episodes")
           .select("*")
           .eq("anime_id", animeId)
+          .not("aired_at", "is", null) // Filter out episodes without aired_at
           .order("episode_number", { ascending: true });
 
         if (episodesData) {
-          console.log(
-            `[AnimeDetails] ✅ Found ${episodesData.length} episodes`,
+          // Additional client-side filter to remove empty aired_at strings
+          const validEpisodes = episodesData.filter((ep: any) => 
+            ep.aired_at && ep.aired_at.trim() !== ''
           );
-          setEpisodes(episodesData);
+          
+          console.log(
+            `[AnimeDetails] ✅ Found ${validEpisodes.length} episodes (${episodesData.length - validEpisodes.length} filtered out)`,
+          );
+          setEpisodes(validEpisodes);
 
           // Fetch all episodes for each week to calculate ranks
           // Group episodes by season/year/week to handle correctly
           const seasonWeekGroups = new Map<string, { season: string; year: number; weekNum: number }>();
-          episodesData.forEach((ep: any) => {
+          validEpisodes.forEach((ep: any) => {
             const key = `${ep.season}-${ep.year}-${ep.week_number}`;
             if (!seasonWeekGroups.has(key)) {
               seasonWeekGroups.set(key, {

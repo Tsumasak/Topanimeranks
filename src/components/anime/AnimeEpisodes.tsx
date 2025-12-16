@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Badge } from '../ui/badge';
 import { Link } from 'react-router-dom';
 import { getEpisodeSeasonInfo } from '../../utils/seasons';
@@ -42,6 +43,12 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
   };
 
   const getSeasonInfo = (airedDate: string) => {
+    // Check if airedDate is valid before processing
+    if (!airedDate || airedDate.trim() === '') {
+      // Silently return null - episodes without aired_at should already be filtered
+      return null;
+    }
+    
     try {
       return getEpisodeSeasonInfo(airedDate);
     } catch (error) {
@@ -66,32 +73,30 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
     return rank > 0 ? rank : null;
   };
 
-  const calculateTrend = (episode: Episode, currentRank: number | null): { change: number | null; symbol: string; color: string } => {
+  const calculateTrend = (episode: Episode, currentRank: number | null): { change: number | null; showTrend: boolean } => {
+    // If no rank or week 1, no trend to show
     if (!currentRank || !episode.week_number || episode.week_number === 1 || !weeklyData) {
-      return { change: null, symbol: '', color: '' };
+      return { change: null, showTrend: false };
     }
 
     const prevWeekEpisodes = weeklyData[episode.week_number - 1];
     if (!prevWeekEpisodes || !Array.isArray(prevWeekEpisodes)) {
-      return { change: null, symbol: '', color: '' };
+      // No previous week data - don't show trend indicator
+      return { change: null, showTrend: false };
     }
 
+    // Find the same ANIME in previous week (by anime_id, not episode_id)
     const prevIndex = prevWeekEpisodes.findIndex((ep: any) => ep.anime_id === episode.anime_id);
     
     if (prevIndex === -1) {
-      return { change: null, symbol: '', color: '' };
+      // Anime not found in previous week - don't show trend indicator
+      return { change: null, showTrend: false };
     }
 
     const prevRank = prevIndex + 1;
     const change = prevRank - currentRank;
 
-    if (change > 0) {
-      return { change, symbol: '▲', color: '#22c55e' };
-    } else if (change < 0) {
-      return { change: Math.abs(change), symbol: '▼', color: '#ef4444' };
-    } else {
-      return { change: 0, symbol: '=', color: '#6b7280' };
-    }
+    return { change, showTrend: true };
   };
 
   const sortedEpisodes = [...episodes].reverse();
@@ -207,10 +212,11 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                             </span>
                             {isGlobalFirst && (
                               <span 
-                                className="px-2 py-0.5 rounded text-xs font-bold"
+                                className="px-2 py-0.5 rounded-full text-xs font-bold border"
                                 style={{
-                                  background: 'var(--primary)',
-                                  color: 'white',
+                                  backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                                  color: '#a855f7',
+                                  borderColor: 'rgba(168, 85, 247, 0.3)'
                                 }}
                               >
                                 NEW
@@ -261,14 +267,46 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <span>Rank #{dynamicRank}</span>
-                              {trend.change !== null && trend.symbol !== '' && (
-                                <span 
-                                  className="flex items-center gap-0.5 ml-1"
-                                  style={{ color: trend.color }}
-                                >
-                                  <span className="font-bold">{trend.symbol}</span>
-                                  <span className="text-[10px]">{trend.change}</span>
-                                </span>
+                              
+                              {/* Trend Indicator - same pattern as Weekly Episodes page */}
+                              {trend.showTrend && trend.change !== null && (
+                                trend.change > 0 ? (
+                                  <span 
+                                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ml-1"
+                                    style={{ 
+                                      backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                      color: '#22c55e',
+                                      borderColor: 'rgba(34, 197, 94, 0.3)'
+                                    }}
+                                  >
+                                    <span className="font-bold">▲</span>
+                                    <span className="text-[10px]">{trend.change}</span>
+                                  </span>
+                                ) : trend.change < 0 ? (
+                                  <span 
+                                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ml-1"
+                                    style={{ 
+                                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                      color: '#ef4444',
+                                      borderColor: 'rgba(239, 68, 68, 0.3)'
+                                    }}
+                                  >
+                                    <span className="font-bold">▼</span>
+                                    <span className="text-[10px]">{Math.abs(trend.change)}</span>
+                                  </span>
+                                ) : (
+                                  <span 
+                                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ml-1"
+                                    style={{ 
+                                      backgroundColor: 'rgba(107, 114, 128, 0.2)',
+                                      color: '#6b7280',
+                                      borderColor: 'rgba(107, 114, 128, 0.3)'
+                                    }}
+                                  >
+                                    <span className="font-bold">=</span>
+                                    <span className="text-[10px]">0</span>
+                                  </span>
+                                )
                               )}
                             </span>
                           </>

@@ -1,3 +1,4 @@
+import React from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Link } from 'react-router-dom';
 import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';
@@ -23,7 +24,7 @@ interface BaseAnimeCardProps {
 export default function BaseAnimeCard({ 
   rank, 
   title, 
-  subtitle: _subtitle, // Prefixed with _ to indicate intentionally unused
+  subtitle, // Now used for episode info
   imageUrl, 
   linkUrl = "#", 
   bottomText,
@@ -31,7 +32,7 @@ export default function BaseAnimeCard({
   demographics = [],
   genres = [],
   themes = [],
-  positionChange: _positionChange, // Prefixed with _ to indicate intentionally unused
+  positionChange, // Now used for trend indicator
   animeId,
   hideRank = false,
   season,
@@ -62,6 +63,39 @@ export default function BaseAnimeCard({
 
   // Generate unique ID for gradients to avoid conflicts with multiple cards
   const uniqueId = `${rank}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Trend Indicator Component
+  const TrendIndicator = ({ change }: { change: number | undefined }) => {
+    if (change === undefined) {
+      return (
+        <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+          <span className="font-bold">NEW</span>
+        </div>
+      );
+    }
+    
+    if (change === 0) {
+      return (
+        <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 border border-gray-500/30">
+          <span>=</span>
+        </div>
+      );
+    }
+    
+    const isPositive = change > 0;
+    const displayValue = Math.abs(change);
+    
+    return (
+      <div className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+        isPositive 
+          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+          : 'bg-red-500/20 text-red-400 border border-red-500/30'
+      }`}>
+        <span className="font-bold">{isPositive ? '↑' : '↓'}</span>
+        <span className="font-bold">{displayValue}</span>
+      </div>
+    );
+  };
   
   // SVG Badge Components for top 3 positions
   const GoldBadge = () => (
@@ -160,7 +194,7 @@ export default function BaseAnimeCard({
         <div className="p-4 flex items-start flex-grow">
           {/* Rank Display - Only show if not hideRank */}
           {!hideRank && (
-            <div className="flex-shrink-0 flex flex-col items-center">
+            <div className="flex-shrink-0 flex flex-col items-center gap-1">
               {rank === 1 ? (
                 <GoldBadge />
               ) : rank === 2 ? (
@@ -174,11 +208,21 @@ export default function BaseAnimeCard({
                   </div>
                 </div>
               )}
+              
+              {/* Trend Indicator - positioned below rank badge */}
+              <TrendIndicator change={positionChange} />
             </div>
           )}
           
           <div className={`relative flex flex-col ${hideRank ? '' : 'ml-4'} flex-grow`}>
             <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
+            
+            {/* Episode Subtitle - only show when NOT hiding rank (i.e., in Weekly Episodes page) */}
+            {!hideRank && subtitle && (
+              <p className="text-sm mb-2" style={{color: 'var(--foreground)', opacity: 0.8}}>
+                {subtitle}
+              </p>
+            )}
             
             {/* Genres + Themes Tags - Combine and show first 3 total */}
             {((genres && genres.length > 0) || (themes && themes.length > 0)) && (

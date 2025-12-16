@@ -130,7 +130,17 @@ export function getEpisodeWeekNumber(airedDate: Date | string): {
   year: number;
   weekNumber: number;
 } {
+  // Validate input
+  if (!airedDate) {
+    throw new Error('Invalid aired date: date is null or undefined');
+  }
+  
   const date = typeof airedDate === 'string' ? new Date(airedDate) : airedDate;
+  
+  // Validate that the date is valid
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid aired date: ${airedDate}`);
+  }
   
   // Get season info
   const seasonInfo = getSeasonFromDate(date);

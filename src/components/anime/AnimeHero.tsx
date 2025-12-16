@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useState } from "react";
 import { Share2, ExternalLink, X } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";

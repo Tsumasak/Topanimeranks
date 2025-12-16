@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Badge } from '../ui/badge';
 import { Link } from 'react-router-dom';
 import { getEpisodeSeasonInfo } from '../../utils/seasons';

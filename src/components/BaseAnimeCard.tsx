@@ -1,4 +1,3 @@
-import React from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Link } from 'react-router-dom';
 import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';

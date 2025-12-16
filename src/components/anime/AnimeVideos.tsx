@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { useState } from 'react';
 import { X, Play } from 'lucide-react';
 

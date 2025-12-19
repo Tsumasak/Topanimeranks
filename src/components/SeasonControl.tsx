@@ -29,9 +29,9 @@ const SeasonControl = () => {
   // Parse season ID to get season name and year
   const parseSeasonId = (seasonId: string): { season: string; year: number; isLater?: boolean } => {
     if (seasonId === 'later') {
-      return { season: 'summer', year: 2026, isLater: true };
+      return { season: 'fall', year: 2026, isLater: true }; // ✅ FIX: Later agora começa em Fall 2026
     }
-    // Extract season and year from ID like "winter2026"
+    // Extract season and year from ID like "winter2026", "summer2026", etc.
     const match = seasonId.match(/([a-z]+)(\d+)/);
     if (match) {
       return { season: match[1], year: parseInt(match[2]) };

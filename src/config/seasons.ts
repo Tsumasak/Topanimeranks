@@ -22,10 +22,17 @@ export const SEASONS_DATA: SeasonData[] = [
     year: 2026,
   },
   {
+    id: 'summer2026',
+    label: 'Summer 2026',
+    title: 'Summer 2026',
+    period: 'July - September 2026',
+    year: 2026,
+  },
+  {
     id: 'later',
     label: 'Later',
     title: 'Later',
-    period: 'Summer 2026 and Beyond',
+    period: 'Fall 2026 and Beyond',
     year: 2026,
   },
 ];

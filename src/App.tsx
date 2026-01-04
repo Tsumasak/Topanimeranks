@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { MigrationAlert } from "./components/MigrationAlert";
 import { HomePage } from "./pages/HomePage";
+import { HomeNewPage } from "./pages/HomeNewPage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
@@ -208,6 +209,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomePage />} />
+          <Route path="/home-new" element={<HomeNewPage />} />
           <Route path="/ranks" element={<TopEpisodesPage />} />
           <Route path="/top-season-animes" element={<TopSeasonAnimesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />

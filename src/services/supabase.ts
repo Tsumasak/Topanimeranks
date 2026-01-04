@@ -329,15 +329,17 @@ export async function getSeasonRankings(
         .eq('year', year);
 
       // Order by requested field
+      // IMPORTANT: Show ALL animes, even those without scores yet (nulls last)
       if (orderBy === 'members') {
         query = query
           .order('members', { ascending: false, nullsFirst: false })
-          .order('anime_score', { ascending: false }); // FIXED: Changed from 'score' to 'anime_score'
+          .order('anime_score', { ascending: false, nullsFirst: false }); // FIXED: Changed 'score' to 'anime_score'
       } else {
         // Order by score (rating) for "Top Animes"
+        // nullsFirst: false means animes without scores go to the end
         query = query
-          .order('anime_score', { ascending: false, nullsFirst: false }) // FIXED: Changed from 'score' to 'anime_score'
-          .order('scored_by', { ascending: false });
+          .order('anime_score', { ascending: false, nullsFirst: false }) // FIXED: Changed 'score' to 'anime_score'
+          .order('scored_by', { ascending: false, nullsFirst: false });
       }
 
       const { data, error } = await query;

@@ -13,8 +13,8 @@ const app = new Hono();
 // CURRENT SEASON CONFIGURATION
 // ============================================
 // Atualizar manualmente quando a temporada mudar
-const CURRENT_SEASON = 'fall';
-const CURRENT_YEAR = 2025;
+const CURRENT_SEASON = 'winter';
+const CURRENT_YEAR = 2026;
 
 // Enable logger
 app.use('*', logger(console.log));
@@ -417,13 +417,16 @@ app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Get animes for the season, ordered by score
+    console.log(`[Server] 🔍 Fetching season rankings for ${season} ${year}...`);
+
+    // Get animes for the season with STRICT filtering
+    // CRITICAL: Use .ilike() for case-insensitive season matching
     const { data: animes, error } = await supabase
       .from('season_rankings')
       .select('*')
-      .eq('season', season)
+      .ilike('season', season) // Case-insensitive
       .eq('year', year)
-      .order('score', { ascending: false, nullsFirst: false })
+      .order('anime_score', { ascending: false, nullsFirst: false }) // FIXED: Changed 'score' to 'anime_score'
       .order('members', { ascending: false, nullsFirst: false });
 
     if (error) {
@@ -433,6 +436,19 @@ app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
         error: error.message,
         needsData: true
       }, 200);
+    }
+
+    console.log(`[Server] ✅ Found ${animes?.length || 0} animes for ${season} ${year}`);
+    
+    // Debug: Log first 3 animes
+    if (animes && animes.length > 0) {
+      console.log('[Server] First 3 animes:', animes.slice(0, 3).map(a => ({
+        id: a.anime_id,
+        title: a.title_english || a.title,
+        season: a.season,
+        year: a.year,
+        score: a.anime_score
+      })));
     }
 
     return c.json({

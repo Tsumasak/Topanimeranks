@@ -10,8 +10,8 @@ import { PAST_SEASONS_DATA } from '../config/pastSeasons';
 export default function TopSeasonAnimesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read initial season from URL query param, fallback to fall2025
-  const initialSeason = searchParams.get('season') || 'fall2025';
+  // Read initial season from URL query param, fallback to winter2026
+  const initialSeason = searchParams.get('season') || 'winter2026';
   const [activeSeason, setActiveSeason] = useState<string>(initialSeason);
   const [animes, setAnimes] = useState<JikanAnimeData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +58,7 @@ export default function TopSeasonAnimesPage() {
         }
 
         // Order by SCORE (rating-based ranking)
+        // IMPORTANT: Show ALL animes for the season, even those without scores yet
         const seasonAnimes = await SupabaseService.getSeasonRankings(
           seasonData.season,
           seasonData.year,

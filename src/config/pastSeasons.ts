@@ -40,4 +40,12 @@ export const PAST_SEASONS_DATA: PastSeasonData[] = [
     year: 2025,
     season: 'fall',
   },
+  {
+    id: 'winter2026',
+    label: 'Winter 2026',
+    title: 'Winter 2026',
+    period: 'January - March 2026',
+    year: 2026,
+    season: 'winter',
+  },
 ];

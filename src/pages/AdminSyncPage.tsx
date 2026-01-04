@@ -84,35 +84,19 @@ export default function AdminSyncPage() {
         
         <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px] mb-7">
           <button
-            onClick={() => syncSeason('winter', 2025)}
-            disabled={syncing.winter}
-            className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {syncing.winter ? '⏳ Syncing...' : '❄️ Winter 2025'}
-          </button>
-          
-          <button
-            onClick={() => syncSeason('spring', 2025)}
-            disabled={syncing.spring}
-            className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {syncing.spring ? '⏳ Syncing...' : '🌸 Spring 2025'}
-          </button>
-          
-          <button
-            onClick={() => syncSeason('summer', 2025)}
-            disabled={syncing.summer}
-            className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {syncing.summer ? '⏳ Syncing...' : '☀️ Summer 2025'}
-          </button>
-          
-          <button
             onClick={() => syncSeason('fall', 2025)}
             disabled={syncing.fall}
             className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
           >
             {syncing.fall ? '⏳ Syncing...' : '🍂 Fall 2025'}
+          </button>
+          
+          <button
+            onClick={() => syncSeason('winter', 2026)}
+            disabled={syncing.winter}
+            className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-[#ccc] disabled:cursor-not-allowed disabled:shadow-none"
+          >
+            {syncing.winter ? '⏳ Syncing...' : '❄️ Winter 2026'}
           </button>
         </div>
         

@@ -12,8 +12,8 @@ const SeasonControl = () => {
   
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read initial season from URL query param, fallback to winter2026
-  const initialSeason = searchParams.get('season') || 'winter2026';
+  // Read initial season from URL query param, fallback to spring2026
+  const initialSeason = searchParams.get('season') || 'spring2026';
   const [activeSeason, setActiveSeason] = useState<string>(initialSeason);
   const [animes, setAnimes] = useState<AnticipatedAnime[]>([]);
   const [displayedAnimes, setDisplayedAnimes] = useState<AnticipatedAnime[]>([]);
@@ -29,14 +29,16 @@ const SeasonControl = () => {
   // Parse season ID to get season name and year
   const parseSeasonId = (seasonId: string): { season: string; year: number; isLater?: boolean } => {
     if (seasonId === 'later') {
-      return { season: 'fall', year: 2026, isLater: true }; // ✅ FIX: Later agora começa em Fall 2026
+      return { season: 'fall', year: 2026, isLater: true };
     }
-    // Extract season and year from ID like "winter2026", "summer2026", etc.
-    const match = seasonId.match(/([a-z]+)(\d+)/);
+    // Extract season and year from ID like "spring2026", "summer2026", etc.
+    const seasonPattern = /([a-z]+)(\d+)/;
+    const match = seasonId.match(seasonPattern);
     if (match) {
       return { season: match[1], year: parseInt(match[2]) };
     }
-    return { season: 'winter', year: 2026 };
+    // Default to spring 2026 instead of winter
+    return { season: 'spring', year: 2026 };
   };
 
   // Smooth transition function for season changes

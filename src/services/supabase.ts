@@ -13,6 +13,54 @@ import { projectId, publicAnonKey } from '../utils/supabase/info';
 // Re-export the singleton instance
 export { supabase };
 
+// ============================================
+// SEASON UTILITIES (copied from server)
+// ============================================
+
+/**
+ * Calculate week dates for Winter 2026 following the same logic as server
+ * Week 1: Season start (Jan 1) to first Sunday
+ * Week 2+: Monday to Sunday (full weeks)
+ */
+function calculateWeekDates(weekNumber: number): { startDate: string; endDate: string } {
+  // Winter 2026 starts January 1, 2026 (Wednesday)
+  const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0));
+  
+  // Find the first Sunday of the season
+  const firstSunday = new Date(seasonStart);
+  const dayOfWeek = firstSunday.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+  firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+  firstSunday.setUTCHours(23, 59, 59, 999);
+  
+  if (weekNumber === 1) {
+    // Week 1: Season start to first Sunday
+    return {
+      startDate: seasonStart.toISOString().split('T')[0],
+      endDate: firstSunday.toISOString().split('T')[0],
+    };
+  }
+  
+  // Week 2+: Monday to Sunday (full weeks)
+  const firstMonday = new Date(firstSunday);
+  firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+  firstMonday.setUTCHours(0, 0, 0, 0);
+  
+  // Calculate start of requested week
+  const weekStart = new Date(firstMonday);
+  weekStart.setUTCDate(firstMonday.getUTCDate() + (weekNumber - 2) * 7);
+  
+  // Calculate end of requested week (6 days later)
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEnd.setUTCHours(23, 59, 59, 999);
+  
+  return {
+    startDate: weekStart.toISOString().split('T')[0],
+    endDate: weekEnd.toISOString().split('T')[0],
+  };
+}
+
 // Define types for Supabase rows
 interface SeasonRankingRow {
   anime_id: number;
@@ -179,17 +227,13 @@ export async function getWeeklyEpisodes(
         if (!startDate || !endDate) {
           console.log(`[SupabaseService] ℹ️ Using calculated dates for week ${weekNumber} (migration pending)`);
           
-          // Calculate dates as fallback
-          const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025 (Week 1 start)
-          const weekStart = new Date(baseDate);
-          weekStart.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+          // Use the same logic as server: Week 1 goes to first Sunday, Week 2+ are full weeks
+          const { startDate: calcStart, endDate: calcEnd } = calculateWeekDates(weekNumber);
           
           return {
             episodes,
-            startDate: weekStart.toISOString().split('T')[0],
-            endDate: weekEnd.toISOString().split('T')[0],
+            startDate: calcStart,
+            endDate: calcEnd,
           };
         }
         

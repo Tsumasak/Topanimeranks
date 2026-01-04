@@ -432,6 +432,10 @@
     overflow: hidden;
   }
 
+  .\!absolute {
+    position: absolute !important;
+  }
+
   .absolute {
     position: absolute;
   }
@@ -600,6 +604,10 @@
     .container {
       max-width: 96rem;
     }
+  }
+
+  .\!-m-px {
+    margin: -1px !important;
   }
 
   .-mx-1 {
@@ -805,6 +813,10 @@
     height: 100%;
   }
 
+  .\!h-px {
+    height: 1px !important;
+  }
+
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
@@ -921,6 +933,10 @@
     min-height: 100vh;
   }
 
+  .\!w-px {
+    width: 1px !important;
+  }
+
   .w-4 {
     width: calc(var(--spacing) * 4);
   }
@@ -931,6 +947,10 @@
 
   .w-6 {
     width: calc(var(--spacing) * 6);
+  }
+
+  .w-8 {
+    width: calc(var(--spacing) * 8);
   }
 
   .w-10 {
@@ -1294,6 +1314,10 @@
     overflow: hidden;
   }
 
+  .\!overflow-hidden {
+    overflow: hidden !important;
+  }
+
   .overflow-hidden {
     overflow: hidden;
   }
@@ -1363,6 +1387,11 @@
     border-top-right-radius: .625rem;
   }
 
+  .\!border-0 {
+    border-style: var(--tw-border-style) !important;
+    border-width: 0 !important;
+  }
+
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
@@ -1419,6 +1448,10 @@
 
   .border-border {
     border-color: oklch(.922 0 0);
+  }
+
+  .border-current {
+    border-color: currentColor;
   }
 
   .border-gray-300 {
@@ -1511,6 +1544,10 @@
 
   .border-t-\[var\(--accent\)\] {
     border-top-color: var(--accent);
+  }
+
+  .border-r-transparent {
+    border-right-color: #0000;
   }
 
   .bg-\[var\(--accent\)\] {
@@ -1914,6 +1951,10 @@
     object-position: center;
   }
 
+  .\!p-0 {
+    padding: calc(var(--spacing) * 0) !important;
+  }
+
   .p-1 {
     padding: calc(var(--spacing) * 1);
   }
@@ -2142,6 +2183,10 @@
     text-align: right;
   }
 
+  .align-\[-0\.125em\] {
+    vertical-align: -.125em;
+  }
+
   .align-middle {
     vertical-align: middle;
   }
@@ -2293,6 +2338,10 @@
 
   .break-words {
     overflow-wrap: break-word;
+  }
+
+  .\!whitespace-nowrap {
+    white-space: nowrap !important;
   }
 
   .whitespace-nowrap {
@@ -2595,6 +2644,10 @@
   .select-none {
     -webkit-user-select: none;
     user-select: none;
+  }
+
+  .\!\[clip\:rect\(0\,0\,0\,0\)\] {
+    clip: rect(0, 0, 0, 0) !important;
   }
 
   .fade-in-0 {
@@ -3048,6 +3101,12 @@
 
   .data-\[state\=open\]\:zoom-in-95[data-state="open"] {
     --tw-enter-scale: .95;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-reduce\:animate-\[spin_1\.5s_linear_infinite\] {
+      animation: 1.5s linear infinite spin;
+    }
   }
 
   @media (width >= 40rem) {

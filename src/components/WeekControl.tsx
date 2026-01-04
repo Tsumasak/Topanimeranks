@@ -124,7 +124,7 @@ const WeekControl = () => {
   // Determine if the active week is the "current" week (latest with 5+ scored episodes)
   const activeWeekNumber = activeWeek ? parseInt(activeWeek.replace('week', '')) : 0;
   const isActiveWeekCurrent = activeWeekNumber === latestWeekNumber;
-
+  
   // Smooth transition function for week changes
   const handleWeekChange = (newWeek: string) => {
     if (newWeek === activeWeek) return;
@@ -150,10 +150,10 @@ const WeekControl = () => {
   useEffect(() => {
     const loadAvailableWeeks = async () => {
       console.log('[WeekControl] 🔍 Starting to load available weeks (5+ scored episodes filter)...');
-      console.log('[WeekControl] 📅 Config week number:', CURRENT_WEEK_NUMBER);
       
       try {
         // Call server endpoint to get weeks summary (already filtered to 5+ episodes WITH SCORE)
+        console.log('[WeekControl] 📡 Calling /available-weeks endpoint...');
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
           {
@@ -163,18 +163,23 @@ const WeekControl = () => {
           }
         );
         
+        console.log('[WeekControl] 📡 Response status:', response.status);
+        
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('[WeekControl] ❌ Response is not JSON:', text);
           throw new Error('Response is not JSON');
         }
 
         const result = await response.json();
+        console.log('[WeekControl] 📦 Server response:', result);
         
-        if (result.success && result.weeks && result.latestWeek) {
+        if (result.success && result.weeks && result.weeks.length > 0 && result.latestWeek) {
           // Server filters to weeks with 5+ episodes WITH SCORE
           const weeksWithData = result.weeks.map((w: number) => `week${w}`);
           const detectedLatestWeek = result.latestWeek;
@@ -193,31 +198,36 @@ const WeekControl = () => {
           // Validate that the week from URL exists in available weeks
           const finalWeek = weeksWithData.includes(weekToLoad) ? weekToLoad : `week${detectedLatestWeek}`;
           
+          console.log(`[WeekControl] 📌 Setting activeWeek to: ${finalWeek}`);
           setActiveWeek(finalWeek);
-          console.log(`[WeekControl] 📌 Loading week: ${finalWeek} (from URL: ${weekParam || 'not set'})`);
+          console.log(`[WeekControl] 📌 activeWeek set! (from URL: ${weekParam || 'not set'})`);
+        } else if (result.success && result.weeks && result.weeks.length === 0) {
+          // No weeks with 5+ episodes yet - use fallback
+          console.log(`[WeekControl] ⚠️ Server returned 0 weeks with 5+ scored episodes`);
+          console.log(`[WeekControl] 🔄 Using fallback: Week 1 only`);
+          setAvailableWeeks(['week1']);
+          setLatestWeekNumber(1);
+          setActiveWeek('week1');
         } else {
-          // Fallback: show only weeks up to current week (no filtering by episode count)
-          const pastWeeks = WEEKS_DATA
-            .filter(w => parseInt(w.id.replace('week', '')) <= CURRENT_WEEK_NUMBER)
-            .map(w => w.id);
-          console.log(`[WeekControl] ⚠️  Server returned no weeks - using fallback:`, pastWeeks);
-          setAvailableWeeks(pastWeeks);
-          setLatestWeekNumber(CURRENT_WEEK_NUMBER);
+          // Invalid response format - use fallback
+          console.warn(`[WeekControl] ⚠️ Unexpected server response format:`, result);
+          console.log(`[WeekControl] 🔄 Using fallback: Week 1 only`);
+          setAvailableWeeks(['week1']);
+          setLatestWeekNumber(1);
+          setActiveWeek('week1');
         }
       } catch (error) {
         console.error('[WeekControl] ❌ Error loading available weeks:', error);
-        // Fallback: show only weeks up to current week (no filtering by episode count)
-        const pastWeeks = WEEKS_DATA
-          .filter(w => parseInt(w.id.replace('week', '')) <= CURRENT_WEEK_NUMBER)
-          .map(w => w.id);
-        console.log(`[WeekControl] ⚠️  Using fallback - showing all weeks up to ${CURRENT_WEEK_NUMBER}:`, pastWeeks);
-        setAvailableWeeks(pastWeeks);
-        setLatestWeekNumber(CURRENT_WEEK_NUMBER);
+        // ALWAYS use fallback - show Week 1
+        console.log(`[WeekControl] 🔄 Using error fallback: Week 1`);
+        setAvailableWeeks(['week1']);
+        setLatestWeekNumber(1);
+        setActiveWeek('week1');
       }
     };
     
     loadAvailableWeeks();
-  }, []);
+  }, [searchParams]);
   
   // Load episodes when activeWeek changes
   useEffect(() => {
@@ -261,10 +271,10 @@ const WeekControl = () => {
         const weekNumber = parseInt(activeWeek.replace('week', ''));
         
         // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
-        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber);
+        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber, undefined, undefined, undefined);
         
         // Episodes are already in the correct format from SupabaseService
-        console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for ${activeWeek}`);
+        console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for Week ${weekNumber}`);
         setEpisodes(weekData.episodes);
         
         // CRITICAL FIX: Update displayed episodes AND animation key together
@@ -410,9 +420,47 @@ const WeekControl = () => {
   }, [loading, displayedEpisodes, displayedCount, animationKey]);
 
   // No loading screen - render directly
-  if (loading || !activeWeek) {
-    console.log(`[WeekControl] 🚫 Render blocked: loading=${loading}, activeWeek=${activeWeek}`);
-    return null;
+  if (!activeWeek) {
+    console.log(`[WeekControl] ⏳ Still waiting for activeWeek... (loading=${loading})`);
+    // Show a minimal loading state
+    return (
+      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
+        <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+          Weekly Anime Episodes
+        </h1>
+        <div className="text-center py-16">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" style={{color: 'var(--rating-yellow)'}} role="status">
+            <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+          </div>
+          <p className="mt-4 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+            Loading weeks data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (loading) {
+    console.log(`[WeekControl] 🔄 Loading episodes for ${activeWeek}...`);
+    // Show week controller but with loading state for episodes
+    return (
+      <div className="container mx-auto px-[24px] py-[32px] min-h-screen">
+        <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
+          Weekly Anime Episodes
+        </h1>
+        <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
+          {currentWeek ? getFormattedPeriod(currentWeek, isActiveWeekCurrent) : 'Loading period...'}
+        </p>
+        <div className="text-center py-16">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" style={{color: 'var(--rating-yellow)'}} role="status">
+            <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+          </div>
+          <p className="mt-4 text-sm" style={{color: 'var(--foreground)', opacity: 0.7}}>
+            Loading episodes...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -452,6 +500,7 @@ const WeekControl = () => {
       <h1 className="text-3xl text-center mb-2 font-bold" style={{color: 'var(--foreground)'}}>
         Weekly Anime Episodes
       </h1>
+      
       <p className="text-center mb-8 text-sm" style={{color: 'var(--rating-yellow)'}}>
         {weekDates && currentWeek 
           ? formatDynamicPeriod(weekDates.startDate, weekDates.endDate, isActiveWeekCurrent)

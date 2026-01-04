@@ -1,8 +1,9 @@
 // ============================================
-// ENRICH EPISODES - Buscar dados do Jikan API
+// ENRICH EPISODES - Buscar dados do Jikan API e popular weekly_episodes
 // ============================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getEpisodeWeekNumber } from "./season-utils.tsx";
 
 interface JikanAnime {
   mal_id: number;
@@ -11,6 +12,10 @@ interface JikanAnime {
   url: string;
   type: string;
   status: string;
+  aired: {
+    from: string | null;
+    to: string | null;
+  };
   demographics: Array<{ name: string }>;
   genres: Array<{ name: string }>;
   themes: Array<{ name: string }>;
@@ -20,61 +25,61 @@ interface JikanEpisode {
   mal_id: number;
   title: string;
   score?: number;
+  aired?: string;
 }
 
 // Rate limit helper
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function enrichEpisodes(supabase: any) {
-  console.log("🔄 Iniciando enriquecimento de episódios...");
+export async function enrichEpisodes(supabase: any, season: string, year: number) {
+  console.log(`🔄 Iniciando enriquecimento de episódios para ${season} ${year}...`);
   
   let enriched = 0;
+  let inserted = 0;
   let errors = 0;
   
   try {
-    // Buscar episódios que precisam de enriquecimento
-    const { data: episodes, error: fetchError } = await supabase
-      .from('weekly_episodes')
-      .select('*')
-      .is('anime_title_english', null)
-      .limit(100); // Processar 100 por vez
+    // ✅ STEP 1: Buscar TODOS os animes da season_rankings para essa season
+    console.log(`📊 Buscando animes de ${season} ${year} da tabela season_rankings...`);
+    
+    const { data: seasonAnimes, error: fetchError } = await supabase
+      .from('season_rankings')
+      .select('anime_id, title, title_english, image_url, status')
+      .eq('season', season)
+      .eq('year', year)
+      .order('popularity', { ascending: true }); // Mais populares primeiro
     
     if (fetchError) {
-      console.error("❌ Erro ao buscar episódios:", fetchError);
-      return { enriched: 0, errors: 1, message: fetchError.message };
+      console.error("❌ Erro ao buscar animes da season_rankings:", fetchError);
+      return { enriched: 0, inserted: 0, errors: 1, message: fetchError.message };
     }
     
-    if (!episodes || episodes.length === 0) {
-      console.log("✅ Todos os episódios já estão enriquecidos!");
-      return { enriched: 0, errors: 0, message: "Nada para enriquecer" };
+    if (!seasonAnimes || seasonAnimes.length === 0) {
+      console.log("⚠️  Nenhum anime encontrado na season_rankings para essa season!");
+      return { enriched: 0, inserted: 0, errors: 0, message: "Nenhum anime encontrado" };
     }
     
-    console.log(`📊 Encontrados ${episodes.length} episódios para enriquecer`);
+    console.log(`✅ Encontrados ${seasonAnimes.length} animes em ${season} ${year}`);
     
-    // Agrupar por anime_id para evitar requisições duplicadas
-    const animeIds = [...new Set(episodes.map((ep: any) => ep.anime_id))];
-    const animeDataCache: Record<number, any> = {};
-    
-    // Buscar dados de cada anime
-    for (const animeId of animeIds) {
+    // ✅ STEP 2: Para cada anime, buscar seus episódios e popular weekly_episodes
+    for (const seasonAnime of seasonAnimes) {
       try {
-        console.log(`🔍 Buscando dados do anime ${animeId}...`);
+        console.log(`\n🔍 Processando anime ${seasonAnime.anime_id}: ${seasonAnime.title_english}...`);
         
-        // 1. Buscar dados do anime
-        const animeResponse = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
+        // Buscar dados completos do anime do Jikan
+        await sleep(333); // Rate limit: 3 req/sec
+        const animeResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}`);
         
         if (!animeResponse.ok) {
-          console.error(`❌ Erro ao buscar anime ${animeId}: ${animeResponse.status}`);
+          console.error(`❌ Erro ao buscar anime ${seasonAnime.anime_id}: ${animeResponse.status}`);
           errors++;
-          await sleep(1000);
           continue;
         }
         
         const contentType = animeResponse.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-          console.error(`❌ Resposta não é JSON para anime ${animeId}`);
+          console.error(`❌ Resposta não é JSON para anime ${seasonAnime.anime_id}`);
           errors++;
-          await sleep(1000);
           continue;
         }
 
@@ -86,120 +91,141 @@ export async function enrichEpisodes(supabase: any) {
                            anime.titles.find(t => t.type === "Default")?.title || 
                            "Unknown";
         
-        // 2. Buscar dados dos episódios
+        // Buscar dados dos episódios
         await sleep(333); // Rate limit Jikan: 3 req/sec
         
-        const episodesResponse = await fetch(`https://api.jikan.moe/v4/anime/${animeId}/episodes`);
+        const episodesResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}/episodes`);
         
         if (!episodesResponse.ok) {
-          console.error(`❌ Erro ao buscar episódios de ${animeId}: ${episodesResponse.status}`);
+          console.error(`❌ Erro ao buscar episódios de ${seasonAnime.anime_id}: ${episodesResponse.status}`);
           errors++;
-          await sleep(1000);
           continue;
         }
 
         const episodesContentType = episodesResponse.headers.get('content-type');
         if (!episodesContentType || !episodesContentType.includes('application/json')) {
-          console.error(`❌ Resposta de episódios não é JSON para anime ${animeId}`);
+          console.error(`❌ Resposta de episódios não é JSON para anime ${seasonAnime.anime_id}`);
           errors++;
-          await sleep(1000);
           continue;
         }
 
         const episodesData = await episodesResponse.json();
         const episodesList: JikanEpisode[] = episodesData.data || [];
         
-        // Criar cache de episódios
-        const episodesCache: Record<number, JikanEpisode> = {};
-        episodesList.forEach((ep: JikanEpisode) => {
-          episodesCache[ep.mal_id] = ep;
-        });
+        console.log(`✅ Encontrados ${episodesList.length} episódios para ${englishTitle}`);
         
-        // Salvar no cache
-        animeDataCache[animeId] = {
-          anime_title_english: englishTitle,
-          anime_image_url: anime.images.jpg.large_image_url,
-          from_url: anime.url,
-          type: anime.type,
-          status: anime.status,
-          demographic: anime.demographics.map(d => d.name),
-          genre: anime.genres.map(g => g.name),
-          theme: anime.themes.map(t => t.name),
-          episodes: episodesCache
-        };
-        
-        console.log(`✅ Dados do anime ${animeId} (${englishTitle}) salvos no cache`);
-        
-        await sleep(333); // Rate limit
+        // ✅ STEP 3: Para cada episódio, criar/atualizar na weekly_episodes
+        for (const episode of episodesList) {
+          try {
+            // Pular episódios sem data de exibição
+            if (!episode.aired) {
+              console.log(`⏭️  Pulando episódio ${episode.mal_id} (${episode.title}) - sem data de aired`);
+              continue;
+            }
+            
+            // Calcular week_number baseado na data de exibição
+            const { season: epSeason, year: epYear, weekNumber } = getEpisodeWeekNumber(episode.aired);
+            
+            // Verificar se o episódio pertence à season correta
+            if (epSeason !== season || epYear !== year) {
+              console.log(`⏭️  Pulando episódio ${episode.mal_id} - pertence a ${epSeason} ${epYear}, não ${season} ${year}`);
+              continue;
+            }
+            
+            // Verificar se já existe
+            const { data: existingEpisode } = await supabase
+              .from('weekly_episodes')
+              .select('id')
+              .eq('anime_id', seasonAnime.anime_id)
+              .eq('episode_number', episode.mal_id)
+              .maybeSingle();
+            
+            const episodeData = {
+              episode_id: `${seasonAnime.anime_id}_${episode.mal_id}`,
+              anime_id: seasonAnime.anime_id,
+              episode_number: episode.mal_id,
+              anime_title_english: englishTitle,
+              anime_image_url: anime.images.jpg.large_image_url,
+              from_url: anime.url,
+              episode_name: episode.title || `Episode ${episode.mal_id}`,
+              episode_score: episode.score || null,
+              type: anime.type,
+              status: anime.status,
+              aired_at: episode.aired,
+              demographic: anime.demographics.map(d => d.name),
+              genre: anime.genres.map(g => g.name),
+              theme: anime.themes.map(t => t.name),
+              week_number: weekNumber,
+              season: epSeason,
+              year: epYear,
+              updated_at: new Date().toISOString(),
+            };
+            
+            if (existingEpisode) {
+              // Atualizar episódio existente
+              const { error: updateError } = await supabase
+                .from('weekly_episodes')
+                .update(episodeData)
+                .eq('id', existingEpisode.id);
+              
+              if (updateError) {
+                console.error(`❌ Erro ao atualizar episódio ${existingEpisode.id}:`, updateError);
+                errors++;
+              } else {
+                enriched++;
+                console.log(`✅ Episódio atualizado: ${englishTitle} EP${episode.mal_id} - Week ${weekNumber}`);
+              }
+            } else {
+              // Inserir novo episódio
+              const { error: insertError } = await supabase
+                .from('weekly_episodes')
+                .insert({
+                  ...episodeData,
+                  created_at: new Date().toISOString(),
+                });
+              
+              if (insertError) {
+                console.error(`❌ Erro ao inserir episódio:`, insertError);
+                errors++;
+              } else {
+                inserted++;
+                console.log(`✅ Novo episódio inserido: ${englishTitle} EP${episode.mal_id} - Week ${weekNumber}`);
+              }
+            }
+            
+          } catch (error) {
+            console.error(`❌ Erro ao processar episódio ${episode.mal_id}:`, error);
+            errors++;
+          }
+        }
         
       } catch (error) {
-        console.error(`❌ Erro ao processar anime ${animeId}:`, error);
+        console.error(`❌ Erro ao processar anime ${seasonAnime.anime_id}:`, error);
         errors++;
       }
     }
     
-    // Atualizar episódios com os dados do cache
-    for (const episode of episodes) {
-      try {
-        const animeData = animeDataCache[episode.anime_id];
-        
-        if (!animeData) {
-          console.error(`❌ Sem dados para anime ${episode.anime_id}`);
-          errors++;
-          continue;
-        }
-        
-        const episodeData = animeData.episodes[episode.episode_number];
-        
-        // Update no banco
-        const { error: updateError } = await supabase
-          .from('weekly_episodes')
-          .update({
-            episode_id: `${episode.anime_id}_${episode.episode_number}`, // IMPORTANTE: Adicionar episode_id único
-            anime_title_english: animeData.anime_title_english,
-            anime_image_url: animeData.anime_image_url,
-            from_url: animeData.from_url,
-            episode_name: episodeData?.title || `Episode ${episode.episode_number}`,
-            episode_score: episodeData?.score || null,
-            type: animeData.type,
-            status: animeData.status,
-            demographic: animeData.demographic,
-            genre: animeData.genre,
-            theme: animeData.theme,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', episode.id);
-        
-        if (updateError) {
-          console.error(`❌ Erro ao atualizar episódio ${episode.id}:`, updateError);
-          errors++;
-        } else {
-          enriched++;
-          console.log(`✅ Episódio enriquecido: ${animeData.anime_title_english} EP${episode.episode_number}`);
-        }
-        
-      } catch (error) {
-        console.error(`❌ Erro ao enriquecer episódio:`, error);
-        errors++;
-      }
-    }
-    
-    console.log(`🎉 Enriquecimento concluído: ${enriched} sucesso, ${errors} erros`);
+    console.log(`\n🎉 Enriquecimento concluído:`);
+    console.log(`   ✅ Episódios atualizados: ${enriched}`);
+    console.log(`   ➕ Episódios inseridos: ${inserted}`);
+    console.log(`   ❌ Erros: ${errors}`);
     
     // IMPORTANTE: Recalcular posições após enriquecimento
-    console.log(`🔢 Recalculando posições de ranking...`);
-    await recalculatePositions(supabase);
+    console.log(`\n🔢 Recalculando posições de ranking...`);
+    await recalculatePositions(supabase, season, year);
     
     return {
       enriched,
+      inserted,
       errors,
-      message: `${enriched} episódios enriquecidos com sucesso`
+      message: `${enriched} episódios atualizados e ${inserted} inseridos com sucesso`
     };
     
   } catch (error) {
     console.error("❌ Erro geral no enriquecimento:", error);
     return {
       enriched: 0,
+      inserted: 0,
       errors: 1,
       message: error instanceof Error ? error.message : "Erro desconhecido"
     };
@@ -209,16 +235,18 @@ export async function enrichEpisodes(supabase: any) {
 // ============================================
 // RECALCULATE POSITIONS - Calcular position_in_week
 // ============================================
-// Esta função recalcula as posições de TODAS as weeks
+// Esta função recalcula as posições de TODAS as weeks da season especificada
 // baseado no episode_score (maior score = posição 1)
-export async function recalculatePositions(supabase: any) {
-  console.log("🔢 Iniciando recálculo de posições...");
+export async function recalculatePositions(supabase: any, season: string, year: number) {
+  console.log(`🔢 Iniciando recálculo de posições para ${season} ${year}...`);
   
   try {
-    // 1. Buscar TODAS as weeks que existem
+    // 1. Buscar TODAS as weeks da season especificada
     const { data: allEpisodes, error: fetchError } = await supabase
       .from('weekly_episodes')
-      .select('id, week_number, episode_score')
+      .select('id, week_number, episode_score, season, year')
+      .eq('season', season)
+      .eq('year', year)
       .not('episode_score', 'is', null)
       .order('week_number', { ascending: true })
       .order('episode_score', { ascending: false });

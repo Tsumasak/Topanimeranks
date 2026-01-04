@@ -570,13 +570,14 @@ app.post("/make-server-c1d1bfd8/enrich-episodes", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("🚀 Iniciando enriquecimento de episódios...");
+    console.log(`🚀 Iniciando enriquecimento de episódios para ${CURRENT_SEASON} ${CURRENT_YEAR}...`);
     
-    const result = await enrichEpisodes(supabase);
+    const result = await enrichEpisodes(supabase, CURRENT_SEASON, CURRENT_YEAR);
 
     return c.json({
       success: result.errors === 0,
       enriched: result.enriched,
+      inserted: result.inserted,
       errors: result.errors,
       message: result.message
     });
@@ -611,7 +612,7 @@ app.post("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
     console.log("🔢 Iniciando recálculo de posições...");
     
-    await recalculatePositions(supabase);
+    await recalculatePositions(supabase, CURRENT_SEASON, CURRENT_YEAR);
 
     return c.json({
       success: true,
@@ -644,7 +645,7 @@ app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
     console.log("🔢 Iniciando recálculo de posições...");
     
-    await recalculatePositions(supabase);
+    await recalculatePositions(supabase, CURRENT_SEASON, CURRENT_YEAR);
 
     return c.json({
       success: true,

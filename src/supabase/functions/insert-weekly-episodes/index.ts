@@ -95,29 +95,33 @@ function getSeasonFromDate(date: Date): SeasonInfo {
 
 /**
  * Calculate which week within a season a date falls into
- * Week 1 is the first Monday of the season (or the Monday before if season starts mid-week)
+ * Week 1: From season start to first Sunday (partial week)
+ * Week 2+: Monday to Sunday (full weeks)
  */
 function getWeekInSeason(date: Date, seasonInfo: SeasonInfo): number {
   const { startDate } = seasonInfo;
   
-  // Find the first Monday of the season (or the Monday before season start)
-  const firstMonday = new Date(startDate);
-  const dayOfWeek = firstMonday.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  // Find the first Sunday of the season
+  const firstSunday = new Date(startDate);
+  const dayOfWeek = firstSunday.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+  firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
   
-  if (dayOfWeek === 0) {
-    // Sunday - go back 6 days to previous Monday
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - 6);
-  } else if (dayOfWeek !== 1) {
-    // Not Monday - adjust to previous Monday
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dayOfWeek - 1));
+  // Check if date is in Week 1 (season start to first Sunday)
+  if (date >= startDate && date <= firstSunday) {
+    return 1;
   }
   
-  // Calculate days difference
+  // Week 2+ starts on Monday after first Sunday
+  const firstMonday = new Date(firstSunday);
+  firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+  
+  // Calculate days from first Monday
   const diffTime = date.getTime() - firstMonday.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
-  // Calculate week number (1-based)
-  const weekNumber = Math.floor(diffDays / 7) + 1;
+  // Calculate week number (2-based, then add 1)
+  const weekNumber = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
   
   // Clamp to reasonable range (1-15 weeks per season)
   return Math.max(1, Math.min(15, weekNumber));
@@ -197,14 +201,47 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     const seasonsToCheck = [{ season: 'winter', year: 2026 }];
     
     // Calculate week dates dynamically based on the season
-    // Winter 2026 = January-March 2026, starts on January 6, 2026 (first Monday)
-    let baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday)
+    // Winter 2026 starts January 1, 2026 (Wednesday)
+    // Week 1: Jan 1-4 (Wed-Sun, partial week)
+    // Week 2+: Monday-Sunday (full weeks)
     
-    const startDate = new Date(baseDate);
-    startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
-    const endDate = new Date(startDate);
-    endDate.setUTCDate(startDate.getUTCDate() + 6);
-    endDate.setUTCHours(23, 59, 59, 999);
+    const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (weekNumber === 1) {
+      // Week 1: From season start to first Sunday
+      startDate = new Date(seasonStartDate);
+      
+      // Find the first Sunday
+      const firstSunday = new Date(seasonStartDate);
+      const dayOfWeek = firstSunday.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+      firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+      
+      endDate = new Date(firstSunday);
+      endDate.setUTCHours(23, 59, 59, 999);
+    } else {
+      // Week 2+: Monday to Sunday
+      // Find first Monday after Week 1
+      const firstSunday = new Date(seasonStartDate);
+      const dayOfWeek = firstSunday.getUTCDay();
+      const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+      firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+      
+      const firstMonday = new Date(firstSunday);
+      firstMonday.setUTCDate(firstSunday.getUTCDate() + 1); // Day after first Sunday
+      
+      // Calculate start of this week (Monday)
+      startDate = new Date(firstMonday);
+      startDate.setUTCDate(firstMonday.getUTCDate() + (weekNumber - 2) * 7); // -2 because Week 2 starts at firstMonday
+      
+      // Calculate end of this week (Sunday)
+      endDate = new Date(startDate);
+      endDate.setUTCDate(startDate.getUTCDate() + 6);
+      endDate.setUTCHours(23, 59, 59, 999);
+    }
     
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
@@ -303,15 +340,9 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
 
         console.log(`  📺 Total episodes: ${allEpisodes.length}`);
 
-        // Find episodes that aired THIS WEEK and DON'T exist in database yet
+        // Find NEW episodes that DON'T exist in database yet
+        // We'll insert ALL new episodes, not just those from this week
         for (const ep of allEpisodes) {
-          if (!ep.aired) continue;
-
-          const airedDate = new Date(ep.aired);
-          const isInWeek = airedDate >= startDate && airedDate <= endDate;
-          
-          if (!isInWeek) continue;
-
           // Check if episode already exists in database (ANY week)
           const episodeKey = `${anime.mal_id}_${ep.mal_id}`;
           if (existingEpisodesSet.has(episodeKey)) {
@@ -319,12 +350,28 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             continue;
           }
 
-          // NEW EPISODE! Add to list
-          console.log(`  ✅ NEW: EP${ep.mal_id} \"${ep.title}\" (Aired: ${ep.aired}, Score: ${ep.score || 'N/A'})`);
-
-          // Calculate week_number based on aired date and season
-          const { season: episodeSeason, year: episodeYear, weekNumber: episodeWeek } = getEpisodeWeekNumber(airedDate);
-          console.log(`  📅 Calculated: ${episodeSeason} ${episodeYear} Week ${episodeWeek}`);
+          // Calculate week_number based on aired date
+          // If no aired date, use current week (Week 1 for new season)
+          let episodeSeason: string;
+          let episodeYear: number;
+          let episodeWeek: number;
+          
+          if (ep.aired) {
+            const airedDate = new Date(ep.aired);
+            const calculated = getEpisodeWeekNumber(airedDate);
+            episodeSeason = calculated.season;
+            episodeYear = calculated.year;
+            episodeWeek = calculated.weekNumber;
+            console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: ${ep.aired}, Score: ${ep.score || 'N/A'})`);
+            console.log(`  📅 Calculated: ${episodeSeason} ${episodeYear} Week ${episodeWeek}`);
+          } else {
+            // No aired date - assume current season/week
+            episodeSeason = 'winter';
+            episodeYear = 2026;
+            episodeWeek = weekNumber; // Use the week we're processing
+            console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: N/A, Score: ${ep.score || 'N/A'})`);
+            console.log(`  📅 No aired date - using: ${episodeSeason} ${episodeYear} Week ${episodeWeek}`);
+          }
 
           const episode = {
             anime_id: anime.mal_id,
@@ -334,14 +381,14 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             episode_number: ep.mal_id,
             episode_name: ep.title || `Episode ${ep.mal_id}`,
             episode_score: ep.score || null,
-            week_number: episodeWeek, // ✅ FIXED: Use calculated week from season
+            week_number: episodeWeek,
             position_in_week: 0, // Will be calculated by update function
             trend: 'NEW',
             is_manual: false,
             type: anime.type,
             status: anime.status,
-            season: episodeSeason, // ✅ FIXED: Use calculated season from aired date
-            year: episodeYear, // ✅ FIXED: Use calculated year from aired date
+            season: episodeSeason,
+            year: episodeYear,
             demographic: anime.demographics || [],
             genre: anime.genres || [],
             theme: anime.themes || [],

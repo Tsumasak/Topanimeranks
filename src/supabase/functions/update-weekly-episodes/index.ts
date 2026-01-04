@@ -291,11 +291,33 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Auto-detect current week based on Winter 2026
-    const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
+    // Winter 2026 starts January 1, 2026 (Wednesday)
+    // Week 1: Jan 1-4 (Wed-Sun, partial week)
+    // Week 2+: Monday-Sunday (full weeks)
+    const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
     const today = new Date();
-    const diffTime = today.getTime() - baseDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
+    
+    // Find the first Sunday of the season
+    const firstSunday = new Date(seasonStartDate);
+    const dayOfWeek = firstSunday.getUTCDay();
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+    
+    let currentWeek: number;
+    
+    // Check if today is in Week 1
+    if (today >= seasonStartDate && today <= firstSunday) {
+      currentWeek = 1;
+    } else {
+      // Week 2+ starts on Monday after first Sunday
+      const firstMonday = new Date(firstSunday);
+      firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+      
+      const diffTime = today.getTime() - firstMonday.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
+      currentWeek = Math.max(1, Math.min(13, currentWeek));
+    }
     
     console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
 

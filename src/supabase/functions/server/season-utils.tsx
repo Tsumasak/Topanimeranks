@@ -93,29 +93,33 @@ export function getSeasonFromDate(date: Date): SeasonInfo {
 
 /**
  * Calculate which week within a season a date falls into
- * Week 1 is the first Monday of the season (or the Monday before if season starts mid-week)
+ * Week 1: From season start to first Sunday (partial week)
+ * Week 2+: Monday to Sunday (full weeks)
  */
 export function getWeekInSeason(date: Date, seasonInfo: SeasonInfo): number {
   const { startDate } = seasonInfo;
   
-  // Find the first Monday of the season (or the Monday before season start)
-  const firstMonday = new Date(startDate);
-  const dayOfWeek = firstMonday.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  // Find the first Sunday of the season
+  const firstSunday = new Date(startDate);
+  const dayOfWeek = firstSunday.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+  firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
   
-  if (dayOfWeek === 0) {
-    // Sunday - go back 6 days to previous Monday
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - 6);
-  } else if (dayOfWeek !== 1) {
-    // Not Monday - adjust to previous Monday
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dayOfWeek - 1));
+  // Check if date is in Week 1 (season start to first Sunday)
+  if (date >= startDate && date <= firstSunday) {
+    return 1;
   }
   
-  // Calculate days difference
+  // Week 2+ starts on Monday after first Sunday
+  const firstMonday = new Date(firstSunday);
+  firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+  
+  // Calculate days from first Monday
   const diffTime = date.getTime() - firstMonday.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
-  // Calculate week number (1-based)
-  const weekNumber = Math.floor(diffDays / 7) + 1;
+  // Calculate week number (2-based, then add 1)
+  const weekNumber = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
   
   // Clamp to reasonable range (1-15 weeks per season)
   return Math.max(1, Math.min(15, weekNumber));

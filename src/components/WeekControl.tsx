@@ -271,7 +271,7 @@ const WeekControl = () => {
         const weekNumber = parseInt(activeWeek.replace('week', ''));
         
         // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
-        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber, undefined, undefined, undefined);
+        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber);
         
         // Episodes are already in the correct format from SupabaseService
         console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for Week ${weekNumber}`);

@@ -632,15 +632,12 @@ export function HomeNewPage() {
             const year = end.getUTCFullYear();
             const prefix = weekConfig.isCurrentWeek ? "Airing" : "Aired";
 
-            if (startMonth === endMonth) {
-              setWeekPeriod(
-                `${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`,
-              );
-            } else {
-              setWeekPeriod(
-                `${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`,
-              );
-            }
+            // Week period info (removed from state, kept for reference)
+            // if (startMonth === endMonth) {
+            //   weekPeriod = `${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`;
+            // } else {
+            //   weekPeriod = `${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+            // }
           }
 
           console.log(

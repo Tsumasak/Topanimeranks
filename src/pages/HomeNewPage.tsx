@@ -612,33 +612,9 @@ export function HomeNewPage() {
             }));
           setTopEpisodes(topWeekly);
 
-          // Format week period
-          const weekConfig = WEEKS_DATA.find(
-            (w) => w.id === `week${weekToShow}`,
-          );
-          if (weekConfig) {
-            const start = new Date(weeklyEpisodesData.startDate);
-            const end = new Date(weeklyEpisodesData.endDate);
-            const startMonth = start.toLocaleDateString("en-US", {
-              month: "long",
-              timeZone: "UTC",
-            });
-            const startDay = start.getUTCDate();
-            const endMonth = end.toLocaleDateString("en-US", {
-              month: "long",
-              timeZone: "UTC",
-            });
-            const endDay = end.getUTCDate();
-            const year = end.getUTCFullYear();
-            const prefix = weekConfig.isCurrentWeek ? "Airing" : "Aired";
-
-            // Week period info (removed from state, kept for reference)
-            // if (startMonth === endMonth) {
-            //   weekPeriod = `${prefix} - ${startMonth} ${startDay} - ${endDay}, ${year}`;
-            // } else {
-            //   weekPeriod = `${prefix} - ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
-            // }
-          }
+          // Week period info (removed - no longer needed)
+          // const weekConfig = WEEKS_DATA.find((w) => w.id === `week${weekToShow}`);
+          // Calculate week period dates for display
 
           console.log(
             `[HomeNewPage] ✅ Loaded ${topWeekly.length} episodes from Week ${weekToShow}`,

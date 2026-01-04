@@ -60,8 +60,9 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       throw new Error('Missing Supabase credentials');
     }
 
@@ -79,7 +80,7 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Authorization': `Bearer ${supabaseAnonKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({

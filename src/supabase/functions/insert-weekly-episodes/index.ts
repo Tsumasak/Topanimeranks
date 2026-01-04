@@ -204,7 +204,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     // Fetch current season animes
-    const seasonsToCheck = [{ season: 'fall', year: 2025 }];
+    const seasonsToCheck = [{ season: 'winter', year: 2026 }];
     const allAnimes: any[] = [];
     
     for (const { season, year } of seasonsToCheck) {
@@ -390,8 +390,8 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             themes: anime.themes || [],
             studios: anime.studios || [],
             synopsis: anime.synopsis,
-            season: 'fall',
-            year: 2025,
+            season: episodeSeason, // ✅ FIXED: Use calculated season from aired date
+            year: episodeYear, // ✅ FIXED: Use calculated year from aired date
           };
 
           await supabase

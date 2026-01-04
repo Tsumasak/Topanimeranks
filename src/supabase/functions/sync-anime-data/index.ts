@@ -74,7 +74,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // 🆕 Fetch current season to catch all airing animes
     const seasonsToCheck = [
-      { season: 'fall', year: 2025 },
+      { season: 'winter', year: 2026 },
     ];
     
     const allAnimes: any[] = [];

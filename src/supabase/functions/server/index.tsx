@@ -6,6 +6,7 @@ import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
 import { getEpisodeWeekNumber } from "./season-utils.tsx";
+import { insertWeeklyEpisodes } from "./insert-weekly-logic.tsx";
 
 const app = new Hono();
 
@@ -60,13 +61,14 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase credentials');
     }
 
-    console.log(`[Populate Season] 📞 Calling insert-weekly-episodes for ALL 13 weeks...`);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log(`[Populate Season] 📞 Processing ALL 13 weeks directly...`);
     
     let totalInserted = 0;
     const weeksProcessed = [];
@@ -75,31 +77,18 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
     for (let weekNum = 1; weekNum <= 13; weekNum++) {
       console.log(`[Populate Season] 📅 Processing week ${weekNum}/13...`);
       
-      const insertResponse = await fetch(
-        `${supabaseUrl}/functions/v1/insert-weekly-episodes`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            week_number: weekNum
-          })
-        }
-      );
-
-      if (!insertResponse.ok) {
-        const errorText = await insertResponse.text();
-        console.error(`[Populate Season] ❌ Week ${weekNum} failed: ${errorText}`);
-        continue; // Continue with next week even if one fails
+      try {
+        // Call insertWeeklyEpisodes directly instead of HTTP request
+        const result = await insertWeeklyEpisodes(supabase, weekNum);
+        
+        totalInserted += result.totalItemsCreated || 0;
+        weeksProcessed.push(weekNum);
+        
+        console.log(`[Populate Season] ✅ Week ${weekNum} completed: ${result.totalItemsCreated || 0} episodes`);
+      } catch (error) {
+        console.error(`[Populate Season] ❌ Week ${weekNum} failed:`, error);
+        // Continue with next week even if one fails
       }
-
-      const insertResult = await insertResponse.json();
-      totalInserted += insertResult.totalItemsCreated || 0;
-      weeksProcessed.push(weekNum);
-      
-      console.log(`[Populate Season] ✅ Week ${weekNum} completed: ${insertResult.totalItemsCreated || 0} episodes`);
     }
 
     console.log(`[Populate Season] ✅ ALL weeks completed! Total inserted: ${totalInserted}`);

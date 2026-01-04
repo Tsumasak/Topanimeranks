@@ -290,8 +290,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Auto-detect current week
-    const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+    // Auto-detect current week based on Winter 2026
+    const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
     const today = new Date();
     const diffTime = today.getTime() - baseDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

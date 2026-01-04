@@ -6,7 +6,6 @@ import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
 import { getEpisodeWeekNumber } from "./season-utils.tsx";
-import { insertWeeklyEpisodes } from "./insert-weekly-logic.tsx";
 
 const app = new Hono();
 
@@ -35,80 +34,6 @@ app.use(
 // Health check endpoint
 app.get("/make-server-c1d1bfd8/health", (c) => {
   return c.json({ status: "ok" });
-});
-
-// ============================================
-// TEMPORARY ENDPOINT: Populate weekly episodes for any season
-// ============================================
-// Usage: GET /populate-season?season=winter&year=2026&key=populate123
-// This will call the insert-weekly-episodes edge function for ALL weeks in the season
-// ============================================
-app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
-  try {
-    // Simple security key to prevent abuse
-    const key = c.req.query('key');
-    if (key !== 'populate123') {
-      return c.json({
-        success: false,
-        error: 'Invalid or missing security key. Add ?key=populate123 to the URL'
-      }, 401);
-    }
-
-    const season = c.req.query('season') || CURRENT_SEASON;
-    const year = parseInt(c.req.query('year') || String(CURRENT_YEAR));
-
-    console.log(`[Populate Season] 🔍 Starting to populate ALL episodes for ${season} ${year}...`);
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase credentials');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log(`[Populate Season] 📞 Processing ALL 13 weeks directly...`);
-    
-    let totalInserted = 0;
-    const weeksProcessed = [];
-    
-    // Process ALL 13 weeks for a season
-    for (let weekNum = 1; weekNum <= 13; weekNum++) {
-      console.log(`[Populate Season] 📅 Processing week ${weekNum}/13...`);
-      
-      try {
-        // Call insertWeeklyEpisodes directly instead of HTTP request
-        const result = await insertWeeklyEpisodes(supabase, weekNum);
-        
-        totalInserted += result.totalItemsCreated || 0;
-        weeksProcessed.push(weekNum);
-        
-        console.log(`[Populate Season] ✅ Week ${weekNum} completed: ${result.totalItemsCreated || 0} episodes`);
-      } catch (error) {
-        console.error(`[Populate Season] ❌ Week ${weekNum} failed:`, error);
-        // Continue with next week even if one fails
-      }
-    }
-
-    console.log(`[Populate Season] ✅ ALL weeks completed! Total inserted: ${totalInserted}`);
-
-    return c.json({
-      success: true,
-      message: `Successfully populated ${season} ${year}`,
-      season,
-      year,
-      episodesInserted: totalInserted,
-      weeksProcessed: weeksProcessed
-    });
-
-  } catch (error) {
-    console.error("[Populate Season] ❌ Error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
 });
 
 // Migration status endpoint - returns SQL to run manually

@@ -198,22 +198,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     
     // Calculate week dates dynamically based on the season
     // Winter 2026 = January-March 2026, starts on January 6, 2026 (first Monday)
-    // Fall 2025 = October-December 2025, starts on September 29, 2025 (first Monday)
-    let baseDate: Date;
-    if (seasonsToCheck[0].season === 'winter' && seasonsToCheck[0].year === 2026) {
-      baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday)
-    } else if (seasonsToCheck[0].season === 'fall' && seasonsToCheck[0].year === 2025) {
-      baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025 (Monday)
-    } else {
-      // Default fallback - use first day of season's first month
-      const monthMap = { winter: 0, spring: 3, summer: 6, fall: 9 };
-      const month = monthMap[seasonsToCheck[0].season as keyof typeof monthMap];
-      baseDate = new Date(Date.UTC(seasonsToCheck[0].year, month, 1));
-      // Find first Monday
-      const dayOfWeek = baseDate.getUTCDay();
-      const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-      baseDate.setUTCDate(baseDate.getUTCDate() + daysUntilMonday);
-    }
+    let baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday)
     
     const startDate = new Date(baseDate);
     startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
@@ -251,24 +236,6 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     }
     
     console.log(`📺 Total animes fetched: ${allAnimes.length}`);
-
-    // HARDCODED EXCEPTIONS
-    const HARDCODED_ANIME_IDS = [62405, 59062, 60378];
-    
-    for (const animeId of HARDCODED_ANIME_IDS) {
-      if (!allAnimes.some((a: any) => a.mal_id === animeId)) {
-        console.log(`⭐ Fetching hardcoded anime ${animeId}...`);
-        const animeUrl = `${JIKAN_BASE_URL}/anime/${animeId}`;
-        const animeData = await fetchWithRetry(animeUrl);
-        
-        if (animeData?.data) {
-          console.log(`✅ Added: ${animeData.data.title}`);
-          allAnimes.push(animeData.data);
-        }
-        
-        await delay(RATE_LIMIT_DELAY);
-      }
-    }
 
     // Filter by members >= 5000 and airing status
     const airingAnimes = allAnimes.filter((anime: any) => 

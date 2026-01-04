@@ -95,19 +95,24 @@ export default function AdminSyncPage() {
     setSyncing(prev => ({ ...prev, [key]: true }));
     
     addLog(`🎬 Populating weekly_episodes for ${season} ${year}...`, 'info');
-    addLog('⏳ This will fetch and insert ALL episodes. May take 15-30 minutes...', 'warning');
+    addLog('⏳ Calling insert-weekly-episodes edge function...', 'warning');
     
     try {
-      const url = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/populate-season?season=${season}&year=${year}&key=populate123`;
+      // Call insert-weekly-episodes edge function directly
+      // It will auto-detect the current week based on today's date
+      const url = `https://${projectId}.supabase.co/functions/v1/insert-weekly-episodes`;
       
-      addLog('📡 Calling populate endpoint...', 'info');
+      addLog('📡 Calling insert-weekly-episodes...', 'info');
       
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          // Empty body - function will auto-detect current week
+        })
       });
       
       const contentType = response.headers.get('content-type');
@@ -122,10 +127,9 @@ export default function AdminSyncPage() {
       const data = await response.json();
       
       if (data.success) {
-        addLog(`✅ SUCCESS: Weekly episodes populated!`, 'success');
-        addLog(`📊 Episodes Inserted: ${data.episodesInserted || 0}`, 'success');
+        addLog(`✅ SUCCESS: Weekly episodes inserted!`, 'success');
+        addLog(`📊 Total Inserted: ${data.totalItemsCreated || 0}`, 'success');
         addLog(`📅 Weeks Processed: ${data.weeksProcessed?.join(', ') || 'None'}`, 'info');
-        addLog(`🎬 Season: ${data.season} ${data.year}`, 'info');
       } else {
         addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
       }

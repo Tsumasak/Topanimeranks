@@ -25,7 +25,7 @@ export default function AdminSyncPage() {
     addLog('This may take 5-15 minutes. Please wait...', 'warning');
     
     try {
-      const url = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/sync-past/${season}/${year}?key=sync2025`;
+      const url = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/sync-season/${season}/${year}`;
       
       addLog('Making request to server...', 'info');
       
@@ -52,10 +52,12 @@ export default function AdminSyncPage() {
       const data = await response.json();
       
       if (data.success) {
-        addLog(`✅ SUCCESS: ${data.message}`, 'success');
-        addLog(`Total Animes: ${data.totalAnimes}`, 'success');
-        addLog(`Total Episodes: ${data.totalEpisodes}`, 'success');
-        addLog(`Inserted Episodes: ${data.insertedEpisodes}`, 'success');
+        addLog(`✅ SUCCESS:${season} ${year} sync completed!`, 'success');
+        addLog(`Total Found: ${data.total || 0}`, 'info');
+        addLog(`✅ Inserted: ${data.inserted || 0}`, 'success');
+        addLog(`🔄 Updated: ${data.updated || 0}`, 'success');
+        addLog(`⏭️  Skipped: ${data.skipped || 0}`, 'warning');
+        addLog(`❌ Errors: ${data.errors || 0}`, data.errors > 0 ? 'error' : 'info');
       } else {
         addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
       }

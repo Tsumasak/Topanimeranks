@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { WEEKS_DATA } from "../config/weeks";
 import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
 import {
@@ -457,7 +457,6 @@ export function HomeNewPage() {
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [weekPeriod, setWeekPeriod] = useState("");
 
   // Animation keys for smooth entry animations
   const [animationKey, setAnimationKey] = useState("initial");

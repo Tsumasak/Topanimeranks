@@ -39,8 +39,8 @@ app.get("/make-server-c1d1bfd8/health", (c) => {
 // ============================================
 // TEMPORARY ENDPOINT: Populate weekly episodes for any season
 // ============================================
-// Usage: GET /populate-season?season=spring&year=2025&key=populate123
-// This will fetch data from Jikan API and populate weekly_episodes table
+// Usage: GET /populate-season?season=winter&year=2026&key=populate123
+// This will call the insert-weekly-episodes edge function for ALL weeks in the season
 // ============================================
 app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
   try {
@@ -56,7 +56,7 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
     const season = c.req.query('season') || CURRENT_SEASON;
     const year = parseInt(c.req.query('year') || String(CURRENT_YEAR));
 
-    console.log(`[Populate Season] 🔍 Starting to populate ${season} ${year}...`);
+    console.log(`[Populate Season] 🔍 Starting to populate ALL episodes for ${season} ${year}...`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -65,29 +65,51 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
       throw new Error('Missing Supabase credentials');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`[Populate Season] 📞 Calling insert-weekly-episodes for ALL 13 weeks...`);
+    
+    let totalInserted = 0;
+    const weeksProcessed = [];
+    
+    // Process ALL 13 weeks for a season
+    for (let weekNum = 1; weekNum <= 13; weekNum++) {
+      console.log(`[Populate Season] 📅 Processing week ${weekNum}/13...`);
+      
+      const insertResponse = await fetch(
+        `${supabaseUrl}/functions/v1/insert-weekly-episodes`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            week_number: weekNum
+          })
+        }
+      );
 
-    // Step 1: Sync season rankings (if not already synced)
-    console.log(`[Populate Season] Step 1: Syncing ${season} ${year} season data...`);
-    const syncResult = await syncSeason(supabase, season, year);
+      if (!insertResponse.ok) {
+        const errorText = await insertResponse.text();
+        console.error(`[Populate Season] ❌ Week ${weekNum} failed: ${errorText}`);
+        continue; // Continue with next week even if one fails
+      }
 
-    // Step 2: Enrich episodes with scores
-    console.log(`[Populate Season] Step 2: Enriching episodes with scores...`);
-    const enrichResult = await enrichEpisodes(supabase, season, year);
+      const insertResult = await insertResponse.json();
+      totalInserted += insertResult.totalItemsCreated || 0;
+      weeksProcessed.push(weekNum);
+      
+      console.log(`[Populate Season] ✅ Week ${weekNum} completed: ${insertResult.totalItemsCreated || 0} episodes`);
+    }
 
-    console.log(`[Populate Season] ✅ Successfully populated ${season} ${year}`);
+    console.log(`[Populate Season] ✅ ALL weeks completed! Total inserted: ${totalInserted}`);
 
     return c.json({
       success: true,
       message: `Successfully populated ${season} ${year}`,
       season,
       year,
-      seasonRankings: syncResult,
-      episodes: {
-        enriched: enrichResult.enriched || 0,
-        inserted: enrichResult.inserted || 0,
-        errors: enrichResult.errors || 0
-      }
+      episodesInserted: totalInserted,
+      weeksProcessed: weeksProcessed
     });
 
   } catch (error) {

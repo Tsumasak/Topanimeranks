@@ -761,7 +761,7 @@ export function HomeNewPage() {
                   backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                 }}
               >
-                View All &gt;
+                View All {'>'}
               </Link>
             </div>
           </div>
@@ -989,7 +989,7 @@ export function HomeNewPage() {
                     backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
                 >
-                  View All &gt;
+                  View All {'>'}
                 </Link>
               </div>
               <p
@@ -1167,7 +1167,7 @@ export function HomeNewPage() {
                     backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
                 >
-                  View All &gt;
+                  View All {'>'}
                 </Link>
               </div>
               <p

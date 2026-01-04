@@ -81,6 +81,9 @@ export async function syncSeason(supabase: any, season: string, year: number) {
     let page = 1;
     let hasNextPage = true;
     
+    // ✅ STEP 1: Coletar TODOS os MAL IDs válidos do Jikan API
+    const validMalIds = new Set<number>();
+    
     // Buscar animes da season com paginação
     while (hasNextPage && page <= 10) { // Limitar a 10 páginas (250 animes)
       console.log(`📊 Buscando página ${page} de ${season} ${year}...`);
@@ -144,6 +147,9 @@ export async function syncSeason(supabase: any, season: string, year: number) {
               continue;
             }
           }
+          
+          // ✅ Adicionar MAL ID à lista de IDs válidos
+          validMalIds.add(anime.mal_id);
           
           // Preparar dados para inserção
           const animeData = {
@@ -227,11 +233,57 @@ export async function syncSeason(supabase: any, season: string, year: number) {
       await sleep(1000);
     }
     
+    // ✅ STEP 2: DELETAR animes que NÃO estão mais no Jikan API
+    console.log(`\n🗑️  PASSO 2: Deletando animes obsoletos de ${season} ${year}...`);
+    console.log(`   MAL IDs válidos encontrados no Jikan: ${validMalIds.size}`);
+    
+    let deleted = 0; // Declare outside to use in return
+    
+    // Buscar TODOS os animes da season_rankings para essa season
+    const { data: existingAnimes, error: fetchError } = await supabase
+      .from('season_rankings')
+      .select('anime_id, title_english')
+      .eq('season', season)
+      .eq('year', year);
+    
+    if (fetchError) {
+      console.error(`❌ Erro ao buscar animes existentes:`, fetchError);
+    } else {
+      console.log(`   Animes na tabela season_rankings: ${existingAnimes?.length || 0}`);
+      
+      // Identificar animes que NÃO estão no Jikan (obsoletos)
+      const animesToDelete = existingAnimes?.filter(anime => !validMalIds.has(anime.anime_id)) || [];
+      
+      console.log(`   Animes a deletar (NÃO estão no Jikan): ${animesToDelete.length}`);
+      
+      // Deletar cada anime obsoleto
+      for (const anime of animesToDelete) {
+        console.log(`   🗑️  Deletando: ${anime.title_english} (MAL ID: ${anime.anime_id})`);
+        
+        const { error: deleteError } = await supabase
+          .from('season_rankings')
+          .delete()
+          .eq('anime_id', anime.anime_id)
+          .eq('season', season)
+          .eq('year', year);
+        
+        if (deleteError) {
+          console.error(`   ❌ Erro ao deletar anime ${anime.anime_id}:`, deleteError);
+          errors++;
+        } else {
+          deleted++;
+        }
+      }
+      
+      console.log(`   ✅ Total deletado: ${deleted}`);
+    }
+    
     console.log(`\n📊 RESUMO DO SYNC ${season.toUpperCase()} ${year}:`);
-    console.log(`   Total encontrados: ${totalAnimes}`);
+    console.log(`   Total encontrados no Jikan: ${totalAnimes}`);
     console.log(`   ✅ Inseridos: ${inserted}`);
     console.log(`   🔄 Atualizados: ${updated}`);
     console.log(`   ⏭️  Pulados: ${skipped}`);
+    console.log(`   🗑️  Deletados: ${deleted}`);
     console.log(`   ❌ Erros: ${errors}`);
     
     return {
@@ -240,6 +292,7 @@ export async function syncSeason(supabase: any, season: string, year: number) {
       inserted,
       updated,
       skipped,
+      deleted,
       errors,
     };
     

@@ -52,11 +52,12 @@ export default function AdminSyncPage() {
       const data = await response.json();
       
       if (data.success) {
-        addLog(`✅ SUCCESS:${season} ${year} sync completed!`, 'success');
+        addLog(`✅ SUCCESS: ${season} ${year} sync completed!`, 'success');
         addLog(`Total Found: ${data.total || 0}`, 'info');
         addLog(`✅ Inserted: ${data.inserted || 0}`, 'success');
         addLog(`🔄 Updated: ${data.updated || 0}`, 'success');
         addLog(`⏭️  Skipped: ${data.skipped || 0}`, 'warning');
+        addLog(`🗑️  Deleted: ${data.deleted || 0}`, data.deleted > 0 ? 'warning' : 'info');
         addLog(`❌ Errors: ${data.errors || 0}`, data.errors > 0 ? 'error' : 'info');
       } else {
         addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');

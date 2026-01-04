@@ -67,7 +67,7 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
         console.log(`\n🔍 Processando anime ${seasonAnime.anime_id}: ${seasonAnime.title_english}...`);
         
         // Buscar dados completos do anime do Jikan
-        await sleep(333); // Rate limit: 3 req/sec
+        await sleep(1000); // ✅ FIXED: Aumentado para 1 segundo para evitar 429
         const animeResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}`);
         
         if (!animeResponse.ok) {
@@ -92,7 +92,7 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
                            "Unknown";
         
         // Buscar dados dos episódios
-        await sleep(333); // Rate limit Jikan: 3 req/sec
+        await sleep(1000); // ✅ FIXED: Aumentado para 1 segundo para evitar 429
         
         const episodesResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}/episodes`);
         
@@ -141,7 +141,6 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               .maybeSingle();
             
             const episodeData = {
-              episode_id: `${seasonAnime.anime_id}_${episode.mal_id}`,
               anime_id: seasonAnime.anime_id,
               episode_number: episode.mal_id,
               anime_title_english: englishTitle,

@@ -123,9 +123,14 @@ export default function AdminSyncPage() {
       
       if (data.success) {
         addLog(`✅ SUCCESS: Weekly episodes populated!`, 'success');
-        addLog(`📊 Episodes found: ${data.episodesFound || 0}`, 'success');
-        addLog(`➕ Episodes inserted: ${data.episodesInserted || 0}`, 'success');
-        addLog(`🔄 Episodes updated: ${data.episodesUpdated || 0}`, 'success');
+        addLog(`📊 Season Rankings:`, 'info');
+        addLog(`   Total: ${data.seasonRankings?.total || 0}`, 'info');
+        addLog(`   Inserted: ${data.seasonRankings?.inserted || 0}`, 'success');
+        addLog(`   Updated: ${data.seasonRankings?.updated || 0}`, 'success');
+        addLog(`📊 Episodes:`, 'info');
+        addLog(`   Enriched: ${data.episodes?.enriched || 0}`, 'success');
+        addLog(`   Inserted: ${data.episodes?.inserted || 0}`, 'success');
+        addLog(`   Errors: ${data.episodes?.errors || 0}`, data.episodes?.errors > 0 ? 'error' : 'info');
       } else {
         addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
       }

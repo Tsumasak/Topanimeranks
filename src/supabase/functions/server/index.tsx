@@ -69,11 +69,11 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
 
     // Step 1: Sync season rankings (if not already synced)
     console.log(`[Populate Season] Step 1: Syncing ${season} ${year} season data...`);
-    await syncSeason(supabase, season, year);
+    const syncResult = await syncSeason(supabase, season, year);
 
     // Step 2: Enrich episodes with scores
     console.log(`[Populate Season] Step 2: Enriching episodes with scores...`);
-    await enrichEpisodes(supabase, season, year);
+    const enrichResult = await enrichEpisodes(supabase, season, year);
 
     console.log(`[Populate Season] ✅ Successfully populated ${season} ${year}`);
 
@@ -81,7 +81,13 @@ app.get("/make-server-c1d1bfd8/populate-season", async (c) => {
       success: true,
       message: `Successfully populated ${season} ${year}`,
       season,
-      year
+      year,
+      seasonRankings: syncResult,
+      episodes: {
+        enriched: enrichResult.enriched || 0,
+        inserted: enrichResult.inserted || 0,
+        errors: enrichResult.errors || 0
+      }
     });
 
   } catch (error) {

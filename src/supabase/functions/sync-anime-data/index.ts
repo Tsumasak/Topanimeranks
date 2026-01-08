@@ -62,13 +62,39 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
   let itemsUpdated = 0;
 
   try {
-    // Calculate week dates - Week 1 starts on September 29, 2025 (Monday)
-    const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
-    const startDate = new Date(baseDate);
-    startDate.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
-    const endDate = new Date(startDate);
-    endDate.setUTCDate(startDate.getUTCDate() + 6); // Sunday
-    endDate.setUTCHours(23, 59, 59, 999); // End of Sunday
+    // ✅ FIXED: Calculate week dates - Week 1 starts on January 1, 2026 (Wednesday)
+    // Week 1: Jan 1-5 (Wed to Sun), Week 2+: Monday to Sunday (full weeks)
+    const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0)); // January 1, 2026
+    
+    // Find the first Sunday of the season
+    const firstSunday = new Date(seasonStart);
+    const dayOfWeek = firstSunday.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+    firstSunday.setUTCHours(23, 59, 59, 999);
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (weekNumber === 1) {
+      // Week 1: Season start to first Sunday (Jan 1-5, 2026)
+      startDate = seasonStart;
+      endDate = firstSunday;
+    } else {
+      // Week 2+: Monday to Sunday (full weeks)
+      const firstMonday = new Date(firstSunday);
+      firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+      firstMonday.setUTCHours(0, 0, 0, 0);
+      
+      // Calculate start of requested week
+      startDate = new Date(firstMonday);
+      startDate.setUTCDate(firstMonday.getUTCDate() + (weekNumber - 2) * 7);
+      
+      // Calculate end of requested week (6 days later)
+      endDate = new Date(startDate);
+      endDate.setUTCDate(startDate.getUTCDate() + 6);
+      endDate.setUTCHours(23, 59, 59, 999);
+    }
     
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
@@ -604,8 +630,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         themes: anime.themes || [],
         studios: anime.studios || [],
         synopsis: anime.synopsis,
-        season: 'fall', // Hardcoded for now, as we're only syncing fall 2025
-        year: 2025,
+        season: 'winter', // ✅ FIXED: winter 2026
+        year: 2026, // ✅ FIXED: 2026
       };
 
       const { data: upsertData, error } = await supabase
@@ -1328,16 +1354,34 @@ serve(async (req) => {
         let currentWeek = week_number;
         
         if (!currentWeek) {
-          // Calculate current week based on today's date
-          // Week 1 started on September 29, 2025 (Monday)
-          const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
+          // ✅ FIXED: Calculate current week based on today's date using Winter 2026 dates
+          // Week 1 starts on January 1, 2026 (Wednesday)
+          const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0)); // January 1, 2026
           const today = new Date();
-          const diffTime = today.getTime() - baseDate.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          currentWeek = Math.floor(diffDays / 7) + 1;
           
-          // Clamp to valid week range (1-13)
-          currentWeek = Math.max(1, Math.min(13, currentWeek));
+          // Find the first Sunday of the season
+          const firstSunday = new Date(seasonStart);
+          const dayOfWeek = firstSunday.getUTCDay();
+          const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+          firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+          firstSunday.setUTCHours(23, 59, 59, 999);
+          
+          // Check if we're in Week 1
+          if (today >= seasonStart && today <= firstSunday) {
+            currentWeek = 1;
+          } else {
+            // Week 2+: Calculate from first Monday
+            const firstMonday = new Date(firstSunday);
+            firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+            firstMonday.setUTCHours(0, 0, 0, 0);
+            
+            const diffTime = today.getTime() - firstMonday.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
+          }
+          
+          // Clamp to valid week range (1-15)
+          currentWeek = Math.max(1, Math.min(15, currentWeek));
           
           console.log(`📅 Auto-detected current week: ${currentWeek} (based on date: ${today.toISOString().split('T')[0]})`);
         }

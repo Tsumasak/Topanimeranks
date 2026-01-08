@@ -166,13 +166,18 @@ const WeekControl = () => {
         console.log('[WeekControl] 📡 Response status:', response.status);
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[WeekControl] ❌ HTTP error:', response.status, errorText);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const contentType = response.headers.get('content-type');
+        console.log('[WeekControl] 📡 Content-Type:', contentType);
+        
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.error('[WeekControl] ❌ Response is not JSON:', text);
+          console.error('[WeekControl] ❌ Response is not JSON. Content-Type:', contentType);
+          console.error('[WeekControl] ❌ Response body (first 500 chars):', text.substring(0, 500));
           throw new Error('Response is not JSON');
         }
 
@@ -218,6 +223,10 @@ const WeekControl = () => {
         }
       } catch (error) {
         console.error('[WeekControl] ❌ Error loading available weeks:', error);
+        console.error('[WeekControl] ❌ Error details:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
         // ALWAYS use fallback - show Week 1
         console.log(`[WeekControl] 🔄 Using error fallback: Week 1`);
         setAvailableWeeks(['week1']);

@@ -31,125 +31,124 @@ export default function AnimeDetailsPage() {
         const animeId = parseInt(id);
         
         // Declare variables at function scope so they can be accessed later
+        let seasonData: any = null;
         let anticipatedData: any = null;
-        let firstSeasonData: any = null;
         let firstWeeklyEpisode: any = null;
 
-        // Priority search: anticipated_animes -> season_rankings -> weekly_episodes
-        console.log(
-          "[AnimeDetails] 📊 Searching in anticipated_animes...",
-        );
-        let { data: anticipatedResult, error: anticipatedError } = await supabase
-          .from("anticipated_animes")
+        // ✅ PRIORITY CHANGED: season_rankings FIRST (has complete data)
+        console.log("[AnimeDetails] 📊 Searching in season_rankings (highest priority - complete data)...");
+        let { data: seasonResult, error: seasonError } = await supabase
+          .from("season_rankings")
           .select("*")
           .eq("anime_id", animeId)
-          .maybeSingle(); // FIXED: Use maybeSingle() instead of single() to avoid 406 errors
+          .order("year", { ascending: false }) // Get most recent season first
+          .limit(1);
 
-        anticipatedData = anticipatedResult;
-
-        if (anticipatedError) {
-          console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
+        if (seasonError) {
+          console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
         }
 
-        if (anticipatedData) {
-          console.log(
-            "[AnimeDetails] ✅ Found in anticipated_animes",
-          );
-          console.log("[AnimeDetails] 📊 Data:", anticipatedData);
-          console.log(
-            "[AnimeDetails] 📊 Score:",
-            (anticipatedData as any).score,
-          );
-          setAnime(anticipatedData);
+        // seasonResult is an array, get the first element
+        seasonData = seasonResult && seasonResult.length > 0 ? seasonResult[0] : null;
+
+        if (seasonData) {
+          console.log("[AnimeDetails] ✅ Found in season_rankings (complete data)");
+          console.log("[AnimeDetails] 📊 Data preview:", {
+            title: seasonData.title_english || seasonData.title,
+            score: seasonData.anime_score,
+            season: seasonData.season,
+            year: seasonData.year,
+            hasImage: !!seasonData.image_url,
+            hasSynopsis: !!seasonData.synopsis
+          });
+          setAnime(seasonData);
 
           // Set dynamic background
-          if ((anticipatedData as any).image_url) {
+          if (seasonData.image_url) {
             document.documentElement.style.setProperty(
               "--bg-image",
-              `url(${(anticipatedData as any).image_url})`,
+              `url(${seasonData.image_url})`,
             );
           }
         } else {
-          console.log(
-            "[AnimeDetails] 📊 Searching in season_rankings...",
-          );
-          let { data: seasonData, error: seasonError } = await supabase
-            .from("season_rankings")
+          // Fallback 1: Check anticipated_animes
+          console.log("[AnimeDetails] 📊 Searching in anticipated_animes...");
+          let { data: anticipatedResult, error: anticipatedError } = await supabase
+            .from("anticipated_animes")
             .select("*")
             .eq("anime_id", animeId)
-            .order("year", { ascending: false }) // Get most recent season first
-            .limit(1); // Get only one result
+            .maybeSingle();
 
-          if (seasonError) {
-            console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
+          anticipatedData = anticipatedResult;
+
+          if (anticipatedError) {
+            console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
           }
 
-          // seasonData is now an array, get the first element
-          firstSeasonData = seasonData && seasonData.length > 0 ? seasonData[0] : null;
-
-          if (firstSeasonData) {
-            console.log(
-              "[AnimeDetails] ✅ Found in season_rankings",
-            );
-            setAnime(firstSeasonData);
+          if (anticipatedData) {
+            console.log("[AnimeDetails] ✅ Found in anticipated_animes");
+            console.log("[AnimeDetails] 📊 Score:", anticipatedData.score);
+            setAnime(anticipatedData);
 
             // Set dynamic background
-            if ((firstSeasonData as any).image_url) {
+            if (anticipatedData.image_url) {
               document.documentElement.style.setProperty(
                 "--bg-image",
-                `url(${(firstSeasonData as any).image_url})`,
+                `url(${anticipatedData.image_url})`,
               );
             }
           } else {
-            console.log(
-              "[AnimeDetails] 📊 Searching in weekly_episodes...",
-            );
+            // Fallback 2: Check weekly_episodes (limited data)
+            console.log("[AnimeDetails] 📊 Searching in weekly_episodes (limited data)...");
             let { data: weeklyEpisodeData } = await supabase
               .from("weekly_episodes")
               .select("*")
               .eq("anime_id", animeId)
               .order("episode_number", { ascending: false })
-              .limit(1); // Get only most recent episode
+              .limit(1);
 
-            // weeklyEpisodeData is now an array, get the first element
             firstWeeklyEpisode = weeklyEpisodeData && weeklyEpisodeData.length > 0 ? weeklyEpisodeData[0] : null;
 
             if (firstWeeklyEpisode) {
-              console.log(
-                "[AnimeDetails] ✅ Found in weekly_episodes",
-              );
+              console.log("[AnimeDetails] ⚠️ Found ONLY in weekly_episodes (limited data - missing synopsis, studios, etc)");
               // Transform weekly_episodes structure to match expected format
               setAnime({
-                anime_id: (firstWeeklyEpisode as any).anime_id,
-                title: (firstWeeklyEpisode as any).anime_title_english || (firstWeeklyEpisode as any).anime_title,
-                title_english: (firstWeeklyEpisode as any).anime_title_english || (firstWeeklyEpisode as any).anime_title,
-                image_url: (firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image,
-                score: (firstWeeklyEpisode as any).episode_score || (firstWeeklyEpisode as any).score,
-                anime_score: (firstWeeklyEpisode as any).score,
-                members: (firstWeeklyEpisode as any).members,
-                episodes: (firstWeeklyEpisode as any).episode_number,
-                type: (firstWeeklyEpisode as any).type || "TV",
-                season: (firstWeeklyEpisode as any).season,
-                year: (firstWeeklyEpisode as any).year,
-                status: (firstWeeklyEpisode as any).status,
-                genres: (firstWeeklyEpisode as any).genre || (firstWeeklyEpisode as any).genres || [],
-                themes: (firstWeeklyEpisode as any).theme || (firstWeeklyEpisode as any).themes || [],
-                demographics: (firstWeeklyEpisode as any).demographic || (firstWeeklyEpisode as any).demographics || [],
+                anime_id: firstWeeklyEpisode.anime_id,
+                title: firstWeeklyEpisode.anime_title_english || firstWeeklyEpisode.anime_title,
+                title_english: firstWeeklyEpisode.anime_title_english || firstWeeklyEpisode.anime_title,
+                image_url: firstWeeklyEpisode.anime_image_url || firstWeeklyEpisode.anime_image,
+                score: firstWeeklyEpisode.score,
+                anime_score: firstWeeklyEpisode.score,
+                members: firstWeeklyEpisode.members,
+                episodes: firstWeeklyEpisode.episode_number,
+                type: firstWeeklyEpisode.type || "TV",
+                season: firstWeeklyEpisode.season,
+                year: firstWeeklyEpisode.year,
+                status: firstWeeklyEpisode.status,
+                genres: firstWeeklyEpisode.genre || firstWeeklyEpisode.genres || [],
+                themes: firstWeeklyEpisode.theme || firstWeeklyEpisode.themes || [],
+                demographics: firstWeeklyEpisode.demographic || firstWeeklyEpisode.demographics || [],
+                // ⚠️ These will be N/A because weekly_episodes doesn't have them
+                synopsis: null,
+                studios: [],
+                producers: [],
+                licensors: [],
+                duration: null,
+                rating: null,
+                source: null,
               });
 
               // Set dynamic background
-              if ((firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image) {
+              if (firstWeeklyEpisode.anime_image_url || firstWeeklyEpisode.anime_image) {
                 document.documentElement.style.setProperty(
                   "--bg-image",
-                  `url(${(firstWeeklyEpisode as any).anime_image_url || (firstWeeklyEpisode as any).anime_image})`,
+                  `url(${firstWeeklyEpisode.anime_image_url || firstWeeklyEpisode.anime_image})`,
                 );
               }
             } else {
-              console.log(
-                "[AnimeDetails] ❌ Anime not found in any table",
-              );
-              // Fallback: Try fetching from Jikan API directly
-              console.log("[AnimeDetails] 🌐 Attempting to fetch from Jikan API as fallback...");
+              console.log("[AnimeDetails] ❌ Anime not found in any table");
+              // Fallback 3: Try fetching from Jikan API directly (LAST RESORT)
+              console.log("[AnimeDetails] 🌐 Attempting to fetch from Jikan API as last resort...");
               try {
                 const jikanResponse = await fetch(
                   `https://api.jikan.moe/v4/anime/${animeId}/full`
@@ -167,7 +166,7 @@ export default function AnimeDetailsPage() {
                 const jikanData = await jikanResponse.json();
                 const jikanAnime = jikanData.data;
                   
-                console.log("[AnimeDetails] ✅ Found in Jikan API");
+                console.log("[AnimeDetails] ✅ Found in Jikan API (fallback)");
                   
                 // Transform Jikan data to match expected format
                 setAnime({
@@ -297,8 +296,8 @@ export default function AnimeDetailsPage() {
         if (!currentAnimeType) {
           if (anticipatedData) {
             currentAnimeType = (anticipatedData as any).type;
-          } else if (firstSeasonData) {
-            currentAnimeType = (firstSeasonData as any).type;
+          } else if (seasonData) {
+            currentAnimeType = (seasonData as any).type;
           } else if (firstWeeklyEpisode) {
             currentAnimeType = (firstWeeklyEpisode as any).type;
           }

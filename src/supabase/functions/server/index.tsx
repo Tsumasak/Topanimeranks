@@ -136,13 +136,14 @@ CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_sta
 // DATA ENDPOINTS
 // ============================================
 
-// Get available weeks (weeks with at least 5 episodes WITH SCORE)
+// Get available weeks (weeks with at least 3 episodes WITH SCORE)
 app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
     if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[Server] ❌ Missing Supabase credentials');
       return c.json({ 
         success: false, 
         error: "Missing Supabase credentials" 
@@ -168,11 +169,21 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       .order('week_number', { ascending: true });
 
     if (error) {
-      console.error("❌ Error fetching available weeks:", error);
+      console.error("[Server] ❌ Error fetching available weeks:", error);
+      
+      // Fallback: Se houver erro no banco, retornar Week 1 como fallback
+      console.log("[Server] 🔄 Returning fallback: Week 1 only");
       return c.json({
-        success: false,
-        error: error.message
-      }, 500);
+        success: true,
+        weeks: [1],
+        latestWeek: 1,
+        currentWeek: currentWeekNumber,
+        currentSeason: CURRENT_SEASON,
+        currentYear: CURRENT_YEAR,
+        weekCounts: [{ week: 1, count: 0 }],
+        isFallback: true,
+        fallbackReason: error.message
+      });
     }
 
     // Count episodes WITH SCORE per week
@@ -182,18 +193,35 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       weekCounts.set(row.week_number, count + 1);
     });
 
-    // Filter weeks with 5+ episodes WITH SCORE
+    // ✅ FIXED: Filter weeks with 3+ episodes WITH SCORE (changed from 5+)
     const validWeeks = Array.from(weekCounts.entries())
-      .filter(([week, count]) => count >= 5)
+      .filter(([week, count]) => count >= 3) // ✅ Changed from 5 to 3
       .map(([week]) => week)
       .sort((a, b) => a - b);
     
-    // Determine the latest week (highest week number with 5+ scored episodes)
+    // Determine the latest week (highest week number with 3+ scored episodes)
     const latestWeek = validWeeks.length > 0 ? Math.max(...validWeeks) : 1;
     
     console.log(`[Server] 📊 Weeks with scored episodes:`, Array.from(weekCounts.entries()).map(([w, c]) => `Week ${w}: ${c} episodes`).join(', '));
-    console.log(`[Server] ✅ Available weeks (5+ episodes with score): ${validWeeks.join(', ')}`);
-    console.log(`[Server] 🎯 Latest week with 5+ scored episodes: Week ${latestWeek}`);
+    console.log(`[Server] ✅ Available weeks (3+ episodes with score): ${validWeeks.join(', ')}`); // ✅ Updated message
+    console.log(`[Server] 🎯 Latest week with 3+ scored episodes: Week ${latestWeek}`); // ✅ Updated message
+
+    // Se não houver weeks válidas, retornar Week 1 como fallback
+    if (validWeeks.length === 0) {
+      console.log("[Server] ⚠️ No weeks with 3+ scored episodes found"); // ✅ Updated message
+      console.log("[Server] 🔄 Returning fallback: Week 1 only");
+      return c.json({
+        success: true,
+        weeks: [1],
+        latestWeek: 1,
+        currentWeek: currentWeekNumber,
+        currentSeason: CURRENT_SEASON,
+        currentYear: CURRENT_YEAR,
+        weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count })),
+        isFallback: true,
+        fallbackReason: 'No weeks with 3+ scored episodes' // ✅ Updated message
+      });
+    }
 
     return c.json({
       success: true,
@@ -206,11 +234,21 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
     });
 
   } catch (error) {
-    console.error("❌ Available weeks error:", error);
+    console.error("[Server] ❌ Available weeks error:", error);
+    console.error("[Server] ❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Fallback final: Retornar Week 1
     return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
+      success: true,
+      weeks: [1],
+      latestWeek: 1,
+      currentWeek: 1,
+      currentSeason: CURRENT_SEASON,
+      currentYear: CURRENT_YEAR,
+      weekCounts: [{ week: 1, count: 0 }],
+      isFallback: true,
+      fallbackReason: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

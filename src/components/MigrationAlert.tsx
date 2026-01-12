@@ -26,12 +26,14 @@ export function MigrationAlert() {
         );
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          console.log(`[MigrationAlert] Server returned ${response.status}, migration check skipped`);
+          return; // Silently skip if server is down
         }
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Response is not JSON');
+          console.log(`[MigrationAlert] Non-JSON response, migration check skipped`);
+          return; // Silently skip if response is not JSON
         }
 
         const result = await response.json();

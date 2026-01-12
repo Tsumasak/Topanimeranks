@@ -1168,4 +1168,27 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
   }
 });
 
+// ============================================
+// GLOBAL ERROR HANDLER - Ensures all errors return JSON
+// ============================================
+app.onError((err, c) => {
+  console.error('❌ Unhandled error:', err);
+  return c.json({
+    success: false,
+    error: err.message || 'Internal server error',
+    stack: err.stack
+  }, 500);
+});
+
+// ============================================
+// 404 HANDLER - Return JSON for unknown routes
+// ============================================
+app.notFound((c) => {
+  return c.json({
+    success: false,
+    error: 'Not Found',
+    path: c.req.path
+  }, 404);
+});
+
 Deno.serve(app.fetch);

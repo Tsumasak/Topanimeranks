@@ -104,7 +104,12 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
         let hasNextPage = true;
         
         while (hasNextPage) {
-          const episodesUrl = `${JIKAN_BASE_URL}/anime/${animeId}/episodes?page=${episodePage}`;
+          // ✅ FIXED: Use /episodes for page 1, /episodes?page=N for page 2+
+          const episodesUrl = episodePage === 1
+            ? `${JIKAN_BASE_URL}/anime/${animeId}/episodes`
+            : `${JIKAN_BASE_URL}/anime/${animeId}/episodes?page=${episodePage}`;
+          
+          console.log(`  📄 Fetching episodes page ${episodePage}: ${episodesUrl}`);
           const episodesData = await fetchWithRetry(episodesUrl);
           
           if (!episodesData?.data || episodesData.data.length === 0) {

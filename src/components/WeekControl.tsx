@@ -113,6 +113,7 @@ const WeekControl = () => {
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
   const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]); // For trend calculation
   const [latestWeekNumber, setLatestWeekNumber] = useState<number>(CURRENT_WEEK_NUMBER); // Latest week with 5+ scored episodes
+  const [weeksLoading, setWeeksLoading] = useState(true); // Track loading state for available weeks
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -168,7 +169,14 @@ const WeekControl = () => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[WeekControl] ❌ HTTP error:', response.status, errorText);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          
+          // ✅ Fallback: Use Week 1 if server is down or returns error
+          console.log('[WeekControl] 🔄 Falling back to Week 1 due to server error');
+          setAvailableWeeks(['week1']);
+          setLatestWeekNumber(1);
+          setActiveWeek('week1');
+          setWeeksLoading(false);
+          return;
         }
 
         const contentType = response.headers.get('content-type');
@@ -178,7 +186,14 @@ const WeekControl = () => {
           const text = await response.text();
           console.error('[WeekControl] ❌ Response is not JSON. Content-Type:', contentType);
           console.error('[WeekControl] ❌ Response body (first 500 chars):', text.substring(0, 500));
-          throw new Error('Response is not JSON');
+          
+          // ✅ Fallback: Use Week 1 if response is HTML
+          console.log('[WeekControl] 🔄 Falling back to Week 1 due to non-JSON response');
+          setAvailableWeeks(['week1']);
+          setLatestWeekNumber(1);
+          setActiveWeek('week1');
+          setWeeksLoading(false);
+          return;
         }
 
         const result = await response.json();

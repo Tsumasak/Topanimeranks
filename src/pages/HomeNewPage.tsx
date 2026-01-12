@@ -561,25 +561,29 @@ export function HomeNewPage() {
           );
 
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-
-          const contentType = response.headers.get("content-type");
-          if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Response is not JSON");
-          }
-
-          const result = await response.json();
-
-          if (result.success && result.latestWeek) {
-            weekToShow = result.latestWeek;
-            console.log(
-              `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected)`,
-            );
+            console.error(`[HomeNewPage] ❌ HTTP error: ${response.status}`);
+            console.log(`[HomeNewPage] 🔄 Falling back to Week 1 due to server error`);
+            // Continue with weekToShow = 1 (already set)
           } else {
-            console.log(
-              `[HomeNewPage] ⚠️ Could not detect latest week, falling back to Week 1`,
-            );
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+              console.error(`[HomeNewPage] ❌ Response is not JSON. Content-Type: ${contentType}`);
+              console.log(`[HomeNewPage] 🔄 Falling back to Week 1 due to non-JSON response`);
+              // Continue with weekToShow = 1 (already set)
+            } else {
+              const result = await response.json();
+
+              if (result.success && result.latestWeek) {
+                weekToShow = result.latestWeek;
+                console.log(
+                  `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected)`,
+                );
+              } else {
+                console.log(
+                  `[HomeNewPage] ⚠️ Could not detect latest week, falling back to Week 1`,
+                );
+              }
+            }
           }
         } catch (error) {
           console.error(

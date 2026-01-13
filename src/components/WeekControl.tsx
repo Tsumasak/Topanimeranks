@@ -113,7 +113,6 @@ const WeekControl = () => {
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
   const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]); // For trend calculation
   const [latestWeekNumber, setLatestWeekNumber] = useState<number>(CURRENT_WEEK_NUMBER); // Latest week with 5+ scored episodes
-  const [weeksLoading, setWeeksLoading] = useState(true); // Track loading state for available weeks
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -175,7 +174,6 @@ const WeekControl = () => {
           setAvailableWeeks(['week1']);
           setLatestWeekNumber(1);
           setActiveWeek('week1');
-          setWeeksLoading(false);
           return;
         }
 
@@ -192,7 +190,6 @@ const WeekControl = () => {
           setAvailableWeeks(['week1']);
           setLatestWeekNumber(1);
           setActiveWeek('week1');
-          setWeeksLoading(false);
           return;
         }
 

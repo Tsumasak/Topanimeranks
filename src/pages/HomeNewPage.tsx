@@ -13,6 +13,8 @@ import {
 } from "../components/ui/carousel";
 import { ChevronRight, Sparkles, Github, Twitter } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import * as SupabaseService from "../services/supabase";
+import type { HeroBanner } from "../services/supabase";
 
 interface HomeCardData {
   rank: number;
@@ -455,6 +457,7 @@ export function HomeNewPage() {
   const [topEpisodes, setTopEpisodes] = useState<HomeCardData[]>([]);
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
+  const [heroBanner, setHeroBanner] = useState<HeroBanner | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Animation keys for smooth entry animations
@@ -627,6 +630,15 @@ export function HomeNewPage() {
           setTopEpisodes([]);
         }
 
+        // Load Hero Banner
+        const heroBannerData = await SupabaseService.getActiveHeroBanner();
+        if (heroBannerData) {
+          setHeroBanner(heroBannerData);
+          console.log('[HomeNewPage] ✅ Loaded hero banner:', heroBannerData.title);
+        } else {
+          console.log('[HomeNewPage] ℹ️ No active hero banner found');
+        }
+
         console.log(
           "[HomeNewPage] 🎬 CRITICAL: All data loaded, updating animationKey",
         );
@@ -664,8 +676,8 @@ export function HomeNewPage() {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1613723984367-a9b7ee9052d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZW9uJTIwY2l0eSUyMGxpZ2h0c3xlbnwxfHx8fDE3NjYxNTM0NzZ8MA&ixlib=rb-4.1.0&q=80&w=1080"
-            alt="Hero Banner"
+            src={heroBanner?.imageUrl || "https://images.unsplash.com/photo-1613723984367-a9b7ee9052d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZW9uJTIwY2l0eSUyMGxpZ2h0c3xlbnwxfHx8fDE3NjYxNTM0NzZ8MA&ixlib=rb-4.1.0&q=80&w=1080"}
+            alt={heroBanner?.title || "Hero Banner"}
             className="w-full h-full object-cover"
           />
           {/* Gradient Overlays */}
@@ -684,7 +696,7 @@ export function HomeNewPage() {
             >
               <Sparkles className="w-4 h-4 text-amber-400" />
               <span className="text-amber-400 font-medium tracking-wider uppercase text-xs">
-                Welcome to Top Anime Ranks
+                {heroBanner?.tagline || "Welcome to Top Anime Ranks"}
               </span>
             </motion.div>
 
@@ -695,10 +707,7 @@ export function HomeNewPage() {
               className="text-4xl md:text-6xl font-black mb-4 leading-tight"
               style={{ color: 'var(--foreground)' }}
             >
-              Discover the
-              <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Best Anime
-              </span>
+              {heroBanner?.title || "Discover the Best Anime"}
             </motion.h1>
 
             <motion.p
@@ -707,8 +716,7 @@ export function HomeNewPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-base md:text-lg mb-6 text-gray-300 max-w-2xl leading-relaxed"
             >
-              Weekly rankings updated, featured episodes and the most anticipated anime.
-              All in one place.
+              {heroBanner?.subtitle || "Weekly rankings updated, featured episodes and the most anticipated anime. All in one place."}
             </motion.p>
 
             <motion.div
@@ -718,7 +726,7 @@ export function HomeNewPage() {
               className="flex flex-wrap gap-3"
             >
               <Link
-                to="/ranks"
+                to={heroBanner?.buttonLink || "/ranks"}
                 className="group relative px-6 py-3 rounded-xl overflow-hidden transition-all duration-300 hover:scale-105"
                 style={{
                   backgroundColor: 'var(--rank-background)',
@@ -727,7 +735,7 @@ export function HomeNewPage() {
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <span className="relative flex items-center gap-2 font-semibold text-sm">
-                  View Weekly Rankings
+                  {heroBanner?.buttonText || "View Weekly Rankings"}
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Link>

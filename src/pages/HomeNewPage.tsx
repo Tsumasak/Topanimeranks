@@ -13,6 +13,7 @@ import {
 } from "../components/ui/carousel";
 import { ChevronRight, Sparkles, Github, Twitter } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { SupabaseService, HeroBanner } from "../services/supabase";
 
 interface HomeCardData {
   rank: number;

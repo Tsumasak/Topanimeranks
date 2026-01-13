@@ -98,13 +98,12 @@ interface AnticipatedAnimeRow {
   favorites: number | null;
   synopsis: string;
   type: string;
-  status: string;
-  rating: string | null;
-  source: string | null;
+  status: string | null;
   episodes: number | null;
   aired_from: string | null;
-  season: string;
-  year: number;
+  aired_to: string | null;
+  season: string | null;
+  year: number | null;
   demographics: any[];
   genres: any[];
   themes: any[];
@@ -114,256 +113,128 @@ interface AnticipatedAnimeRow {
 interface SyncStatusRow {
   sync_type: string;
   status: string;
-  items_synced: number;
-  duration_ms: number;
+  items_synced: number | null;
+  duration_ms: number | null;
   created_at: string;
-  error_message?: string;
+  error_message: string | null;
 }
 
-// ============================================
 // Check if Supabase is configured
-// ============================================
-export const isSupabaseConfigured = () => {
-  return Boolean(projectId && publicAnonKey);
-};
-
-// ============================================
-// Helper function to convert string arrays to object arrays
-// ============================================
-const convertToObjectArray = (arr: any[]): Array<{ mal_id: number; name: string }> => {
-  return (arr || []).map((item: any) => 
-    typeof item === 'string' ? { mal_id: 0, name: item } : item
-  );
-};
+function isSupabaseConfigured(): boolean {
+  return !!projectId && !!publicAnonKey;
+}
 
 // ============================================
 // WEEKLY EPISODES
 // ============================================
 
-export interface WeekData {
+export interface WeeklyEpisodesData {
   episodes: Episode[];
   startDate: string;
   endDate: string;
 }
 
 /**
- * Get weekly episodes from Supabase (fast!) with fallback to Jikan
+ * Get weekly episodes from Supabase
  */
-export async function getWeeklyEpisodes(
-  weekNumber: number,
-  onProgress?: (current: number, total: number, message: string) => void
-): Promise<WeekData> {
+export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpisodesData> {
   console.log(`[SupabaseService] Fetching week ${weekNumber}...`);
-
-  // Try Supabase via server endpoint first
-  if (isSupabaseConfigured()) {
-    try {
-      onProgress?.(10, 100, 'Checking Supabase cache...');
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/weekly-episodes/${weekNumber}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error(`[SupabaseService] HTTP error: ${response.status}`);
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error(`[SupabaseService] Response is not JSON. Content-Type: ${contentType}. Body: ${text.substring(0, 200)}`);
-        throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
-      }
-
-      let result;
-      try {
-        result = await response.json();
-      } catch (jsonError) {
-        console.error('[SupabaseService] Failed to parse JSON:', jsonError);
-        const text = await response.text().catch(() => 'Unable to get response text');
-        console.error('[SupabaseService] Raw response:', text.substring(0, 500));
-        throw new Error(`JSON parse error: ${jsonError instanceof Error ? jsonError.message : 'Unknown'}`);
-      }
-
-      if (result.success && result.data && result.data.length > 0) {
-        console.log(`[SupabaseService] ✅ Found ${result.data.length} episodes in Supabase cache`);
-        console.log('[SupabaseService] First episode data:', result.data[0]);
-        
-        onProgress?.(50, 100, 'Loading from cache...');
-        
-        // Transform Supabase data to Episode format
-        const episodes: Episode[] = result.data.map((row: any) => ({
-          id: parseInt(row.episode_id?.split('_')[0]) || row.anime_id,
-          animeId: row.anime_id,
-          animeTitle: row.anime_title_english || row.anime_title || '',
-          episodeNumber: row.episode_number,
-          episodeTitle: row.episode_name || `Episode ${row.episode_number}`,
-          episodeScore: row.episode_score ?? null,
-          episodeUrl: row.from_url || `https://myanimelist.net/anime/${row.anime_id}`,
-          score: row.episode_score ?? null,
-          imageUrl: row.anime_image_url || '',
-          aired: row.aired_at || '',
-          animeType: row.type || 'TV',
-          demographics: Array.isArray(row.demographic) ? row.demographic.map((d: any) => typeof d === 'string' ? d : d.name) : [],
-          genres: Array.isArray(row.genre) ? row.genre.map((g: any) => typeof g === 'string' ? g : g.name) : [],
-          themes: Array.isArray(row.theme) ? row.theme.map((t: any) => typeof t === 'string' ? t : t.name) : [],
-          url: row.from_url || `https://myanimelist.net/anime/${row.anime_id}`,
-          isManual: row.is_manual || false,
-        }));
-
-        onProgress?.(100, 100, 'Complete!');
-
-        // Calculate dates from first episode
-        const firstEpisode = result.data[0];
-        const startDate = firstEpisode.week_start_date || firstEpisode.week_start || '';
-        const endDate = firstEpisode.week_end_date || firstEpisode.week_end || '';
-        
-        console.log('[SupabaseService] Week dates from first episode:', { 
-          week_start_date: firstEpisode.week_start_date,
-          week_end_date: firstEpisode.week_end_date,
-          week_start: firstEpisode.week_start,
-          week_end: firstEpisode.week_end,
-          finalStartDate: startDate,
-          finalEndDate: endDate
-        });
-        
-        // If dates are still empty, calculate them from week number (FALLBACK)
-        if (!startDate || !endDate) {
-          console.log(`[SupabaseService] ℹ️ Using calculated dates for week ${weekNumber} (migration pending)`);
-          
-          // Use the same logic as server: Week 1 goes to first Sunday, Week 2+ are full weeks
-          const { startDate: calcStart, endDate: calcEnd } = calculateWeekDates(weekNumber);
-          
-          return {
-            episodes,
-            startDate: calcStart,
-            endDate: calcEnd,
-          };
-        }
-        
-        return {
-          episodes,
-          startDate,
-          endDate,
-        };
-      }
-
-      console.log('[SupabaseService] ⚠️ No data in Supabase, falling back to Jikan...');
-    } catch (error) {
-      console.error('[SupabaseService] Error:', error);
-      console.log('[SupabaseService] Falling back to Jikan...');
-    }
-  }
-
-  // NO FALLBACK TO JIKAN - Data must be in Supabase
-  console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
-  onProgress?.(100, 100, 'No data available - sync required');
   
-  // Return empty data
-  const baseDate = new Date(Date.UTC(2025, 8, 29)); // September 29, 2025
-  const weekStart = new Date(baseDate);
-  weekStart.setUTCDate(baseDate.getUTCDate() + (weekNumber - 1) * 7);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
-  weekStart.setUTCHours(0, 0, 0, 0);
-  weekEnd.setUTCHours(23, 59, 59, 999);
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return { episodes: [], startDate: '', endDate: '' };
+  }
 
-  return {
-    episodes: [],
-    startDate: weekStart.toISOString(),
-    endDate: weekEnd.toISOString(),
-  };
-}
-
-// ============================================
-// EPISODE RANK CALCULATION WITH CACHE
-// ============================================
-
-// Cache para evitar queries repetidas por week
-const weekRankingsCache = new Map<number, Array<{ episode_id: string; episode_score: number }>>();
-
-/**
- * Calcula o rank de um episódio dentro da sua week baseado no episode_score
- * Usa cache por week_number para evitar queries repetidas
- */
-export async function getEpisodeRankInWeek(
-  weekNumber: number,
-  episodeId: string,
-  episodeScore: number
-): Promise<number> {
   try {
-    if (!weekRankingsCache.has(weekNumber)) {
-      const { data, error } = await supabase
-        .from('weekly_episodes')
-        .select('episode_id, episode_score')
-        .eq('week_number', weekNumber)
-        .not('episode_score', 'is', null)
-        .order('episode_score', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching week rankings:', error);
-        return 0;
-      }
-      
-      weekRankingsCache.set(weekNumber, data || []);
+    const { data, error } = await supabase
+      .from('weekly_episodes')
+      .select('*')
+      .eq('week_number', weekNumber)
+      .eq('season', 'winter')
+      .eq('year', 2026)
+      .not('episode_score', 'is', null) // Apenas episódios com score
+      .order('episode_score', { ascending: false }); // Ordenar por score DESC
+
+    if (error) {
+      console.error('[SupabaseService] Error fetching weekly episodes:', error);
+      return { episodes: [], startDate: '', endDate: '' };
     }
-    
-    const rankings = weekRankingsCache.get(weekNumber) || [];
-    const position = rankings.findIndex(ep => ep.episode_id === episodeId);
-    
-    if (position === -1) {
-      const positionByScore = rankings.findIndex(ep => ep.episode_score === episodeScore);
-      return positionByScore !== -1 ? positionByScore + 1 : 0;
+
+    if (!data || data.length === 0) {
+      console.log(`[SupabaseService] ℹ️  No episodes found in Supabase for week ${weekNumber} (Winter 2026)`);
+      return { episodes: [], startDate: '', endDate: '' };
     }
+
+    console.log(`[SupabaseService] ✅ Found ${data.length} episodes in Supabase cache for Winter 2026 Week ${weekNumber}`);
     
-    return position + 1;
+    // DEBUG: Log first episode structure
+    console.log('[SupabaseService] First episode data:', data[0]);
     
+    // Get week dates from the first episode (if available)
+    const firstEpisode = data[0];
+    const weekStartDate = firstEpisode?.week_start_date || '';
+    const weekEndDate = firstEpisode?.week_end_date || '';
+    
+    console.log('[SupabaseService] Week dates from first episode:', {
+      finalStartDate: weekStartDate,
+      finalEndDate: weekEndDate,
+    });
+    
+    // Convert database rows to Episode objects
+    const episodes: Episode[] = data.map((row: any) => ({
+      id: row.id,
+      animeId: row.anime_id,
+      animeTitle: row.anime_title_english || row.anime_title || '',
+      episodeNumber: row.episode_number,
+      episodeTitle: row.episode_name || '',
+      episodeUrl: row.from_url || '',
+      episodeScore: row.episode_score,
+      imageUrl: row.anime_image_url || '',
+      aired: row.aired_at,
+      animeType: row.type || 'TV',
+      demographics: Array.isArray(row.demographic) 
+        ? row.demographic.map((d: any) => typeof d === 'string' ? d : d.name)
+        : [],
+      genres: Array.isArray(row.genre) 
+        ? row.genre.map((g: any) => typeof g === 'string' ? g : g.name)
+        : [],
+      themes: Array.isArray(row.theme) 
+        ? row.theme.map((t: any) => typeof t === 'string' ? t : t.name)
+        : [],
+      url: row.from_url || '',
+      trend: row.trend || 'NEW',
+      positionInWeek: row.position_in_week,
+      isManual: row.is_manual || false,
+    }));
+
+    // If dates are not in DB, calculate them
+    let finalStartDate = weekStartDate;
+    let finalEndDate = weekEndDate;
+    
+    if (!finalStartDate || !finalEndDate) {
+      console.log(`[SupabaseService] ℹ️  Using calculated dates for week ${weekNumber} (migration pending)`);
+      const calculatedDates = calculateWeekDates(weekNumber);
+      finalStartDate = calculatedDates.startDate;
+      finalEndDate = calculatedDates.endDate;
+    }
+
+    return {
+      episodes,
+      startDate: finalStartDate,
+      endDate: finalEndDate,
+    };
   } catch (error) {
-    console.error('Error calculating episode rank:', error);
-    return 0;
+    console.error('[SupabaseService] Error:', error);
+    return { episodes: [], startDate: '', endDate: '' };
   }
 }
-
-/**
- * Limpa o cache de rankings (útil quando dados são atualizados)
- */
-export function clearWeekRankingsCache(weekNumber?: number) {
-  if (weekNumber !== undefined) {
-    weekRankingsCache.delete(weekNumber);
-  } else {
-    weekRankingsCache.clear();
-  }
-}
-
-/**
- * Merge manual episodes with API data
- * Note: Manual episodes are already merged in JikanService.getWeekData
- * This function is here for consistency but manual episodes from config
- * should ideally be handled by the sync function, not the frontend
- */
-// async function mergeManualEpisodes(
-//   apiEpisodes: Episode[],
-//   weekNumber: number
-// ): Promise<Episode[]> {
-//   // For now, just return the API episodes
-//   // Manual episodes should be synced to Supabase by the Edge Function
-//   // If needed, we could fetch and convert them here using JikanService
-//   return apiEpisodes;
-// }
 
 // ============================================
 // SEASON RANKINGS
 // ============================================
 
 /**
- * Get season rankings from Supabase with fallback to Jikan
- * @param orderBy - 'score' for rating-based ranking, 'members' for popularity-based ranking
+ * Get season rankings from Supabase
  */
 export async function getSeasonRankings(
   season: string,
@@ -371,223 +242,77 @@ export async function getSeasonRankings(
   orderBy: 'score' | 'members' = 'score'
 ): Promise<JikanAnimeData[]> {
   console.log(`[SupabaseService] Fetching ${season} ${year} rankings (ordered by ${orderBy})...`);
-
-  // Try Supabase first
-  if (isSupabaseConfigured()) {
-    try {
-      // Case-insensitive search using ilike
-      let query = supabase
-        .from('season_rankings')
-        .select('*')
-        .ilike('season', season) // Case-insensitive match
-        .eq('year', year);
-
-      // Order by requested field
-      // IMPORTANT: Show ALL animes, even those without scores yet (nulls last)
-      if (orderBy === 'members') {
-        query = query
-          .order('members', { ascending: false, nullsFirst: false })
-          .order('anime_score', { ascending: false, nullsFirst: false }); // FIXED: Changed 'score' to 'anime_score'
-      } else {
-        // Order by score (rating) for "Top Animes"
-        // nullsFirst: false means animes without scores go to the end
-        query = query
-          .order('anime_score', { ascending: false, nullsFirst: false }) // FIXED: Changed 'score' to 'anime_score'
-          .order('scored_by', { ascending: false, nullsFirst: false });
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('[SupabaseService] Query error:', error);
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        console.log(`[SupabaseService] ✅ Found ${data.length} animes`);
-        
-        // Transform Supabase data to JikanAnimeData format
-        const animes: JikanAnimeData[] = (data as SeasonRankingRow[]).map(row => ({
-          mal_id: row.anime_id,
-          url: `https://myanimelist.net/anime/${row.anime_id}`,
-          title: row.title,
-          title_english: row.title_english,
-          title_japanese: null,
-          images: {
-            jpg: {
-              image_url: row.image_url || '',
-              small_image_url: row.image_url || '',
-              large_image_url: row.image_url || '',
-            },
-            webp: {
-              image_url: row.image_url || '',
-              small_image_url: row.image_url || '',
-              large_image_url: row.image_url || '',
-            },
-          },
-          score: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
-          scored_by: row.scored_by,
-          members: row.members,
-          favorites: row.favorites,
-          popularity: row.popularity,
-          rank: row.rank,
-          type: row.type || 'TV',
-          status: row.status || 'Currently Airing',
-          episodes: row.episodes,
-          aired: {
-            from: row.aired_from || '',
-            to: row.aired_to || null,
-          },
-          season: row.season,
-          year: row.year,
-          synopsis: row.synopsis,
-          demographics: convertToObjectArray(row.demographics),
-          genres: convertToObjectArray(row.genres),
-          themes: convertToObjectArray(row.themes),
-          studios: convertToObjectArray(row.studios),
-        }));
-
-        return animes;
-      }
-
-      console.log('[SupabaseService] ⚠️ No data found for the specified season/year');
-    } catch (error) {
-      console.error('[SupabaseService] Error:', error);
-    }
+  
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return [];
   }
 
-  return [];
-}
+  try {
+    let query = supabase
+      .from('season_rankings')
+      .select('*')
+      .eq('season', season)
+      .eq('year', year);
 
-/**
- * Get "Later" animes - all upcoming animes EXCEPT Fall 2025, Winter 2026, Spring 2026
- */
-export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
-  console.log('[SupabaseService] Fetching Later animes (all upcoming)...');
-
-  if (isSupabaseConfigured()) {
-    try {
-      // Get ALL animes from season_rankings
-      const { data: allData, error } = await supabase
-        .from('season_rankings')
-        .select('*');
-
-      if (error) {
-        console.error('[SupabaseService] Query error:', error);
-        throw error;
-      }
-
-      // Filter out ONLY Fall 2025, Winter 2026, Spring 2026
-      // Keep everything else including 'upcoming' animes
-      // IMPORTANT: Only show "Not yet aired" animes
-      // INCLUDE: Summer 2026+, year 2026+ without season, 2027+, future dates, "Not available"
-      const filteredData = (allData as SeasonRankingRow[])?.filter(row => {
-        const season = row.season?.toLowerCase();
-        const year = row.year;
-        const status = row.status;
-        const airedFrom = row.aired_from ? new Date(row.aired_from) : null;
-        const now = new Date();
-        
-        // Only include "Not yet aired" animes
-        if (status !== 'Not yet aired') return false;
-        
-        // Exclude these specific seasons that have their own tabs
-        if (season === 'fall' && year === 2025) return false;
-        if (season === 'winter' && year === 2026) return false;
-        if (season === 'spring' && year === 2026) return false;
-        
-        // INCLUDE all of these cases:
-        // 1. Summer 2026 and beyond (explicit season/year)
-        if (season && year >= 2026) return true;
-        
-        // 2. Year 2026+ without specific season (e.g., "2026 to ?")
-        if (!season && year >= 2026) return true;
-        
-        // 3. Year 2027+ (any case)
-        if (year >= 2027) return true;
-        
-        // 4. Future aired_from date (e.g., "Aired: Not available" but has future date)
-        if (airedFrom && airedFrom > now) return true;
-        
-        // 5. No aired_from and no season (e.g., "Aired: Not available")
-        // Include if it's marked as "Not yet aired"
-        if (!airedFrom && !season) return true;
-        
-        return false;
-      }) || [];
-
-      // Sort by members first, then score
-      const sortedData = filteredData.sort((a, b) => {
-        const membersA = a.members || 0;
-        const membersB = b.members || 0;
-        if (membersB !== membersA) return membersB - membersA;
-        return (b.anime_score || 0) - (a.anime_score || 0); // FIXED: Changed from 'score' to 'anime_score'
-      });
-
-      if (sortedData.length > 0) {
-        console.log(`[SupabaseService] ✅ Found ${sortedData.length} Later animes`);
-        
-        // Log breakdown of types
-        const breakdown = {
-          withSeason: sortedData.filter(r => r.season).length,
-          withoutSeason: sortedData.filter(r => !r.season).length,
-          year2026: sortedData.filter(r => r.year === 2026).length,
-          year2027Plus: sortedData.filter(r => r.year >= 2027).length,
-          noAiredFrom: sortedData.filter(r => !r.aired_from).length,
-        };
-        console.log(`[SupabaseService] 📊 Breakdown:`, breakdown);
-        
-        // Transform to JikanAnimeData format (same as getSeasonRankings)
-        const animes: JikanAnimeData[] = (sortedData as SeasonRankingRow[]).map(row => ({
-          mal_id: row.anime_id,
-          url: `https://myanimelist.net/anime/${row.anime_id}`,
-          title: row.title,
-          title_english: row.title_english,
-          title_japanese: null,
-          images: {
-            jpg: {
-              image_url: row.image_url || '',
-              small_image_url: row.image_url || '',
-              large_image_url: row.image_url || '',
-            },
-            webp: {
-              image_url: row.image_url || '',
-              small_image_url: row.image_url || '',
-              large_image_url: row.image_url || '',
-            },
-          },
-          score: row.anime_score, // FIXED: Changed from 'score' to 'anime_score'
-          scored_by: row.scored_by,
-          members: row.members,
-          favorites: row.favorites,
-          popularity: row.popularity,
-          rank: row.rank,
-          type: row.type || 'TV',
-          status: row.status || 'Not yet aired',
-          episodes: row.episodes,
-          aired: {
-            from: row.aired_from || '',
-            to: row.aired_to || null,
-          },
-          season: row.season,
-          year: row.year,
-          synopsis: row.synopsis,
-          demographics: convertToObjectArray(row.demographics),
-          genres: convertToObjectArray(row.genres),
-          themes: convertToObjectArray(row.themes),
-          studios: convertToObjectArray(row.studios),
-        }));
-
-        return animes;
-      }
-
-      console.log('[SupabaseService] ⚠️ No Later animes found');
-    } catch (error) {
-      console.error('[SupabaseService] Error:', error);
+    // Order by the requested field
+    if (orderBy === 'score') {
+      query = query.order('anime_score', { ascending: false, nullsFirst: false });
+    } else {
+      query = query.order('members', { ascending: false });
     }
-  }
 
-  return [];
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[SupabaseService] Error fetching season rankings:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log(`[SupabaseService] ℹ️  No animes found for ${season} ${year}`);
+      return [];
+    }
+
+    console.log(`[SupabaseService] ✅ Found ${data.length} animes`);
+
+    // Convert database rows to JikanAnimeData objects
+    return (data as SeasonRankingRow[]).map(row => ({
+      mal_id: row.anime_id,
+      title: row.title,
+      title_english: row.title_english,
+      images: {
+        jpg: {
+          image_url: row.image_url,
+          small_image_url: row.image_url,
+          large_image_url: row.image_url,
+        },
+      },
+      score: row.anime_score,
+      scored_by: row.scored_by,
+      members: row.members,
+      favorites: row.favorites,
+      popularity: row.popularity,
+      rank: row.rank,
+      type: row.type,
+      status: row.status,
+      episodes: row.episodes,
+      aired: {
+        from: row.aired_from,
+        to: row.aired_to,
+      },
+      season: row.season,
+      year: row.year,
+      synopsis: row.synopsis,
+      demographics: row.demographics || [],
+      genres: row.genres || [],
+      themes: row.themes || [],
+      studios: row.studios || [],
+    }));
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    return [];
+  }
 }
 
 // ============================================
@@ -595,109 +320,111 @@ export async function getLaterAnimes(): Promise<JikanAnimeData[]> {
 // ============================================
 
 /**
- * Get anticipated animes from Supabase with fallback to Jikan
+ * Get anticipated animes from Supabase (all)
  */
 export async function getAnticipatedAnimes(): Promise<AnticipatedAnime[]> {
-  console.log('[SupabaseService] Fetching anticipated animes...');
-
-  // Try Supabase first
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('anticipated_animes')
-        .select('*')
-        .order('position', { ascending: true });
-
-      if (error) {
-        console.error('[SupabaseService] Query error:', error);
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        console.log(`[SupabaseService] ✅ Found ${data.length} anticipated animes in Supabase`);
-        
-        // Transform Supabase data to AnticipatedAnime format
-        const animes: AnticipatedAnime[] = (data as AnticipatedAnimeRow[]).map(row => ({
-          id: row.anime_id,
-          title: row.title_english || row.title,
-          imageUrl: row.image_url,
-          animeScore: row.score, // FIXED: Changed from 'anime_score' to 'score'
-          members: row.members,
-          synopsis: row.synopsis || '',
-          animeType: row.type || 'TV',
-          season: row.season, // CRITICAL: Keep null as null, don't use fallback
-          year: row.year, // CRITICAL: Keep null as null, don't use fallback
-          demographics: row.demographics || [],
-          genres: row.genres || [],
-          themes: row.themes || [],
-          studios: row.studios || [],
-          url: `/anime/${row.anime_id}`, // FIXED: Internal link instead of MAL
-        }));
-
-        return animes;
-      }
-
-      console.log('[SupabaseService] ⚠️ No data in Supabase, falling back to Jikan...');
-    } catch (error) {
-      console.error('[SupabaseService] Error:', error);
-      console.log('[SupabaseService] Falling back to Jikan...');
-    }
+  console.log('[SupabaseService] Fetching all anticipated animes...');
+  
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return [];
   }
 
-  // NO FALLBACK TO JIKAN - Data must be in Supabase
-  console.log('[SupabaseService] ❌ No data in Supabase. Please run sync job first.');
-  return [];
+  try {
+    const { data, error } = await supabase
+      .from('anticipated_animes')
+      .select('*')
+      .order('members', { ascending: false });
+
+    if (error) {
+      console.error('[SupabaseService] Error fetching anticipated animes:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log('[SupabaseService] ℹ️  No anticipated animes found');
+      return [];
+    }
+
+    console.log(`[SupabaseService] ✅ Found ${data.length} anticipated animes in Supabase`);
+
+    // Convert database rows to AnticipatedAnime objects
+    return (data as AnticipatedAnimeRow[]).map(row => ({
+      id: row.anime_id,
+      title: row.title_english || row.title,
+      imageUrl: row.image_url,
+      animeScore: row.score || 0,
+      members: row.members,
+      synopsis: row.synopsis,
+      animeType: row.type,
+      season: row.season || 'unknown',
+      year: row.year || 0,
+      demographics: row.demographics || [],
+      genres: row.genres || [],
+      themes: row.themes || [],
+      studios: row.studios || [],
+      url: `/anime/${row.anime_id}`,
+    }));
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    return [];
+  }
 }
 
 /**
- * Get anticipated animes filtered by season and year from Supabase
+ * Get anticipated animes for a specific season
  */
-export async function getAnticipatedAnimesBySeason(season: string, year: number): Promise<AnticipatedAnime[]> {
+export async function getAnticipatedAnimesBySeason(
+  season: string,
+  year: number
+): Promise<AnticipatedAnime[]> {
   console.log(`[SupabaseService] Fetching anticipated animes for ${season} ${year}...`);
+  
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return [];
+  }
 
-  // Get all anticipated animes and filter client-side
-  // (season/year columns don't exist in the table, data is parsed from MAL API seasonally)
+  console.log('[SupabaseService] Fetching anticipated animes...');
   const allAnimes = await getAnticipatedAnimes();
   
-  // Filter by season and year in the anime data
+  // Filter for the specific season
   const filtered = allAnimes.filter(anime => {
     const animeSeason = anime.season?.toLowerCase();
     const animeYear = anime.year;
     return animeSeason === season.toLowerCase() && animeYear === year;
   });
-
+  
   console.log(`[SupabaseService] ✅ Filtered ${filtered.length} animes for ${season} ${year}`);
   return filtered;
 }
 
 /**
- * Get "later" anticipated animes (Fall 2026 onwards) from Supabase
- * EXCLUDES animes that are already shown in Winter, Spring, and Summer 2026 tabs
+ * Get "Later" anticipated animes (Fall 2026 onwards, excluding Winter/Spring/Summer 2026)
  */
 export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
-  console.log('[SupabaseService] Fetching later anticipated animes...');
+  console.log('[SupabaseService] Fetching later anticipated animes (Fall 2026 onwards)...');
+  
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return [];
+  }
 
-  // Get all anticipated animes and filter client-side
   const allAnimes = await getAnticipatedAnimes();
   
-  // First, get IDs of animes already shown in Winter, Spring, and Summer 2026
-  const winterAnimes = allAnimes.filter(anime => 
-    anime.season?.toLowerCase() === 'winter' && anime.year === 2026
-  );
-  const springAnimes = allAnimes.filter(anime => 
-    anime.season?.toLowerCase() === 'spring' && anime.year === 2026
-  );
-  const summerAnimes = allAnimes.filter(anime => 
-    anime.season?.toLowerCase() === 'summer' && anime.year === 2026
-  );
+  // Create a Set of already shown anime IDs (Winter, Spring, Summer 2026)
+  const shownAnimeIds = new Set<number>();
   
-  const shownAnimeIds = new Set([
-    ...winterAnimes.map(a => a.id),
-    ...springAnimes.map(a => a.id),
-    ...summerAnimes.map(a => a.id)
-  ]);
+  allAnimes.forEach(anime => {
+    const animeSeason = anime.season?.toLowerCase();
+    const animeYear = anime.year;
+    
+    if (animeYear === 2026 && ['winter', 'spring', 'summer'].includes(animeSeason || '')) {
+      shownAnimeIds.add(anime.id);
+    }
+  });
   
-  console.log(`[SupabaseService] 🔍 Excluding ${shownAnimeIds.size} animes already shown in Winter/Spring/Summer 2026`);
+  console.log(`[SupabaseService] 🔍 Excluding ${shownAnimeIds.size} animes from Winter/Spring/Summer 2026`);
   
   // Filter for Fall 2026 onwards, EXCLUDING animes already shown
   const filtered = allAnimes.filter(anime => {
@@ -739,6 +466,279 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
   })));
   
   return filtered;
+}
+
+/**
+ * Alternative function for "Later" animes - same as getAnticipatedAnimesLater
+ * Kept for backwards compatibility
+ */
+export async function getLaterAnimes(): Promise<AnticipatedAnime[]> {
+  return getAnticipatedAnimesLater();
+}
+
+// ============================================
+// HERO BANNERS
+// ============================================
+
+export interface HeroBanner {
+  id: string;
+  tagline: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+  imageUrl: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface HeroBannerRow {
+  id: string;
+  tagline: string;
+  title: string;
+  subtitle: string;
+  button_text: string;
+  button_link: string;
+  image_url: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get active hero banner
+ */
+export async function getActiveHeroBanner(): Promise<HeroBanner | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('hero_banners')
+      .select('*')
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      console.error('[SupabaseService] Error fetching active hero banner:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    const row = data as HeroBannerRow;
+    return {
+      id: row.id,
+      tagline: row.tagline,
+      title: row.title,
+      subtitle: row.subtitle,
+      buttonText: row.button_text,
+      buttonLink: row.button_link,
+      imageUrl: row.image_url,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all hero banners (for admin)
+ */
+export async function getAllHeroBanners(): Promise<HeroBanner[]> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('hero_banners')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[SupabaseService] Error fetching hero banners:', error);
+      return [];
+    }
+
+    return (data as HeroBannerRow[]).map(row => ({
+      id: row.id,
+      tagline: row.tagline,
+      title: row.title,
+      subtitle: row.subtitle,
+      buttonText: row.button_text,
+      buttonLink: row.button_link,
+      imageUrl: row.image_url,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Create hero banner
+ */
+export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdAt' | 'updatedAt'>): Promise<HeroBanner | null> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('hero_banners')
+      .insert({
+        tagline: banner.tagline,
+        title: banner.title,
+        subtitle: banner.subtitle,
+        button_text: banner.buttonText,
+        button_link: banner.buttonLink,
+        image_url: banner.imageUrl,
+        is_active: banner.isActive,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[SupabaseService] Error creating hero banner:', error);
+      throw error;
+    }
+
+    const row = data as HeroBannerRow;
+    return {
+      id: row.id,
+      tagline: row.tagline,
+      title: row.title,
+      subtitle: row.subtitle,
+      buttonText: row.button_text,
+      buttonLink: row.button_link,
+      imageUrl: row.image_url,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update hero banner
+ */
+export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBanner, 'id' | 'createdAt' | 'updatedAt'>>): Promise<HeroBanner | null> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  try {
+    const updateData: any = {};
+    if (banner.tagline !== undefined) updateData.tagline = banner.tagline;
+    if (banner.title !== undefined) updateData.title = banner.title;
+    if (banner.subtitle !== undefined) updateData.subtitle = banner.subtitle;
+    if (banner.buttonText !== undefined) updateData.button_text = banner.buttonText;
+    if (banner.buttonLink !== undefined) updateData.button_link = banner.buttonLink;
+    if (banner.imageUrl !== undefined) updateData.image_url = banner.imageUrl;
+    if (banner.isActive !== undefined) updateData.is_active = banner.isActive;
+
+    const { data, error } = await supabase
+      .from('hero_banners')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[SupabaseService] Error updating hero banner:', error);
+      throw error;
+    }
+
+    const row = data as HeroBannerRow;
+    return {
+      id: row.id,
+      tagline: row.tagline,
+      title: row.title,
+      subtitle: row.subtitle,
+      buttonText: row.button_text,
+      buttonLink: row.button_link,
+      imageUrl: row.image_url,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete hero banner
+ */
+export async function deleteHeroBanner(id: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  try {
+    const { error } = await supabase
+      .from('hero_banners')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('[SupabaseService] Error deleting hero banner:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload hero banner image to Supabase Storage
+ */
+export async function uploadHeroBannerImage(file: File): Promise<string> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = fileName;
+
+    const { error: uploadError } = await supabase.storage
+      .from('make-c1d1bfd8-hero-banners')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[SupabaseService] Error uploading image:', uploadError);
+      throw uploadError;
+    }
+
+    // Get public URL
+    const { data } = supabase.storage
+      .from('make-c1d1bfd8-hero-banners')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('[SupabaseService] Error:', error);
+    throw error;
+  }
 }
 
 // ============================================
@@ -836,4 +836,10 @@ export const SupabaseService = {
   getSyncStatus,
   triggerManualSync,
   isConfigured: isSupabaseConfigured,
+  getActiveHeroBanner,
+  getAllHeroBanners,
+  createHeroBanner,
+  updateHeroBanner,
+  deleteHeroBanner,
+  uploadHeroBannerImage,
 };

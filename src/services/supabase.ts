@@ -170,16 +170,26 @@ export async function getWeeklyEpisodes(
       );
 
       if (!response.ok) {
+        console.error(`[SupabaseService] HTTP error: ${response.status}`);
         throw new Error(`HTTP ${response.status}`);
       }
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
+        console.error(`[SupabaseService] Response is not JSON. Content-Type: ${contentType}. Body: ${text.substring(0, 200)}`);
         throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('[SupabaseService] Failed to parse JSON:', jsonError);
+        const text = await response.text().catch(() => 'Unable to get response text');
+        console.error('[SupabaseService] Raw response:', text.substring(0, 500));
+        throw new Error(`JSON parse error: ${jsonError instanceof Error ? jsonError.message : 'Unknown'}`);
+      }
 
       if (result.success && result.data && result.data.length > 0) {
         console.log(`[SupabaseService] ✅ Found ${result.data.length} episodes in Supabase cache`);

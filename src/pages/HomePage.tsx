@@ -62,10 +62,8 @@ function HomeAnimeCard({
       "bg-gradient-to-br from-orange-400/30 via-orange-400/15 to-transparent";
   }
 
-  // Image container class: Episode cards use h-40, new layout uses aspect-square
-  const imageContainerClass = isEpisode
-    ? "h-40"
-    : "aspect-square";
+  // Image container class: aspect-square on mobile, fixed 215px height on desktop for all cards
+  const imageContainerClass = "aspect-square md:h-[215px]";
 
   // Generate unique ID for gradients to avoid conflicts with multiple cards
   const uniqueId = `${data.rank}-${Math.random().toString(36).substr(2, 9)}`;
@@ -478,13 +476,62 @@ export function HomePage() {
         );
         const SupabaseService = supabaseImport.SupabaseService;
 
-        // Winter 2026 - Order by SCORE (rating-based ranking)
-        const seasonAnimes =
-          await SupabaseService.getSeasonRankings(
-            "winter",
-            2026,
-            "score",
-          );
+        // 🚀 PERFORMANCE: Load all data in parallel instead of sequentially
+        const [seasonAnimes, spring2026Animes, weekToShow] = await Promise.all([
+          // Winter 2026 - Order by SCORE (rating-based ranking)
+          SupabaseService.getSeasonRankings("winter", 2026, "score"),
+          
+          // Spring 2026 - Order by MEMBERS (popularity-based ranking)
+          SupabaseService.getAnticipatedAnimesBySeason("spring", 2026),
+          
+          // Weekly Episodes - Auto-detect latest week with 5+ scored episodes
+          (async () => {
+            try {
+              const response = await fetch(
+                `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${publicAnonKey}`,
+                  },
+                },
+              );
+
+              if (!response.ok) {
+                console.error(`[HomePage] ❌ HTTP error: ${response.status}`);
+                console.log(`[HomePage] 🔄 Falling back to Week 1 due to server error`);
+                return 1;
+              }
+
+              const contentType = response.headers.get("content-type");
+              if (!contentType || !contentType.includes("application/json")) {
+                console.error(`[HomePage] ❌ Response is not JSON. Content-Type: ${contentType}`);
+                console.log(`[HomePage] 🔄 Falling back to Week 1 due to non-JSON response`);
+                return 1;
+              }
+
+              const result = await response.json();
+
+              if (result.success && result.latestWeek) {
+                console.log(
+                  `[HomePage] 🎯 Using latest week: Week ${result.latestWeek} (auto-detected)`,
+                );
+                return result.latestWeek;
+              } else {
+                console.log(
+                  `[HomePage] ⚠️ Could not detect latest week, falling back to Week 1`,
+                );
+                return 1;
+              }
+            } catch (error) {
+              console.error(
+                "[HomePage] ❌ Error detecting latest week:",
+                error,
+              );
+              console.log(`[HomePage] ⚠️ Falling back to Week 1`);
+              return 1;
+            }
+          })(),
+        ]);
 
         // Process Top Season Animes (top 3)
         if (seasonAnimes.length > 0) {
@@ -518,14 +565,7 @@ export function HomePage() {
           }
         }
 
-        // Spring 2026 - Order by MEMBERS (popularity-based ranking)
-        // ✅ FIXED: Use anticipated_animes table instead of season_rankings
-        const spring2026Animes =
-          await SupabaseService.getAnticipatedAnimesBySeason(
-            "spring",
-            2026,
-          );
-
+        // Process Spring 2026 Anticipated Animes (top 3)
         if (spring2026Animes.length > 0) {
           const topAnticipated = spring2026Animes
             .slice(0, 3)
@@ -557,52 +597,7 @@ export function HomePage() {
           setAnticipated(topAnticipated);
         }
 
-        // Weekly Episodes - Auto-detect latest week with 5+ scored episodes
-        let weekToShow = 1;
-
-        try {
-          const response = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
-            {
-              headers: {
-                Authorization: `Bearer ${publicAnonKey}`,
-              },
-            },
-          );
-
-          if (!response.ok) {
-            console.error(`[HomePage] ❌ HTTP error: ${response.status}`);
-            console.log(`[HomePage] 🔄 Falling back to Week 1 due to server error`);
-            // Continue with weekToShow = 1 (already set)
-          } else {
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-              console.error(`[HomePage] ❌ Response is not JSON. Content-Type: ${contentType}`);
-              console.log(`[HomePage] 🔄 Falling back to Week 1 due to non-JSON response`);
-              // Continue with weekToShow = 1 (already set)
-            } else {
-              const result = await response.json();
-
-              if (result.success && result.latestWeek) {
-                weekToShow = result.latestWeek;
-                console.log(
-                  `[HomePage] 🎯 Using latest week: Week ${weekToShow} (auto-detected)`,
-                );
-              } else {
-                console.log(
-                  `[HomePage] ⚠️ Could not detect latest week, falling back to Week 1`,
-                );
-              }
-            }
-          }
-        } catch (error) {
-          console.error(
-            "[HomePage] ❌ Error detecting latest week:",
-            error,
-          );
-          console.log(`[HomePage] ⚠️ Falling back to Week 1`);
-        }
-
+        // Load weekly episodes using detected week number
         let weeklyEpisodesData =
           await SupabaseService.getWeeklyEpisodes(weekToShow);
 

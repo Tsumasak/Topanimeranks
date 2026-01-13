@@ -3206,6 +3206,12 @@
   }
 
   @media (width >= 48rem) {
+    .md\:h-\[215px\] {
+      height: 215px;
+    }
+  }
+
+  @media (width >= 48rem) {
     .md\:h-\[400px\] {
       height: 400px;
     }

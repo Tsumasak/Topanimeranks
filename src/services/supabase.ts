@@ -305,7 +305,7 @@ export async function getSeasonRankings(
       status: row.status,
       episodes: row.episodes,
       aired: {
-        from: row.aired_from,
+        from: row.aired_from || '',
         to: row.aired_to,
       },
       season: row.season,
@@ -600,8 +600,8 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
   }
 
   try {
-    const { data, error } = await supabase
-      .from('hero_banners')
+    const { data, error } = await (supabase
+      .from('hero_banners') as any)
       .insert({
         tagline: banner.tagline,
         title: banner.title,
@@ -656,8 +656,8 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
     if (banner.imageUrl !== undefined) updateData.image_url = banner.imageUrl;
     if (banner.isActive !== undefined) updateData.is_active = banner.isActive;
 
-    const { data, error } = await supabase
-      .from('hero_banners')
+    const { data, error } = await (supabase
+      .from('hero_banners') as any)
       .update(updateData)
       .eq('id', id)
       .select()

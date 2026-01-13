@@ -171,7 +171,7 @@ export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpiso
     console.log('[SupabaseService] First episode data:', data[0]);
     
     // Get week dates from the first episode (if available)
-    const firstEpisode = data[0];
+    const firstEpisode = data[0] as any;
     const weekStartDate = firstEpisode?.week_start_date || '';
     const weekEndDate = firstEpisode?.week_end_date || '';
     
@@ -279,10 +279,17 @@ export async function getSeasonRankings(
     // Convert database rows to JikanAnimeData objects
     return (data as SeasonRankingRow[]).map(row => ({
       mal_id: row.anime_id,
+      url: `/anime/${row.anime_id}`,
       title: row.title,
       title_english: row.title_english,
+      title_japanese: null,
       images: {
         jpg: {
+          image_url: row.image_url,
+          small_image_url: row.image_url,
+          large_image_url: row.image_url,
+        },
+        webp: {
           image_url: row.image_url,
           small_image_url: row.image_url,
           large_image_url: row.image_url,
@@ -778,7 +785,7 @@ export async function getSyncStatus(): Promise<SyncStatus[]> {
       itemsSynced: row.items_synced || 0,
       durationMs: row.duration_ms || 0,
       createdAt: row.created_at,
-      errorMessage: row.error_message,
+      errorMessage: row.error_message || undefined,
     }));
   } catch (error) {
     console.error('[SupabaseService] Error:', error);

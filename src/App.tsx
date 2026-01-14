@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { MigrationAlert } from "./components/MigrationAlert";
-import { HomePage } from "./pages/HomePage";
+import { HomePage } from "./pages/HomePage"; // Archived - old home page (accessible via /home-old)
 import { HomeNewPage } from "./pages/HomeNewPage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
@@ -22,7 +22,7 @@ function AppContent() {
   const navigate = useNavigate();
   
   const currentPage: 'home' | 'ranks' | 'anticipated' | 'season' = 
-    location.pathname === '/home' ? 'home' :
+    location.pathname === '/home' || location.pathname === '/' ? 'home' :
     location.pathname === '/top-season-animes' ? 'season' :
     location.pathname === '/most-anticipated-animes' ? 'anticipated' : 'ranks';
 
@@ -209,8 +209,8 @@ function AppContent() {
       <div className="dynamic-background-content pt-[72px] md:pt-[82px]">
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/home-new" element={<HomeNewPage />} />
+          <Route path="/home" element={<HomeNewPage />} />
+          <Route path="/home-old" element={<HomePage />} />
           <Route path="/ranks" element={<TopEpisodesPage />} />
           <Route path="/top-season-animes" element={<TopSeasonAnimesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />

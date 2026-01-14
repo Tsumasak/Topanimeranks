@@ -65,19 +65,6 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
           <div className="hidden md:flex items-center space-x-4">
             <div className="flex items-center space-x-4">
               <button 
-                onClick={() => navigate('/home-new')}
-                className="text-xs px-2 py-1 rounded transition-all opacity-40 hover:opacity-100"
-                style={{ 
-                  backgroundColor: 'var(--card-background)',
-                  color: 'var(--foreground)',
-                  border: '1px solid var(--card-border)'
-                }}
-                title="Nova Home (Preview)"
-              >
-                New
-              </button>
-              <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
-              <button 
                 onClick={() => onPageChange?.('ranks')}
                 className="theme-nav-link transition-colors"
               >

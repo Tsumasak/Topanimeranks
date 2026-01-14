@@ -605,9 +605,9 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
     // If the new banner is active, deactivate all other banners first
     if (banner.isActive) {
       console.log('[SupabaseService] 🔄 Deactivating all other banners...');
-      const { error: deactivateError } = await supabase
-        .from('hero_banners')
-        .update({ is_active: false } as any)
+      const { error: deactivateError } = await (supabase
+        .from('hero_banners') as any)
+        .update({ is_active: false })
         .eq('is_active', true);
       
       if (deactivateError) {
@@ -674,9 +674,9 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
     // If setting this banner to active, deactivate all other banners first
     if (banner.isActive === true) {
       console.log('[SupabaseService] 🔄 Deactivating all other banners...');
-      const { error: deactivateError } = await supabase
-        .from('hero_banners')
-        .update({ is_active: false } as any)
+      const { error: deactivateError } = await (supabase
+        .from('hero_banners') as any)
+        .update({ is_active: false })
         .eq('is_active', true)
         .neq('id', id); // Don't deactivate the one we're updating
       

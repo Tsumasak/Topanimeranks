@@ -276,7 +276,7 @@ function HomeAnimeCard({
               )}
 
               {/* Genres + Themes Tags - Combine and show first 3 total */}
-              {(data.genres?.length > 0 || data.themes?.length > 0) && (
+              {((data.genres && data.genres.length > 0) || (data.themes && data.themes.length > 0)) && (
                 <div className="flex gap-1 flex-wrap">
                   {[
                     ...(data.genres || []),
@@ -390,7 +390,7 @@ function HomeAnimeCard({
           </h3>
 
           {/* Genres + Themes Tags - Combine and show first 3 total */}
-          {(data.genres?.length > 0 || data.themes?.length > 0) && (
+          {((data.genres && data.genres.length > 0) || (data.themes && data.themes.length > 0)) && (
             <div className="flex gap-1 flex-wrap">
               {[...(data.genres || []), ...(data.themes || [])]
                 .slice(0, 3)
@@ -684,15 +684,30 @@ export function HomeNewPage() {
             alt={heroBanner?.title || "Hero Banner"}
             className="w-full h-full object-cover"
           />
-          {/* Gradient Overlays - Adapts to theme */}
+          {/* Gradient Overlays - Adapts to theme with balanced mobile gradients */}
+          {/* Mobile gradients - strong but allows image visibility */}
           <div 
-            className="absolute inset-0"
+            className="absolute inset-0 md:hidden"
+            style={{
+              background: `linear-gradient(to right, rgba(var(--background-rgb), 0.92) 0%, rgba(var(--background-rgb), 0.75) 50%, rgba(var(--background-rgb), 0.45) 75%, transparent 100%)`
+            }}
+          />
+          <div 
+            className="absolute inset-0 md:hidden"
+            style={{
+              background: `linear-gradient(to top, rgba(var(--background-rgb), 0.95) 0%, rgba(var(--background-rgb), 0.25) 65%, transparent 100%)`
+            }}
+          />
+          
+          {/* Desktop gradients - original strength */}
+          <div 
+            className="absolute inset-0 hidden md:block"
             style={{
               background: `linear-gradient(to right, rgba(var(--background-rgb), 0.95) 0%, rgba(var(--background-rgb), 0.7) 40%, transparent 100%)`
             }}
           />
           <div 
-            className="absolute inset-0"
+            className="absolute inset-0 hidden md:block"
             style={{
               background: `linear-gradient(to top, rgba(var(--background-rgb), 1) 0%, transparent 50%)`
             }}

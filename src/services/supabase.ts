@@ -526,7 +526,9 @@ export async function getActiveHeroBanner(): Promise<HeroBanner | null> {
       .from('hero_banners')
       .select('*')
       .eq('is_active', true)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       console.error('[SupabaseService] Error fetching active hero banner:', error);
@@ -600,6 +602,21 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
   }
 
   try {
+    // If the new banner is active, deactivate all other banners first
+    if (banner.isActive) {
+      console.log('[SupabaseService] 🔄 Deactivating all other banners...');
+      const { error: deactivateError } = await supabase
+        .from('hero_banners')
+        .update({ is_active: false })
+        .eq('is_active', true);
+      
+      if (deactivateError) {
+        console.error('[SupabaseService] Error deactivating banners:', deactivateError);
+      } else {
+        console.log('[SupabaseService] ✅ All other banners deactivated');
+      }
+    }
+
     const { data, error } = await (supabase
       .from('hero_banners') as any)
       .insert({
@@ -620,6 +637,13 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
     }
 
     const row = data as HeroBannerRow;
+    
+    // Clear cached banner in sessionStorage
+    if (banner.isActive) {
+      sessionStorage.removeItem('hero_banner');
+      console.log('[SupabaseService] ✅ Cleared cached banner');
+    }
+    
     return {
       id: row.id,
       tagline: row.tagline,
@@ -647,6 +671,22 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
   }
 
   try {
+    // If setting this banner to active, deactivate all other banners first
+    if (banner.isActive === true) {
+      console.log('[SupabaseService] 🔄 Deactivating all other banners...');
+      const { error: deactivateError } = await supabase
+        .from('hero_banners')
+        .update({ is_active: false })
+        .eq('is_active', true)
+        .neq('id', id); // Don't deactivate the one we're updating
+      
+      if (deactivateError) {
+        console.error('[SupabaseService] Error deactivating banners:', deactivateError);
+      } else {
+        console.log('[SupabaseService] ✅ All other banners deactivated');
+      }
+    }
+
     const updateData: any = {};
     if (banner.tagline !== undefined) updateData.tagline = banner.tagline;
     if (banner.title !== undefined) updateData.title = banner.title;
@@ -669,6 +709,13 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
     }
 
     const row = data as HeroBannerRow;
+    
+    // Clear cached banner in sessionStorage if we activated this banner
+    if (banner.isActive === true) {
+      sessionStorage.removeItem('hero_banner');
+      console.log('[SupabaseService] ✅ Cleared cached banner');
+    }
+    
     return {
       id: row.id,
       tagline: row.tagline,

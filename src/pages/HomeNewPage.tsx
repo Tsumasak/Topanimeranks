@@ -13,7 +13,7 @@ import {
 } from "../components/ui/carousel";
 import { ChevronRight, Sparkles, Github, Twitter } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import * as SupabaseService from "../services/supabase";
+import { SupabaseService } from "../services/supabase";
 import type { HeroBanner } from "../services/supabase";
 
 interface HomeCardData {
@@ -457,7 +457,11 @@ export function HomeNewPage() {
   const [topEpisodes, setTopEpisodes] = useState<HomeCardData[]>([]);
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
-  const [heroBanner, setHeroBanner] = useState<HeroBanner | null>(null);
+  const [heroBanner, setHeroBanner] = useState<HeroBanner | null>(() => {
+    // Initialize from sessionStorage if available
+    const cached = sessionStorage.getItem('hero_banner');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Animation keys for smooth entry animations
@@ -470,9 +474,6 @@ export function HomeNewPage() {
         setIsLoading(true);
 
         // Load Top Season Animes from Supabase (Winter 2026)
-        const supabaseImport = await import("../services/supabase");
-        const SupabaseService = supabaseImport.SupabaseService;
-
         // Winter 2026 - Order by SCORE (rating-based ranking)
         const seasonAnimes = await SupabaseService.getSeasonRankings(
           "winter",
@@ -635,8 +636,13 @@ export function HomeNewPage() {
         if (heroBannerData) {
           setHeroBanner(heroBannerData);
           console.log('[HomeNewPage] ✅ Loaded hero banner:', heroBannerData.title);
+          // Cache hero banner in sessionStorage
+          sessionStorage.setItem('hero_banner', JSON.stringify(heroBannerData));
         } else {
           console.log('[HomeNewPage] ℹ️ No active hero banner found');
+          // Clear cache if no active banner
+          sessionStorage.removeItem('hero_banner');
+          setHeroBanner(null);
         }
 
         console.log(
@@ -707,7 +713,16 @@ export function HomeNewPage() {
               className="text-4xl md:text-6xl font-black mb-4 leading-tight"
               style={{ color: 'var(--foreground)' }}
             >
-              {heroBanner?.title || "Discover the Best Anime"}
+              {heroBanner?.title ? (
+                heroBanner.title
+              ) : (
+                <>
+                  Discover the
+                  <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Best Anime
+                  </span>
+                </>
+              )}
             </motion.h1>
 
             <motion.p

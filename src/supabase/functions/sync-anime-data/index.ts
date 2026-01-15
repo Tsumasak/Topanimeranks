@@ -115,7 +115,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
       console.log(`🌐 Week: ${weekNumber}`);
       console.log(`🌐 ============================================\n`);
       
-      while (hasNextPage) {
+      while (hasNextPage && currentPage <= 30) { // ✅ Aumentado limite para 30 páginas (750 animes) - Winter 2026 tem muitos animes
         const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
         console.log(`\n📄 ============================================`);
         console.log(`📄 PAGE ${currentPage} FETCH STARTING...`);
@@ -725,7 +725,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     
     console.log(`🌐 Fetching all pages for ${season} ${year}...`);
     
-    while (hasNextPage) {
+    while (hasNextPage && currentPage <= 30) { // ✅ Aumentado limite para 30 páginas (750 animes) - Winter 2026 tem muitos animes
       const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
       console.log(`📄 Fetching page ${currentPage}: ${url}`);
       

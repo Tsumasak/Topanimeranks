@@ -698,7 +698,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
 
     const { data, error } = await supabase
       .from('hero_banners')
-      .update(updateData)
+      .update(updateData as any)
       .eq('id', id)
       .select()
       .single();

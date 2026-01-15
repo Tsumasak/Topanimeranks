@@ -227,10 +227,11 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     // Filter by members >= 5000 and airing status (Currently Airing OR Finished Airing)
     // We include Finished Airing because animes that released all episodes in one week
     // (like Tatsuki Fujimoto 17-26) change status immediately but still need to be synced
-    const airingAnimes = allAnimes.filter((anime: any) => 
-      anime.members >= 5000 && 
-      (anime.status === 'Currently Airing' || anime.status === 'Finished Airing')
-    );
+    const airingAnimes = allAnimes
+      .filter((anime: any) => anime.members >= 5000) // ✅ Filtro: apenas animes com 5.000+ membros
+      .filter((anime: any) => 
+        anime.status === 'Currently Airing' || anime.status === 'Finished Airing'
+      );
     console.log(`✅ After filter (5k+ members, airing/finished): ${airingAnimes.length} animes`);
 
     // 🆕 STEP 1: Get existing episodes from database for this week
@@ -749,7 +750,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     console.log(`📺 Total animes fetched: ${allAnimes.length}`);
 
     const animes = allAnimes
-      .filter((anime: any) => anime.members >= 20000)
+      .filter((anime: any) => anime.members >= 5000) // ✅ Filtro: apenas animes com 5.000+ membros
       .sort((a: any, b: any) => {
         // Sort by members first (descending), then by score
         const membersA = a.members || 0;
@@ -758,7 +759,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
         return (b.score || 0) - (a.score || 0);
       });
 
-    console.log(`✅ After filtering (20k+ members): ${animes.length} animes for ${season} ${year}`);
+    console.log(`✅ After filtering (5k+ members): ${animes.length} animes for ${season} ${year}`);
 
     for (const anime of animes) {
       const seasonAnime = {
@@ -1424,7 +1425,17 @@ serve(async (req) => {
         // Sync current season (default to winter 2025)
         const seasonToSync = season || 'winter';
         const yearToSync = year || 2025;
-        result = await syncSeasonRankings(supabase, seasonToSync, yearToSync);
+        const syncResult = await syncSeasonRankings(supabase, seasonToSync, yearToSync);
+        // Adjust response format to match AdminSyncPage expectations
+        result = {
+          ...syncResult,
+          total: syncResult.itemsCreated + syncResult.itemsUpdated,
+          inserted: syncResult.itemsCreated,
+          updated: syncResult.itemsUpdated,
+          skipped: 0,
+          deleted: 0,
+          errors: 0,
+        };
         break;
 
       case 'anticipated':

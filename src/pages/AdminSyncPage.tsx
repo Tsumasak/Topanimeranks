@@ -45,22 +45,25 @@ export default function AdminSyncPage() {
     addLog('This may take 5-15 minutes. Please wait...', 'warning');
     
     try {
-      const url = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/sync-season/${season}/${year}`;
+      const url = `https://${projectId}.supabase.co/functions/v1/sync-anime-data`;
       
-      addLog('Making request to server...', 'info');
+      addLog('Making request to sync-anime-data edge function...', 'info');
       
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          sync_type: 'season_rankings',
+          season: season,
+          year: year
+        })
       });
       
-      // Check content type before parsing
       const contentType = response.headers.get('content-type');
       addLog(`Response status: ${response.status}`, 'info');
-      addLog(`Response Content-Type: ${contentType}`, 'info');
       
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -68,7 +71,6 @@ export default function AdminSyncPage() {
         return;
       }
       
-      // Parse JSON
       const data = await response.json();
       
       if (data.success) {

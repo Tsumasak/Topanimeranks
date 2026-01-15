@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
 import { Badge } from '../ui/badge';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 import { getEpisodeSeasonInfo } from '../../utils/seasons';
 
 interface Episode {

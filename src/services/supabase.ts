@@ -438,7 +438,7 @@ export async function getAnticipatedAnimesLater(): Promise<AnticipatedAnime[]> {
     const animeSeason = anime.season?.toLowerCase();
     const animeYear = anime.year;
     
-    // CRITICAL: Exclude if already shown in Winter, Spring, or Summer 2026
+    // CRITICAL: Exclude if already shown in Winter, Spring, or Summer
     if (shownAnimeIds.has(anime.id)) {
       console.log(`[SupabaseService] ⏭️  Skipping ${anime.title} (ID: ${anime.id}) - already in Winter/Spring/Summer`);
       return false;
@@ -627,7 +627,7 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
         button_link: banner.buttonLink,
         image_url: banner.imageUrl,
         is_active: banner.isActive,
-      })
+      } as any)
       .select()
       .single();
 
@@ -698,7 +698,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
 
     const { data, error } = await supabase
       .from('hero_banners')
-      .update(updateData)
+      .update(updateData as any)
       .eq('id', id)
       .select()
       .single();

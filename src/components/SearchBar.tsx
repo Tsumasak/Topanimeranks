@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SearchResult } from '../types/search';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { ImageWithFallback } from './figma/ImageWithFallback';

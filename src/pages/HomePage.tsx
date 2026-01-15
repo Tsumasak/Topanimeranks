@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { WEEKS_DATA } from "../config/weeks";
 import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
@@ -735,11 +735,11 @@ export function HomePage() {
                   letterSpacing: "0.3px",
                   backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
                   e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                   e.currentTarget.style.transform = "scale(1.05)";
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
                   e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                   e.currentTarget.style.transform = "scale(1)";
                 }}
@@ -952,11 +952,11 @@ export function HomePage() {
                     letterSpacing: "0.3px",
                     backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                     e.currentTarget.style.transform = "scale(1.05)";
                   }}
-                  onMouseLeave={(e) => {
+                  onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                     e.currentTarget.style.transform = "scale(1)";
                   }}
@@ -1173,11 +1173,11 @@ export function HomePage() {
                     letterSpacing: "0.3px",
                     backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.2)";
                     e.currentTarget.style.transform = "scale(1.05)";
                   }}
-                  onMouseLeave={(e) => {
+                  onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
                     e.currentTarget.style.transform = "scale(1)";
                   }}

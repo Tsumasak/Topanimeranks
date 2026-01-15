@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { SearchResult } from '../types/search';
 import { projectId, publicAnonKey } from '../utils/supabase/info';

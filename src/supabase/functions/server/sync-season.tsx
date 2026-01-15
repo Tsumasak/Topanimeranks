@@ -48,27 +48,6 @@ interface JikanAnime {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper function to validate if aired_from date matches the requested season
-function validateSeasonMatch(airedFrom: string | null, requestedSeason: string, requestedYear: number): boolean {
-  if (!airedFrom) return false; // No date = can't validate
-  
-  const airedDate = new Date(airedFrom);
-  const month = airedDate.getUTCMonth() + 1; // 1-12
-  const year = airedDate.getUTCFullYear();
-  
-  // Check year match first
-  if (year !== requestedYear) return false;
-  
-  // Map month to season
-  let actualSeason = '';
-  if (month >= 1 && month <= 3) actualSeason = 'winter';
-  else if (month >= 4 && month <= 6) actualSeason = 'spring';
-  else if (month >= 7 && month <= 9) actualSeason = 'summer';
-  else if (month >= 10 && month <= 12) actualSeason = 'fall';
-  
-  return actualSeason === requestedSeason.toLowerCase();
-}
-
 export async function syncSeason(supabase: any, season: string, year: number) {
   console.log(`🚀 Iniciando sync SEASON ${season} ${year}...`);
   
@@ -133,20 +112,6 @@ export async function syncSeason(supabase: any, season: string, year: number) {
         try {
           const titleEnglish = anime.title_english || anime.title;
           console.log(`🔍 Processando: ${titleEnglish}`);
-          
-          // ✅ VALIDAÇÃO CRÍTICA: Verificar se a data aired_from corresponde à season solicitada
-          // Isso previne animes de outras seasons serem salvos na season errada
-          if (anime.status === 'Not yet aired' && anime.aired?.from) {
-            const isValidSeason = validateSeasonMatch(anime.aired.from, season, year);
-            if (!isValidSeason) {
-              const airedDate = new Date(anime.aired.from);
-              const month = airedDate.getUTCMonth() + 1;
-              const actualYear = airedDate.getUTCFullYear();
-              console.log(`⚠️  PULANDO ${titleEnglish}: aired_from=${anime.aired.from} (month=${month}, year=${actualYear}) não corresponde a ${season} ${year}`);
-              skipped++;
-              continue;
-            }
-          }
           
           // ✅ Adicionar MAL ID à lista de IDs válidos
           validMalIds.add(anime.mal_id);

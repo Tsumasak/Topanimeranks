@@ -126,10 +126,11 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
             // Calcular week_number baseado na data de exibição
             const { season: epSeason, year: epYear, weekNumber } = getEpisodeWeekNumber(episode.aired);
             
-            // Verificar se o episódio pertence à season correta
+            // ✅ REMOVED: Não pular episódios de outras seasons
+            // Um anime pode ter episódios em múltiplas seasons (ex: Spring + Summer)
+            // Apenas log para debug
             if (epSeason !== season || epYear !== year) {
-              console.log(`⏭️  Pulando episódio ${episode.mal_id} - pertence a ${epSeason} ${epYear}, não ${season} ${year}`);
-              continue;
+              console.log(`📝 Episódio ${episode.mal_id} pertence a ${epSeason} ${epYear} (processando ${season} ${year})`);
             }
             
             // Verificar se já existe
@@ -138,6 +139,8 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               .select('id')
               .eq('anime_id', seasonAnime.anime_id)
               .eq('episode_number', episode.mal_id)
+              .eq('season', epSeason)
+              .eq('year', epYear)
               .maybeSingle();
             
             const episodeData = {

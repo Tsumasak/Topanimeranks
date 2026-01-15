@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router";
 import { supabase } from "../utils/supabase/client";
 import { AnimeHero } from "../components/anime/AnimeHero";
 import { AnimeStats } from "../components/anime/AnimeStats";
@@ -7,6 +7,7 @@ import { AnimeSynopsis } from "../components/anime/AnimeSynopsis";
 import { AnimeInfo } from "../components/anime/AnimeInfo";
 import { AnimeEpisodes } from "../components/anime/AnimeEpisodes";
 import { AnimeVideos } from "../components/anime/AnimeVideos";
+import { RankEvolutionChart } from "../components/anime/RankEvolutionChart";
 
 export default function AnimeDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -444,11 +445,18 @@ export default function AnimeDetailsPage() {
                 animeTitle={anime.title_english || anime.title}
               />
             ) : (
-              <AnimeEpisodes
-                episodes={episodes}
-                animeId={anime.anime_id}
-                weeklyData={weeklyData}
-              />
+              <>
+                {/* Rank Evolution Chart - Only for TV/ONA with episodes */}
+                {anime.anime_id && episodes.length > 0 && (
+                  <RankEvolutionChart animeId={anime.anime_id} />
+                )}
+                
+                <AnimeEpisodes
+                  episodes={episodes}
+                  animeId={anime.anime_id}
+                  weeklyData={weeklyData}
+                />
+              </>
             )}
           </div>
         </div>

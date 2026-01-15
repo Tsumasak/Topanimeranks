@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router";
 import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { MigrationAlert } from "./components/MigrationAlert";

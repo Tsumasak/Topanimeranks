@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';
 
 interface BaseAnimeCardProps {

@@ -884,6 +884,10 @@
     height: 50vh;
   }
 
+  .h-\[200px\] {
+    height: 200px;
+  }
+
   .h-\[320px\] {
     height: 320px;
   }
@@ -1435,6 +1439,11 @@
   .border-b {
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
+  }
+
+  .border-b-2 {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 2px;
   }
 
   .border-none {
@@ -2438,6 +2447,10 @@
     opacity: .5;
   }
 
+  .opacity-60 {
+    opacity: .6;
+  }
+
   .opacity-70 {
     opacity: .7;
   }
@@ -2508,6 +2521,12 @@
 
   .blur {
     --tw-blur: blur(8px);
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+
+  .drop-shadow {
+    --tw-drop-shadow-size: drop-shadow(0 1px 2px var(--tw-drop-shadow-color, #0000001a)) drop-shadow(0 1px 1px var(--tw-drop-shadow-color, #0000000f));
+    --tw-drop-shadow: drop-shadow(0 1px 2px #0000001a) drop-shadow(0 1px 1px #0000000f);
     filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
   }
 
@@ -3116,6 +3135,12 @@
   }
 
   @media (width >= 48rem) {
+    .md\:mb-0 {
+      margin-bottom: calc(var(--spacing) * 0);
+    }
+  }
+
+  @media (width >= 48rem) {
     .md\:block {
       display: block;
     }
@@ -3148,6 +3173,12 @@
   @media (width >= 48rem) {
     .md\:h-\[215px\] {
       height: 215px;
+    }
+  }
+
+  @media (width >= 48rem) {
+    .md\:h-\[280px\] {
+      height: 280px;
     }
   }
 
@@ -3206,6 +3237,12 @@
   }
 
   @media (width >= 48rem) {
+    .md\:items-center {
+      align-items: center;
+    }
+  }
+
+  @media (width >= 48rem) {
     .md\:items-end {
       align-items: flex-end;
     }
@@ -3214,6 +3251,12 @@
   @media (width >= 48rem) {
     .md\:items-start {
       align-items: flex-start;
+    }
+  }
+
+  @media (width >= 48rem) {
+    .md\:justify-between {
+      justify-content: space-between;
     }
   }
 

@@ -687,7 +687,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
       }
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, any> = {};
     if (banner.tagline !== undefined) updateData.tagline = banner.tagline;
     if (banner.title !== undefined) updateData.title = banner.title;
     if (banner.subtitle !== undefined) updateData.subtitle = banner.subtitle;
@@ -698,7 +698,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
 
     const { data, error } = await supabase
       .from('hero_banners')
-      .update(updateData as any)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

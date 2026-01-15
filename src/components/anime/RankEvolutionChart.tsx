@@ -40,7 +40,6 @@ export function RankEvolutionChart({ animeId }: RankEvolutionChartProps) {
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string>('');
   const [maxRank, setMaxRank] = useState<number>(20);
-  const [useEpisodeAxis, setUseEpisodeAxis] = useState(false);
 
   useEffect(() => {
     async function fetchSeasons() {
@@ -132,14 +131,13 @@ export function RankEvolutionChart({ animeId }: RankEvolutionChartProps) {
         // Check scenario: all episodes in same week?
         const uniqueWeeks = new Set(episodes.map((ep: any) => ep.week_number));
         const allSameWeek = uniqueWeeks.size === 1;
-        setUseEpisodeAxis(allSameWeek);
 
         console.log('[RankEvolution] Unique weeks:', uniqueWeeks.size, 'Use episode axis:', allSameWeek);
 
         const dataPoints: RankDataPoint[] = [];
 
         // Process each episode
-        for (const episode of episodes) {
+        for (const episode of episodes as any[]) {
           const weekNum = episode.week_number;
           const epNum = episode.episode_number;
 

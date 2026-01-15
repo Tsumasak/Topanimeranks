@@ -9,6 +9,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
+const BATCH_SIZE = 10; // Process 10 animes per batch to avoid timeout (150s limit)
+const MAX_EXECUTION_TIME = 140000; // 140 seconds (leave 10s buffer before 150s timeout)
 
 // ============================================
 // SEASON UTILITIES - Calculate week number based on season

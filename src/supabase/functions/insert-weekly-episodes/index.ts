@@ -306,6 +306,13 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     let processedAnimeCount = 0;
     
     for (const anime of airingAnimes) {
+      // ⏱️ TIMEOUT PROTECTION: Stop before 150s limit
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime > MAX_EXECUTION_TIME) {
+        console.log(`\n⏱️ TIMEOUT PROTECTION: Stopping at ${processedAnimeCount}/${airingAnimes.length} animes (${elapsedTime}ms elapsed)`);
+        break;
+      }
+      
       try {
         processedAnimeCount++;
         console.log(`\n[${processedAnimeCount}/${airingAnimes.length}] Processing: ${anime.title} (ID: ${anime.mal_id})`);
@@ -324,19 +331,26 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             : `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes?page=${episodePage}`;
           
           console.log(`  📄 Fetching episodes page ${episodePage}: ${episodesUrl}`);
-          const episodesData = await fetchWithRetry(episodesUrl);
           
-          if (!episodesData?.data || episodesData.data.length === 0) {
+          try {
+            const episodesData = await fetchWithRetry(episodesUrl);
+            
+            if (!episodesData?.data || episodesData.data.length === 0) {
+              hasNextEpisodePage = false;
+              break;
+            }
+            
+            allEpisodes.push(...episodesData.data);
+            hasNextEpisodePage = episodesData.pagination?.has_next_page || false;
+            episodePage++;
+            
+            if (hasNextEpisodePage) {
+              await delay(RATE_LIMIT_DELAY);
+            }
+          } catch (fetchError: any) {
+            console.error(`  ❌ Fetch failed for page ${episodePage}: ${fetchError.message}`);
             hasNextEpisodePage = false;
             break;
-          }
-          
-          allEpisodes.push(...episodesData.data);
-          hasNextEpisodePage = episodesData.pagination?.has_next_page || false;
-          episodePage++;
-          
-          if (hasNextEpisodePage) {
-            await delay(RATE_LIMIT_DELAY);
           }
         }
         

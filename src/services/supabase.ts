@@ -605,6 +605,7 @@ export async function createHeroBanner(banner: Omit<HeroBanner, 'id' | 'createdA
     // If the new banner is active, deactivate all other banners first
     if (banner.isActive) {
       console.log('[SupabaseService] 🔄 Deactivating all other banners...');
+      // @ts-ignore - Supabase type inference issue
       const { error: deactivateError } = await supabase
         .from('hero_banners')
         .update({ is_active: false } as never)
@@ -674,6 +675,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
     // If setting this banner to active, deactivate all other banners first
     if (banner.isActive === true) {
       console.log('[SupabaseService] 🔄 Deactivating all other banners...');
+      // @ts-ignore - Supabase type inference issue
       const { error: deactivateError } = await supabase
         .from('hero_banners')
         .update({ is_active: false } as never)
@@ -696,6 +698,7 @@ export async function updateHeroBanner(id: string, banner: Partial<Omit<HeroBann
     if (banner.imageUrl !== undefined) updateData.image_url = banner.imageUrl;
     if (banner.isActive !== undefined) updateData.is_active = banner.isActive;
 
+    // @ts-ignore - Supabase type inference issue
     const { data, error } = await supabase
       .from('hero_banners')
       .update(updateData as any)

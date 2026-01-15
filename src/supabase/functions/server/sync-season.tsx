@@ -85,7 +85,7 @@ export async function syncSeason(supabase: any, season: string, year: number) {
     const validMalIds = new Set<number>();
     
     // Buscar animes da season com paginação
-    while (hasNextPage && page <= 10) { // Limitar a 10 páginas (250 animes)
+    while (hasNextPage && page <= 30) { // ✅ Aumentado limite para 30 páginas (750 animes) - Winter 2026 tem muitos animes
       console.log(`📊 Buscando página ${page} de ${season} ${year}...`);
       
       const seasonUrl = `https://api.jikan.moe/v4/seasons/${year}/${season}?page=${page}&limit=25`;

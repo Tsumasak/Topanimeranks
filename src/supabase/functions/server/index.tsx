@@ -748,6 +748,84 @@ app.get("/make-server-c1d1bfd8/fix-week-numbers", async (c) => {
 // ============================================
 // Sincroniza animes de uma temporada específica
 // Para atualizar a tabela season_rankings
+
+// ============================================
+// SAVE SEASON BATCH - Salva animes já buscados
+// ============================================
+app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
+  try {
+    const { animes, season, year } = await c.req.json();
+    
+    console.log(`💾 Saving ${animes?.length || 0} animes for ${season} ${year}...`);
+    
+    if (!animes || !Array.isArray(animes) || animes.length === 0) {
+      return c.json({ success: false, error: 'No animes provided' }, 400);
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get existing anime IDs
+    const animeIds = animes.map(a => a.anime_id);
+    const { data: existingAnimes } = await supabase
+      .from('season_rankings')
+      .select('anime_id')
+      .eq('season', season)
+      .eq('year', year)
+      .in('anime_id', animeIds);
+    
+    const existingIds = new Set(existingAnimes?.map(a => a.anime_id) || []);
+    console.log(`📊 Found ${existingIds.size} existing, ${animes.length - existingIds.size} new`);
+
+    // Batch upsert
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < animes.length; i += BATCH_SIZE) {
+      const batch = animes.slice(i, i + BATCH_SIZE);
+      console.log(`📦 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(animes.length / BATCH_SIZE)}...`);
+      
+      const { error } = await supabase
+        .from('season_rankings')
+        .upsert(batch, {
+          onConflict: 'anime_id,season,year',
+          ignoreDuplicates: false,
+        });
+
+      if (error) {
+        console.error('❌ Batch upsert error:', error);
+        return c.json({ success: false, error: error.message }, 500);
+      }
+    }
+
+    const inserted = animes.filter(a => !existingIds.has(a.anime_id)).length;
+    const updated = animes.filter(a => existingIds.has(a.anime_id)).length;
+
+    console.log(`✅ Save complete: ${inserted} inserted, ${updated} updated`);
+
+    return c.json({
+      success: true,
+      inserted,
+      updated,
+      total: animes.length
+    });
+
+  } catch (error) {
+    console.error("❌ Save batch error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
 app.post("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
   try {
     const season = c.req.param('season');

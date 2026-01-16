@@ -9,8 +9,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 // Jikan API Rate Limits: 3 requests/second, 60 requests/minute
-// Using 1 second delay = 1 req/sec to stay well within limits
-const RATE_LIMIT_DELAY = 1000; // 1 second between requests
+// Using 500ms delay = 2 req/sec to stay within limits while being faster
+const RATE_LIMIT_DELAY = 500; // 500ms between requests
 
 // Helper: Delay function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -726,7 +726,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     
     console.log(`🌐 Fetching all pages for ${season} ${year}...`);
     
-    while (hasNextPage && currentPage <= 30) { // ✅ Aumentado limite para 30 páginas (750 animes) - Winter 2026 tem muitos animes
+    while (hasNextPage && currentPage <= 15) { // ✅ 15 páginas (375 animes) para evitar timeout de 60s
       const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
       console.log(`📄 Fetching page ${currentPage}: ${url}`);
       
@@ -761,64 +761,70 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
 
     console.log(`✅ After filtering (5k+ members): ${animes.length} animes for ${season} ${year}`);
 
-    for (const anime of animes) {
-      const seasonAnime = {
-        anime_id: anime.mal_id,
-        title: anime.title,
-        title_english: anime.title_english,
-        image_url: anime.images?.jpg?.large_image_url,
-        anime_score: anime.score, // Using 'anime_score' to match database schema
-        scored_by: anime.scored_by,
-        members: anime.members,
-        favorites: anime.favorites,
-        popularity: anime.popularity,
-        rank: anime.rank,
-        type: anime.type,
-        status: anime.status,
-        rating: anime.rating,
-        source: anime.source,
-        episodes: anime.episodes,
-        aired_from: anime.aired?.from,
-        aired_to: anime.aired?.to,
-        duration: anime.duration,
-        demographics: anime.demographics || [],
-        genres: anime.genres || [],
-        themes: anime.themes || [],
-        studios: anime.studios || [],
-        synopsis: anime.synopsis,
-        season: season,
-        year: year,
-      };
+    // ✅ OPTIMIZATION: Get existing anime_ids BEFORE batch upsert to detect new vs updated
+    const animeIds = animes.map(a => a.mal_id);
+    const { data: existingAnimes } = await supabase
+      .from('season_rankings')
+      .select('anime_id')
+      .eq('season', season)
+      .eq('year', year)
+      .in('anime_id', animeIds);
+    
+    const existingIds = new Set(existingAnimes?.map(a => a.anime_id) || []);
+    console.log(`📊 Found ${existingIds.size} existing animes, ${animes.length - existingIds.size} new animes`);
 
-      const { data: upsertData, error } = await supabase
+    // ✅ OPTIMIZATION: Prepare all data for batch upsert
+    const seasonAnimes = animes.map(anime => ({
+      anime_id: anime.mal_id,
+      title: anime.title,
+      title_english: anime.title_english,
+      image_url: anime.images?.jpg?.large_image_url,
+      anime_score: anime.score,
+      scored_by: anime.scored_by,
+      members: anime.members,
+      favorites: anime.favorites,
+      popularity: anime.popularity,
+      rank: anime.rank,
+      type: anime.type,
+      status: anime.status,
+      rating: anime.rating,
+      source: anime.source,
+      episodes: anime.episodes,
+      aired_from: anime.aired?.from,
+      aired_to: anime.aired?.to,
+      duration: anime.duration,
+      demographics: anime.demographics || [],
+      genres: anime.genres || [],
+      themes: anime.themes || [],
+      studios: anime.studios || [],
+      synopsis: anime.synopsis,
+      season: season,
+      year: year,
+    }));
+
+    // ✅ OPTIMIZATION: Batch upsert in chunks of 100 to avoid payload limits
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < seasonAnimes.length; i += BATCH_SIZE) {
+      const batch = seasonAnimes.slice(i, i + BATCH_SIZE);
+      console.log(`📦 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(seasonAnimes.length / BATCH_SIZE)} (${batch.length} animes)...`);
+      
+      const { error } = await supabase
         .from('season_rankings')
-        .upsert(seasonAnime, {
+        .upsert(batch, {
           onConflict: 'anime_id,season,year',
           ignoreDuplicates: false,
-        })
-        .select();
+        });
 
       if (error) {
-        console.error('Upsert error:', error);
-        continue;
+        console.error('❌ Batch upsert error:', error);
       }
-
-      if (upsertData && upsertData.length > 0) {
-        const existing = await supabase
-          .from('season_rankings')
-          .select('created_at, updated_at')
-          .eq('id', upsertData[0].id)
-          .single();
-
-        if (existing.data.created_at === existing.data.updated_at) {
-          itemsCreated++;
-        } else {
-          itemsUpdated++;
-        }
-      }
-
-      await delay(RATE_LIMIT_DELAY);
     }
+
+    // Calculate created vs updated based on existing IDs
+    itemsCreated = animes.filter(a => !existingIds.has(a.mal_id)).length;
+    itemsUpdated = animes.filter(a => existingIds.has(a.mal_id)).length;
+    
+    console.log(`✅ Batch upsert complete: ${itemsCreated} created, ${itemsUpdated} updated`);
 
     const duration = Date.now() - startTime;
 

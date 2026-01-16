@@ -358,6 +358,198 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
 }
 
 // ============================================
+// SYNC EPISODES ONLY - Busca episódios de animes já salvos em season_rankings
+// ============================================
+async function syncEpisodesOnly(supabase: any, season: string, year: number) {
+  console.log(`🎬 Iniciando sync EPISODES ONLY: ${season} ${year}...`);
+  console.log(`📊 Buscando animes de season_rankings ao invés do Jikan API`);
+  
+  try {
+    let totalAnimes = 0;
+    let totalEpisodes = 0;
+    let insertedEpisodes = 0;
+    let updatedEpisodes = 0;
+    let errors = 0;
+    
+    // ✅ Buscar animes da tabela season_rankings (ao invés do Jikan)
+    console.log(`📊 Fetching animes from season_rankings table for ${season} ${year}...`);
+    
+    const { data: animes, error: fetchError } = await supabase
+      .from('season_rankings')
+      .select('*')
+      .ilike('season', season) // Case-insensitive
+      .eq('year', year)
+      .order('popularity', { ascending: true }); // Mais populares primeiro
+    
+    if (fetchError) {
+      console.error(`❌ Erro ao buscar animes de season_rankings:`, fetchError);
+      return {
+        success: false,
+        totalAnimes: 0,
+        totalEpisodes: 0,
+        insertedEpisodes: 0,
+        updatedEpisodes: 0,
+        errors: 1,
+      };
+    }
+    
+    if (!animes || animes.length === 0) {
+      console.log(`⚠️ Nenhum anime encontrado em season_rankings para ${season} ${year}`);
+      console.log(`💡 DICA: Execute "Sync Season Rankings" primeiro para popular a tabela!`);
+      return {
+        success: true,
+        totalAnimes: 0,
+        totalEpisodes: 0,
+        insertedEpisodes: 0,
+        updatedEpisodes: 0,
+        errors: 0,
+      };
+    }
+    
+    totalAnimes = animes.length;
+    console.log(`✅ Encontrados ${totalAnimes} animes em season_rankings`);
+    
+    // Processar cada anime e buscar seus episódios do Jikan
+    for (const anime of animes) {
+      try {
+        const titleEnglish = anime.title_english || anime.title;
+        console.log(`🔍 Processando: ${titleEnglish} (${anime.anime_id})`);
+        
+        // Buscar episódios do anime
+        await sleep(333); // Rate limit
+        const episodesUrl = `https://api.jikan.moe/v4/anime/${anime.anime_id}/episodes`;
+        const episodesResponse = await fetch(episodesUrl);
+        
+        if (!episodesResponse.ok) {
+          console.error(`❌ Erro ao buscar episódios de ${titleEnglish}: ${episodesResponse.status}`);
+          if (episodesResponse.status === 429) {
+            console.log("⏳ Rate limit atingido, aguardando 5 segundos...");
+            await sleep(5000);
+          }
+          errors++;
+          continue;
+        }
+        
+        const episodesData = await episodesResponse.json();
+        const episodes: JikanEpisode[] = episodesData.data || [];
+        
+        console.log(`📺 Encontrados ${episodes.length} episódios de ${titleEnglish}`);
+        totalEpisodes += episodes.length;
+        
+        // Processar cada episódio
+        for (const episode of episodes) {
+          try {
+            // Calcular week_number baseado na data de airing
+            const weekNumber = calculateWeekNumber(season, year, episode.aired);
+            const { week_start_date, week_end_date } = calculateWeekDates(season, year, weekNumber);
+            
+            console.log(`   📅 Episódio ${episode.mal_id}: aired ${episode.aired || 'N/A'} → week ${weekNumber} (${week_start_date} - ${week_end_date})`);
+            
+            // Preparar dados do episódio (usando nomes corretos das colunas)
+            const episodeData = {
+              anime_id: anime.anime_id,
+              anime_title_english: anime.title_english || anime.title,
+              anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+              from_url: anime.url || `https://myanimelist.net/anime/${anime.anime_id}`,
+              episode_number: episode.mal_id, // Using MAL episode ID as episode number
+              episode_name: episode.title || `Episode ${episode.mal_id}`,
+              episode_score: episode.score ? String(episode.score) : null, // Converter para string
+              week_number: weekNumber,
+              position_in_week: 0, // Will be calculated later if needed
+              is_manual: false,
+              type: anime.type,
+              status: anime.status || 'Airing',
+              // Season e Year para filtrar
+              season: season.toLowerCase(),
+              year: year,
+              // Colunas singulares (para compatibilidade) - Salvar como JSONB
+              demographic: anime.demographics && anime.demographics.length > 0 ? anime.demographics : [],
+              genre: anime.genres && anime.genres.length > 0 ? anime.genres : [],
+              theme: anime.themes && anime.themes.length > 0 ? anime.themes : [],
+              // Colunas plurais (search indexes) - Salvar como JSONB
+              demographics: anime.demographics && anime.demographics.length > 0 ? anime.demographics : [],
+              genres: anime.genres && anime.genres.length > 0 ? anime.genres : [],
+              themes: anime.themes && anime.themes.length > 0 ? anime.themes : [],
+              aired_at: episode.aired ? new Date(episode.aired).toISOString() : null,
+            };
+            
+            // Verificar se episódio já existe (usando anime_id + episode_number + week_number + season + year)
+            const { data: existingEpisode } = await supabase
+              .from('weekly_episodes')
+              .select('id')
+              .eq('anime_id', anime.anime_id)
+              .eq('episode_number', episode.mal_id)
+              .eq('week_number', weekNumber)
+              .eq('season', season.toLowerCase())
+              .eq('year', year)
+              .maybeSingle();
+            
+            let upsertError;
+            
+            if (existingEpisode) {
+              // Atualizar episódio existente
+              const { error } = await supabase
+                .from('weekly_episodes')
+                .update(episodeData)
+                .eq('anime_id', anime.anime_id)
+                .eq('episode_number', episode.mal_id)
+                .eq('week_number', weekNumber);
+              upsertError = error;
+              updatedEpisodes++;
+            } else {
+              // Inserir novo episódio
+              const { error } = await supabase
+                .from('weekly_episodes')
+                .insert(episodeData);
+              upsertError = error;
+              insertedEpisodes++;
+            }
+            
+            if (upsertError) {
+              console.error(`❌ Erro ao upsert episódio ${episode.mal_id}:`, upsertError);
+              errors++;
+              continue;
+            }
+            
+            console.log(`   ✅ Episódio ${episode.mal_id} salvo com sucesso`);
+            
+          } catch (error) {
+            console.error(`❌ Erro ao processar episódio ${episode.mal_id}:`, error);
+            errors++;
+          }
+        }
+        
+        console.log(`✅ Anime ${titleEnglish} completo - ${episodes.length} episódios processados`);
+        
+      } catch (error) {
+        console.error(`❌ Erro ao processar anime ${anime.anime_id}:`, error);
+        errors++;
+      }
+    }
+    
+    console.log(`\n📊 RESUMO DO SYNC EPISODES ONLY ${season.toUpperCase()} ${year}:`);
+    console.log(`   Animes processados: ${totalAnimes}`);
+    console.log(`   Episódios encontrados: ${totalEpisodes}`);
+    console.log(`   ✅ Episódios inseridos: ${insertedEpisodes}`);
+    console.log(`   🔄 Episódios atualizados: ${updatedEpisodes}`);
+    console.log(`   ❌ Erros: ${errors}`);
+    
+    return {
+      success: true,
+      totalAnimes,
+      totalEpisodes,
+      insertedEpisodes,
+      updatedEpisodes,
+      errors,
+    };
+    
+  } catch (error) {
+    console.error(`❌ Erro geral no sync episodes only ${season} ${year}:`, error);
+    throw error;
+  }
+}
+
+// ============================================
 // MAIN ENDPOINT
 // ============================================
 // Root endpoint - shows usage
@@ -420,7 +612,6 @@ app.post("/sync-past-anime-data", async (c) => {
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
       message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
@@ -469,7 +660,6 @@ app.post("/", async (c) => {
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
       message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
@@ -528,7 +718,6 @@ app.get("/:season/:year", async (c) => {
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
       message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
@@ -587,7 +776,6 @@ app.post("/:season/:year", async (c) => {
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
       message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
@@ -646,7 +834,6 @@ app.post("/sync-past-anime-data/:season/:year", async (c) => {
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
       message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
@@ -675,6 +862,7 @@ app.get("/sync-past-anime-data/:season/:year", async (c) => {
     
     const season = c.req.param('season');
     const year = parseInt(c.req.param('year'));
+    const mode = c.req.query('mode') || 'full'; // 'full' or 'episodes'
     
     if (!season || !year || isNaN(year)) {
       return c.json({
@@ -695,19 +883,29 @@ app.get("/sync-past-anime-data/:season/:year", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`🚀 Iniciando sync de temporada passada: ${season} ${year}...`);
+    let result;
     
-    const result = await syncPastSeasons(supabase, season, year);
+    if (mode === 'episodes') {
+      // ✅ EPISODES ONLY MODE: Busca animes de season_rankings e popula apenas weekly_episodes
+      console.log(`🎬 MODE: EPISODES ONLY - Buscando de season_rankings`);
+      result = await syncEpisodesOnly(supabase, season, year);
+    } else {
+      // ✅ FULL MODE: Busca animes do Jikan e popula tudo
+      console.log(`🚀 MODE: FULL - Buscando do Jikan API`);
+      result = await syncPastSeasons(supabase, season, year);
+    }
 
     return c.json({
       success: result.success,
+      mode: mode,
       totalAnimes: result.totalAnimes,
       totalEpisodes: result.totalEpisodes,
       insertedEpisodes: result.insertedEpisodes,
       updatedEpisodes: result.updatedEpisodes,
-      skippedEpisodes: result.skippedEpisodes,
       errors: result.errors,
-      message: `Sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
+      message: mode === 'episodes' 
+        ? `Episodes only sync completed: ${result.insertedEpisodes} episodes inserted from ${result.totalAnimes} animes` 
+        : `Full sync completed: ${result.totalAnimes} animes, ${result.insertedEpisodes} episodes inserted`
     });
 
   } catch (error) {

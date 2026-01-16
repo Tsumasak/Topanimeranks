@@ -155,43 +155,87 @@ export default function AdminSyncPage() {
     setSyncing(prev => ({ ...prev, [key]: true }));
     
     addLog(`🎬 Populating weekly_episodes for ${season} ${year}...`, 'info');
-    addLog('⏳ Calling insert-weekly-episodes edge function...', 'warning');
     
     try {
-      // Call insert-weekly-episodes edge function directly
-      // It will auto-detect the current week based on today's date
-      const url = `https://${projectId}.supabase.co/functions/v1/insert-weekly-episodes`;
+      // ✅ FIXED: Use sync-past-anime-data for past years (2023, 2024)
+      // Use insert-weekly-episodes only for current season (Winter 2026)
+      const currentYear = 2026;
+      const currentSeason = 'winter';
       
-      addLog('📡 Calling insert-weekly-episodes...', 'info');
+      const isPastData = year < currentYear || (year === currentYear && season !== currentSeason);
       
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          // Empty body - function will auto-detect current week
-        })
-      });
-      
-      const contentType = response.headers.get('content-type');
-      addLog(`Response status: ${response.status}`, 'info');
-      
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        addLog(`❌ Response is not JSON. First 200 chars: ${text.substring(0, 200)}`, 'error');
-        return;
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        addLog(`✅ SUCCESS: Weekly episodes inserted!`, 'success');
-        addLog(`📊 Total Inserted: ${data.totalItemsCreated || 0}`, 'success');
-        addLog(`📅 Weeks Processed: ${data.weeksProcessed?.join(', ') || 'None'}`, 'info');
+      if (isPastData) {
+        // Use sync-past-anime-data for historical data
+        addLog(`📜 Using sync-past-anime-data for historical data (${season} ${year})...`, 'warning');
+        
+        const url = `https://${projectId}.supabase.co/functions/v1/sync-past-anime-data/${season}/${year}?key=sync2025&mode=episodes`;
+        
+        addLog(`📡 Calling sync-past-anime-data with mode=episodes...`, 'info');
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const contentType = response.headers.get('content-type');
+        addLog(`Response status: ${response.status}`, 'info');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          addLog(`❌ Response is not JSON. First 200 chars: ${text.substring(0, 200)}`, 'error');
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addLog(`✅ SUCCESS: Episodes synced for ${season} ${year}!`, 'success');
+          addLog(`📊 Animes Processed: ${data.animesProcessed || 0}`, 'success');
+          addLog(`📊 Episodes Inserted: ${data.episodesInserted || 0}`, 'success');
+          addLog(`📊 Episodes Updated: ${data.episodesUpdated || 0}`, 'success');
+        } else {
+          addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+        }
       } else {
-        addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+        // Use insert-weekly-episodes for current season only
+        addLog(`⏳ Calling insert-weekly-episodes for current season...`, 'warning');
+        
+        const url = `https://${projectId}.supabase.co/functions/v1/insert-weekly-episodes`;
+        
+        addLog('📡 Calling insert-weekly-episodes...', 'info');
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            // Empty body - function will auto-detect current week
+          })
+        });
+        
+        const contentType = response.headers.get('content-type');
+        addLog(`Response status: ${response.status}`, 'info');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          addLog(`❌ Response is not JSON. First 200 chars: ${text.substring(0, 200)}`, 'error');
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addLog(`✅ SUCCESS: Weekly episodes inserted!`, 'success');
+          addLog(`📊 Total Inserted: ${data.totalItemsCreated || 0}`, 'success');
+          addLog(`📅 Weeks Processed: ${data.weeksProcessed?.join(', ') || 'None'}`, 'info');
+        } else {
+          addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+        }
       }
       
     } catch (error) {

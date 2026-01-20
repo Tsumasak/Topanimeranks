@@ -268,7 +268,8 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                             </>
                           );
                         })()}
-                        {dynamicRank && (
+                        {/* ✅ FIXED: Only show rank/trend if episode has a score */}
+                        {dynamicRank && episode.episode_score !== null && (
                           <>
                             <span>•</span>
                             <span className="flex items-center gap-1">

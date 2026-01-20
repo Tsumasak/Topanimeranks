@@ -1125,8 +1125,9 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     const { data: seasonData, error: seasonError } = await supabase
       .from('season_rankings')
       .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, anime_score, type') // ✅ FIXED: Changed 'score' to 'anime_score'
+      .or(`title.ilike.%${query}%,title_english.ilike.%${query}%,season.ilike.%${query}%`) // ✅ ADDED: Filter by query directly in SQL
       .order('members', { ascending: false, nullsFirst: false })
-      .limit(200);
+      .limit(500); // ✅ INCREASED: From 200 to 500 to catch more results
 
     if (!seasonError && seasonData) {
       const filteredSeason = seasonData

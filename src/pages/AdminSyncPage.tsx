@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface LogEntry {
@@ -18,6 +18,14 @@ export default function AdminSyncPage() {
     }
     return false;
   });
+
+  // Ref for logs container to enable auto-scroll
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new logs are added
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   // Detect theme changes
   useEffect(() => {
@@ -424,6 +432,7 @@ export default function AdminSyncPage() {
               [{log.timestamp}] {log.message}
             </div>
           ))}
+          <div ref={logsEndRef} />
         </div>
       </div>
     </div>

@@ -147,6 +147,22 @@ function calculateWeekDates(season: string, year: number, weekNumber: number): {
   };
 }
 
+// Helper: Determine season and year from a given date
+function getSeasonFromDate(date: Date): { name: string; year: number } {
+  const month = date.getMonth() + 1; // Months are 0-indexed
+  const year = date.getFullYear();
+
+  if (month >= 1 && month <= 3) {
+    return { name: 'winter', year };
+  } else if (month >= 4 && month <= 6) {
+    return { name: 'spring', year };
+  } else if (month >= 7 && month <= 9) {
+    return { name: 'summer', year };
+  } else {
+    return { name: 'fall', year };
+  }
+}
+
 async function syncPastSeasons(supabase: any, season: string, year: number) {
   console.log(`🚀 Iniciando sync PAST SEASON: ${season} ${year}...`);
   
@@ -237,11 +253,20 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
           // Processar cada episódio
           for (const episode of episodes) {
             try {
-              // Calcular week_number baseado na data de airing
-              const weekNumber = calculateWeekNumber(season, year, episode.aired);
-              const { week_start_date, week_end_date } = calculateWeekDates(season, year, weekNumber);
+              // ✅ FIXED: Calculate season/year from aired_at for EACH episode
+              if (!episode.aired) {
+                console.log(`   ⏭️ Skipping episode ${episode.mal_id} - no aired date`);
+                continue;
+              }
               
-              console.log(`   📅 Episódio ${episode.mal_id}: aired ${episode.aired || 'N/A'} → week ${weekNumber} (${week_start_date} - ${week_end_date})`);
+              const airedDate = new Date(episode.aired);
+              const episodeSeasonInfo = getSeasonFromDate(airedDate);
+              const episodeSeason = episodeSeasonInfo.name;
+              const episodeYear = episodeSeasonInfo.year;
+              const weekNumber = calculateWeekNumber(episodeSeason, episodeYear, episode.aired);
+              const { week_start_date, week_end_date } = calculateWeekDates(episodeSeason, episodeYear, weekNumber);
+              
+              console.log(`   📅 Episódio ${episode.mal_id}: aired ${episode.aired} → ${episodeSeason} ${episodeYear} week ${weekNumber} (${week_start_date} - ${week_end_date})`);
               
               // Preparar dados do episódio (usando nomes corretos das colunas)
               const episodeData = {
@@ -258,8 +283,8 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 type: anime.type,
                 status: anime.status || 'Airing',
                 // Season e Year para filtrar
-                season: season.toLowerCase(),
-                year: year,
+                season: episodeSeason.toLowerCase(),
+                year: episodeYear,
                 // Colunas singulares (para compatibilidade) - Salvar como JSONB
                 demographic: anime.demographics && anime.demographics.length > 0 ? anime.demographics : [],
                 genre: anime.genres && anime.genres.length > 0 ? anime.genres : [],
@@ -278,8 +303,8 @@ async function syncPastSeasons(supabase: any, season: string, year: number) {
                 .eq('anime_id', anime.mal_id)
                 .eq('episode_number', episode.mal_id)
                 .eq('week_number', weekNumber)
-                .eq('season', season.toLowerCase())
-                .eq('year', year)
+                .eq('season', episodeSeason.toLowerCase())
+                .eq('year', episodeYear)
                 .maybeSingle();
               
               let upsertError;

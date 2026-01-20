@@ -57,6 +57,13 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
   };
 
   const calculateRank = (episode: Episode): number | null => {
+    // ✅ FIXED: Use position_in_week from database instead of recalculating
+    // The database already has the correct rank calculated
+    if (episode.position_in_week && episode.position_in_week > 0) {
+      return episode.position_in_week;
+    }
+    
+    // Fallback: Calculate from weeklyData if position_in_week is not set
     if (!weeklyData || !episode.week_number) return null;
     
     const weekEpisodes = weeklyData[episode.week_number];

@@ -449,15 +449,15 @@ async function syncEpisodesOnly(supabase: any, season: string, year: number) {
             const episodeData = {
               anime_id: anime.anime_id,
               anime_title_english: anime.title_english || anime.title,
-              anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-              from_url: anime.url || `https://myanimelist.net/anime/${anime.anime_id}`,
+              anime_image_url: anime.image_url || '',
+              from_url: `https://myanimelist.net/anime/${anime.anime_id}`,
               episode_number: episode.mal_id, // Using MAL episode ID as episode number
               episode_name: episode.title || `Episode ${episode.mal_id}`,
               episode_score: episode.score ? String(episode.score) : null, // Converter para string
               week_number: weekNumber,
               position_in_week: 0, // Will be calculated later if needed
               is_manual: false,
-              type: anime.type,
+              type: anime.type || 'TV',
               status: anime.status || 'Airing',
               // Season e Year para filtrar
               season: season.toLowerCase(),

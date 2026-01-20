@@ -42,11 +42,11 @@ export default function AdminSyncPage() {
     setSyncing(prev => ({ ...prev, [season]: true }));
     
     addLog(`Starting sync for ${season} ${year}...`, 'info');
-    addLog('⚡ Fetching directly from Jikan API (3 pages max to avoid timeout)...', 'info');
+    addLog('⚡ Fetching directly from Jikan API (10 pages max)...', 'info');
     
     try {
       const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
-      const MAX_PAGES = 3; // ✅ Apenas 3 páginas para evitar timeout
+      const MAX_PAGES = 10; // ✅ Aumentado de 3 para 10 páginas (250 animes)
       
       // Fetch animes from Jikan API
       let allAnimes: any[] = [];

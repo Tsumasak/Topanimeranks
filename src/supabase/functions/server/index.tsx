@@ -1013,6 +1013,19 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
 
     console.log(`[Search] Query: "${query}", Limit: ${limit}`);
 
+    // ✅ NEW: Detect "Season Year" pattern (e.g., "winter 2026", "spring 2023")
+    const seasonYearPattern = /^(winter|spring|summer|fall)\s+(\d{4})$/i;
+    const match = query.match(seasonYearPattern);
+    
+    let filterSeason: string | null = null;
+    let filterYear: number | null = null;
+    
+    if (match) {
+      filterSeason = match[1].toLowerCase();
+      filterYear = parseInt(match[2]);
+      console.log(`[Search] Detected Season + Year filter: ${filterSeason} ${filterYear}`);
+    }
+
     // Helper function to extract tag names from JSONB array
     const extractTags = (jsonbArray: any[]): string[] => {
       if (!Array.isArray(jsonbArray)) return [];
@@ -1122,10 +1135,25 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     // ============================================
     // 2. Search in SEASON_RANKINGS
     // ============================================
-    const { data: seasonData, error: seasonError } = await supabase
+    
+    // ✅ Build query with season+year filter if detected
+    let seasonRankingsQuery = supabase
       .from('season_rankings')
-      .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, anime_score, type') // ✅ FIXED: Changed 'score' to 'anime_score'
-      .or(`title.ilike.%${query}%,title_english.ilike.%${query}%,season.ilike.%${query}%`) // ✅ ADDED: Filter by query directly in SQL
+      .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, anime_score, type');
+
+    if (filterSeason && filterYear) {
+      // ✅ Exact match for season AND year
+      seasonRankingsQuery = seasonRankingsQuery
+        .ilike('season', filterSeason)
+        .eq('year', filterYear);
+      console.log(`[Search] Applying filter: season=${filterSeason}, year=${filterYear}`);
+    } else {
+      // Normal search - filter by title or season
+      seasonRankingsQuery = seasonRankingsQuery
+        .or(`title.ilike.%${query}%,title_english.ilike.%${query}%,season.ilike.%${query}%`);
+    }
+
+    const { data: seasonData, error: seasonError } = await seasonRankingsQuery
       .order('members', { ascending: false, nullsFirst: false })
       .limit(500); // ✅ INCREASED: From 200 to 500 to catch more results
 
@@ -1133,14 +1161,17 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
       const filteredSeason = seasonData
         .map(anime => ({
           ...anime,
-          relevance: calculateRelevance(
-            anime.title,
-            anime.title_english,
-            anime.season,
-            anime.genres || [],
-            anime.themes || [],
-            anime.demographics || []
-          )
+          // ✅ FIXED: If season+year filter is active, give all results high relevance
+          relevance: filterSeason && filterYear 
+            ? 1000 // High relevance for exact season+year matches
+            : calculateRelevance(
+                anime.title,
+                anime.title_english,
+                anime.season,
+                anime.genres || [],
+                anime.themes || [],
+                anime.demographics || []
+              )
         }))
         .filter(anime => anime.relevance > 0)
         .map(anime => ({

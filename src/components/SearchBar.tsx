@@ -124,6 +124,16 @@ export function SearchBar({ isMobile = false, onClose }: SearchBarProps) {
     inputRef.current?.focus();
   };
 
+  // ✅ NEW: Handle ENTER key press
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && query.length >= 3) {
+      // Navigate to search results page
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+      setIsOpen(false);
+      if (onClose) onClose();
+    }
+  };
+
   // Get season tag class (same as AnimeInfo)
   const getSeasonClass = (season: string) => {
     const seasonLower = season?.toLowerCase();
@@ -150,6 +160,7 @@ export function SearchBar({ isMobile = false, onClose }: SearchBarProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Search anime by name, season, or tags..."
           className="w-full pl-10 pr-10 py-2.5 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all"
         />

@@ -51,6 +51,26 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
   }
 }
 
+// Helper: Fetch anime pictures from Jikan
+async function fetchAnimePictures(animeId: number): Promise<any[]> {
+  try {
+    console.log(`🖼️ Fetching pictures for anime ${animeId}...`);
+    const picturesUrl = `${JIKAN_BASE_URL}/anime/${animeId}/pictures`;
+    const picturesData = await fetchWithRetry(picturesUrl);
+    
+    if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
+      console.log(`✅ Found ${picturesData.data.length} pictures for anime ${animeId}`);
+      return picturesData.data;
+    }
+    
+    console.log(`⚠️ No pictures found for anime ${animeId}`);
+    return [];
+  } catch (error) {
+    console.error(`❌ Error fetching pictures for anime ${animeId}:`, error);
+    return [];
+  }
+}
+
 // ============================================
 // SYNC WEEKLY EPISODES
 // ============================================
@@ -611,6 +631,10 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`\n💾 Upserting ${animesToSaveInSeasonRankings.size} animes to season_rankings...`);
     
     for (const [animeId, anime] of animesToSaveInSeasonRankings) {
+      // 🖼️ Fetch pictures from Jikan API
+      const pictures = await fetchAnimePictures(anime.mal_id);
+      await delay(RATE_LIMIT_DELAY); // Rate limit after pictures fetch
+      
       const seasonAnime = {
         anime_id: anime.mal_id,
         title: anime.title,
@@ -635,6 +659,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         themes: anime.themes || [],
         studios: anime.studios || [],
         synopsis: anime.synopsis,
+        pictures: pictures, // 🖼️ Add pictures array
         season: 'winter', // ✅ FIXED: winter 2026
         year: 2026, // ✅ FIXED: 2026
       };

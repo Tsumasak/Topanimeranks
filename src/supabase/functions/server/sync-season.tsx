@@ -48,6 +48,41 @@ interface JikanAnime {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Helper: Fetch anime pictures from Jikan
+async function fetchAnimePictures(animeId: number): Promise<any[]> {
+  try {
+    console.log(`🖼️ Fetching pictures for anime ${animeId}...`);
+    const picturesUrl = `https://api.jikan.moe/v4/anime/${animeId}/pictures`;
+    
+    await sleep(333); // Rate limit
+    const picturesResponse = await fetch(picturesUrl);
+    
+    if (!picturesResponse.ok) {
+      console.error(`❌ Error fetching pictures for anime ${animeId}: ${picturesResponse.status}`);
+      return [];
+    }
+    
+    const contentType = picturesResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error(`❌ Pictures response is not JSON for anime ${animeId}`);
+      return [];
+    }
+    
+    const picturesData = await picturesResponse.json();
+    
+    if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
+      console.log(`✅ Found ${picturesData.data.length} pictures for anime ${animeId}`);
+      return picturesData.data;
+    }
+    
+    console.log(`⚠️ No pictures found for anime ${animeId}`);
+    return [];
+  } catch (error) {
+    console.error(`❌ Error fetching pictures for anime ${animeId}:`, error);
+    return [];
+  }
+}
+
 export async function syncSeason(supabase: any, season: string, year: number) {
   console.log(`🚀 Iniciando sync SEASON ${season} ${year}...`);
   
@@ -116,6 +151,9 @@ export async function syncSeason(supabase: any, season: string, year: number) {
           // ✅ Adicionar MAL ID à lista de IDs válidos
           validMalIds.add(anime.mal_id);
           
+          // 🖼️ Fetch pictures from Jikan API
+          const pictures = await fetchAnimePictures(anime.mal_id);
+          
           // Preparar dados para inserção
           const animeData = {
             anime_id: anime.mal_id,
@@ -128,6 +166,7 @@ export async function syncSeason(supabase: any, season: string, year: number) {
             favorites: anime.favorites,
             popularity: anime.popularity,
             rank: anime.rank,
+            pictures: pictures, // 🖼️ Add pictures array
             type: anime.type || 'TV',
             status: anime.status || 'Not yet aired',
             rating: anime.rating,

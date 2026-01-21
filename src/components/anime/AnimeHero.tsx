@@ -11,6 +11,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../ui/carousel";
 
 interface AnimeHeroProps {
   anime: any;
@@ -18,6 +25,15 @@ interface AnimeHeroProps {
 
 export function AnimeHero({ anime }: AnimeHeroProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Get all available pictures (including main image)
+  const allPictures = anime.pictures && Array.isArray(anime.pictures) && anime.pictures.length > 0
+    ? anime.pictures.map((pic: any) => ({
+        large: pic.jpg?.large_image_url || pic.webp?.large_image_url || pic.jpg?.image_url || pic.webp?.image_url,
+        small: pic.jpg?.small_image_url || pic.webp?.small_image_url || pic.jpg?.image_url || pic.webp?.image_url,
+      }))
+    : [{ large: anime.image_url, small: anime.image_url }];
 
   const handleShare = async () => {
     const shareData = {
@@ -367,17 +383,66 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           }}
           onClick={() => setLightboxOpen(false)}
         >
-          {/* Image */}
-          <div style={{ animation: "zoomIn 0.3s ease-in-out" }}>
+          {/* Main Image */}
+          <div 
+            className="flex flex-col items-center gap-4 max-w-[90vw]"
+            style={{ animation: "zoomIn 0.3s ease-in-out" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
-              src={anime.image_url}
+              src={allPictures[selectedImageIndex].large}
               alt={anime.title_english || anime.title}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
             />
+
+            {/* Thumbnail Carousel - Only show if there are multiple images */}
+            {allPictures.length > 1 && (
+              <div className="w-full max-w-[600px]">
+                <Carousel
+                  opts={{
+                    align: "start",
+                    loop: false,
+                  }}
+                  className="w-full"
+                >
+                  <CarouselContent className="-ml-2 md:-ml-4">
+                    {allPictures.map((pic, index) => (
+                      <CarouselItem 
+                        key={index} 
+                        className="pl-2 md:pl-4 basis-1/3 md:basis-1/5"
+                      >
+                        <div
+                          className={`cursor-pointer rounded-md overflow-hidden border-2 transition-all ${
+                            index === selectedImageIndex
+                              ? "border-white opacity-100 scale-105"
+                              : "border-white/20 opacity-60 hover:opacity-90"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedImageIndex(index);
+                          }}
+                        >
+                          <img
+                            src={pic.small}
+                            alt={`${anime.title_english || anime.title} - ${index + 1}`}
+                            className="w-full h-[100px] object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious 
+                    className="bg-white/10 hover:bg-white/20 border-white/20 text-white -left-4"
+                  />
+                  <CarouselNext 
+                    className="bg-white/10 hover:bg-white/20 border-white/20 text-white -right-4"
+                  />
+                </Carousel>
+              </div>
+            )}
           </div>
 
-          {/* Close Button - Below Image */}
+          {/* Close Button - Below Everything */}
           <button
             onClick={() => setLightboxOpen(false)}
             className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"

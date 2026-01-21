@@ -165,15 +165,34 @@ export default function AdminSyncPage() {
       let picturesFetched = 0;
       let picturesSkipped = 0;
       
-      // Process in batches of 3 to respect rate limit (3 req/sec)
-      const PICTURES_BATCH_SIZE = 3;
+      // Helper: Fetch with retry on 429
+      const fetchWithRetry = async (url: string, maxRetries = 3): Promise<Response> => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          const response = await fetch(url);
+          
+          if (response.status === 429) {
+            const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000); // Exponential backoff: 2s, 4s, 8s
+            console.warn(`⏳ Rate limit hit for ${url}. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+          
+          return response;
+        }
+        
+        // Final attempt after all retries
+        return await fetch(url);
+      };
+      
+      // Process in batches of 2 to respect rate limit (more conservative)
+      const PICTURES_BATCH_SIZE = 2; // Reduced from 3 to 2
       for (let i = 0; i < uniqueAnimes.length; i += PICTURES_BATCH_SIZE) {
         const batch = uniqueAnimes.slice(i, i + PICTURES_BATCH_SIZE);
         
         const promises = batch.map(async (anime) => {
           try {
             const picturesUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/pictures`;
-            const picturesResponse = await fetch(picturesUrl);
+            const picturesResponse = await fetchWithRetry(picturesUrl);
             
             if (!picturesResponse.ok) {
               console.error(`❌ Failed to fetch pictures for ${anime.mal_id}: ${picturesResponse.status}`);
@@ -241,9 +260,9 @@ export default function AdminSyncPage() {
           addLog(`📸 Progress: ${Math.min(i + PICTURES_BATCH_SIZE, uniqueAnimes.length)}/${uniqueAnimes.length} animes (${picturesFetched} with pictures)`, 'info');
         }
         
-        // Rate limiting: Wait 1 second between batches
+        // Rate limiting: Wait 1.5s between batches (more conservative)
         if (i + PICTURES_BATCH_SIZE < uniqueAnimes.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
       
@@ -371,10 +390,10 @@ export default function AdminSyncPage() {
       
       await syncSeason(season, year);
       
-      // Delay between seasons to avoid rate limiting
+      // Delay between seasons to avoid rate limiting (5 seconds)
       if (season !== 'fall') {
-        addLog(`⏳ Waiting 2 seconds before next season...`, 'warning');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        addLog(`⏳ Waiting 5 seconds before next season...`, 'warning');
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
     

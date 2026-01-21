@@ -176,7 +176,8 @@ export default function AdminSyncPage() {
             const picturesResponse = await fetch(picturesUrl);
             
             if (!picturesResponse.ok) {
-              return { success: false };
+              console.error(`❌ Failed to fetch pictures for ${anime.mal_id}: ${picturesResponse.status}`);
+              return { success: false, anime_id: anime.mal_id, error: `HTTP ${picturesResponse.status}` };
             }
             
             const picturesData = await picturesResponse.json();
@@ -187,9 +188,14 @@ export default function AdminSyncPage() {
                 webp: p.webp,
               }));
               
+              if (pictures.length === 0) {
+                console.warn(`⚠️ Anime ${anime.mal_id} has empty pictures array`);
+                return { success: false, anime_id: anime.mal_id, error: 'Empty pictures' };
+              }
+              
               // Update via backend
               const updateUrl = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/update-anime-pictures`;
-              await fetch(updateUrl, {
+              const updateResponse = await fetch(updateUrl, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${publicAnonKey}`,
@@ -203,11 +209,27 @@ export default function AdminSyncPage() {
                 })
               });
               
-              return { success: true };
+              if (!updateResponse.ok) {
+                const errorData = await updateResponse.json();
+                console.error(`❌ Failed to update pictures for ${anime.mal_id}:`, errorData);
+                return { success: false, anime_id: anime.mal_id, error: errorData.error || 'Update failed' };
+              }
+              
+              const updateData = await updateResponse.json();
+              if (!updateData.success) {
+                console.error(`❌ Backend returned error for ${anime.mal_id}:`, updateData);
+                return { success: false, anime_id: anime.mal_id, error: updateData.error };
+              }
+              
+              console.log(`✅ Pictures saved for ${anime.mal_id}: ${pictures.length} images`);
+              return { success: true, anime_id: anime.mal_id };
             }
-            return { success: false };
+            
+            console.warn(`⚠️ No pictures data for ${anime.mal_id}`);
+            return { success: false, anime_id: anime.mal_id, error: 'No pictures data' };
           } catch (error) {
-            return { success: false };
+            console.error(`❌ Exception fetching pictures for ${anime.mal_id}:`, error);
+            return { success: false, anime_id: anime.mal_id, error: error instanceof Error ? error.message : 'Unknown error' };
           }
         });
         

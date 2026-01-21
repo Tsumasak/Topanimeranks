@@ -912,6 +912,11 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
               webp: p.webp,
             }));
             
+            if (pictures.length === 0) {
+              console.warn(`⚠️ Anime ${anime.mal_id} has empty pictures array`);
+              return { success: false, anime_id: anime.mal_id, error: 'Empty pictures' };
+            }
+            
             // Update the anime with pictures
             const { error } = await supabase
               .from('season_rankings')
@@ -921,16 +926,19 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
               .eq('year', year);
             
             if (!error) {
-              return { success: true };
+              console.log(`✅ Pictures saved for ${anime.mal_id}: ${pictures.length} images`);
+              return { success: true, anime_id: anime.mal_id };
             } else {
               console.error(`❌ Error updating pictures for ${anime.mal_id}:`, error);
-              return { success: false };
+              return { success: false, anime_id: anime.mal_id, error: error.message };
             }
           }
-          return { success: false };
+          
+          console.warn(`⚠️ No pictures data for ${anime.mal_id}`);
+          return { success: false, anime_id: anime.mal_id, error: 'No pictures data' };
         } catch (error) {
           console.error(`⚠️ Failed to fetch pictures for ${anime.mal_id}:`, error);
-          return { success: false };
+          return { success: false, anime_id: anime.mal_id, error: error instanceof Error ? error.message : 'Unknown error' };
         }
       });
       

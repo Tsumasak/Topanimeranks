@@ -795,18 +795,19 @@ export function HomeNewPage() {
             >
               <Link
                 to={heroBanner?.buttonLink || "/ranks"}
-                className="group relative px-6 py-3 rounded-xl overflow-hidden transition-all duration-300"
+                className="group relative px-6 py-3 rounded-xl transition-all duration-300"
                 style={{
                   backgroundColor: 'var(--rank-background)',
                   color: 'var(--rank-text)',
+                  overflow: 'visible',
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                 <span className="relative flex items-center gap-2 font-semibold text-sm">
                   {heroBanner?.buttonText || "View Weekly Rankings"}
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
                 </span>
               </Link>
             </motion.div>

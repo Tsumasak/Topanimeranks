@@ -443,16 +443,20 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
             backgroundColor: "rgba(0, 0, 0, 0.9)",
             animation: "fadeIn 0.3s ease-in-out"
           }}
-          onClick={() => setLightboxOpen(false)}
+          onClick={(e) => {
+            // Fecha apenas se clicar no backdrop (não no conteúdo)
+            if (e.target === e.currentTarget) {
+              setLightboxOpen(false);
+            }
+          }}
         >
           {/* Main Image Container with Navigation Arrows */}
           <div 
-            className="flex flex-col items-center gap-4 max-w-[90vw] w-full"
+            className="flex flex-col items-center gap-4 max-w-[90vw]"
             style={{ animation: "zoomIn 0.3s ease-in-out" }}
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Image with arrows overlay (mobile only) */}
-            <div className="relative w-full flex items-center justify-center">
+            <div className="relative flex items-center justify-center">
               {/* Mobile Navigation Arrows - Inside image on mobile */}
               {allPictures.length > 1 && (
                 <>
@@ -509,11 +513,20 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                         className="pl-2 basis-[80px] md:basis-[100px]"
                       >
                         <div
-                          className={`cursor-pointer rounded-lg overflow-hidden transition-all ${
-                            index === selectedImageIndex
-                              ? "ring-4 ring-[#fbbf24] opacity-100"
-                              : "ring-2 ring-white/20 opacity-60 hover:opacity-90"
-                          }`}
+                          className={`cursor-pointer rounded-lg overflow-hidden transition-all relative`}
+                          style={{
+                            opacity: index === selectedImageIndex ? 1 : 0.6,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (index !== selectedImageIndex) {
+                              e.currentTarget.style.opacity = "0.9";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (index !== selectedImageIndex) {
+                              e.currentTarget.style.opacity = "0.6";
+                            }
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedImageIndex(index);
@@ -523,6 +536,15 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                             src={pic.small}
                             alt={`${anime.title_english || anime.title} - ${index + 1}`}
                             className="w-full aspect-square object-cover"
+                          />
+                          {/* Stroke overlay - por cima da imagem */}
+                          <div 
+                            className="absolute inset-0 pointer-events-none rounded-lg"
+                            style={{
+                              boxShadow: index === selectedImageIndex
+                                ? "inset 0 0 0 4px #fbbf24" // Stroke amarela INSET (por dentro)
+                                : "inset 0 0 0 2px rgba(255, 255, 255, 0.2)", // Stroke branca INSET
+                            }}
                           />
                         </div>
                       </CarouselItem>

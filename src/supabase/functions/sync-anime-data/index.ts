@@ -786,8 +786,30 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
 
     console.log(`✅ After filtering (5k+ members): ${animes.length} animes for ${season} ${year}`);
 
+    // ✅ DEBUG: Log first anime to verify image_url structure
+    if (animes.length > 0) {
+      const firstAnime = animes[0];
+      console.log(`🔍 DEBUG - First anime structure:`, {
+        mal_id: firstAnime.mal_id,
+        title: firstAnime.title,
+        has_images: !!firstAnime.images,
+        has_jpg: !!firstAnime.images?.jpg,
+        large_image_url: firstAnime.images?.jpg?.large_image_url,
+        image_url_full: firstAnime.images?.jpg?.image_url,
+      });
+    }
+    
+    // ✅ CRITICAL FIX: Remove duplicates before upsert (Jikan API sometimes returns duplicates)
+    const uniqueAnimes = Array.from(
+      new Map(animes.map(anime => [anime.mal_id, anime])).values()
+    );
+    
+    if (uniqueAnimes.length < animes.length) {
+      console.log(`⚠️ Removed ${animes.length - uniqueAnimes.length} duplicate animes`);
+    }
+
     // ✅ OPTIMIZATION: Get existing anime_ids BEFORE batch upsert to detect new vs updated
-    const animeIds = animes.map(a => a.mal_id);
+    const animeIds = uniqueAnimes.map(a => a.mal_id);
     const { data: existingAnimes } = await supabase
       .from('season_rankings')
       .select('anime_id')
@@ -799,7 +821,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     console.log(`📊 Found ${existingIds.size} existing animes, ${animes.length - existingIds.size} new animes`);
 
     // ✅ OPTIMIZATION: Prepare all data for batch upsert
-    const seasonAnimes = animes.map(anime => ({
+    const seasonAnimes = uniqueAnimes.map(anime => ({
       anime_id: anime.mal_id,
       title: anime.title,
       title_english: anime.title_english,
@@ -846,10 +868,27 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
     }
 
     // Calculate created vs updated based on existing IDs
-    itemsCreated = animes.filter(a => !existingIds.has(a.mal_id)).length;
-    itemsUpdated = animes.filter(a => existingIds.has(a.mal_id)).length;
+    itemsCreated = uniqueAnimes.filter(a => !existingIds.has(a.mal_id)).length;
+    itemsUpdated = uniqueAnimes.filter(a => existingIds.has(a.mal_id)).length;
     
     console.log(`✅ Batch upsert complete: ${itemsCreated} created, ${itemsUpdated} updated`);
+    
+    // ✅ DEBUG: Verify images were saved by checking a few records
+    const { data: sampleRecords } = await supabase
+      .from('season_rankings')
+      .select('anime_id, title, image_url')
+      .eq('season', season)
+      .eq('year', year)
+      .limit(3);
+    
+    if (sampleRecords) {
+      console.log(`🔍 DEBUG - Sample records after upsert:`, sampleRecords.map(r => ({
+        anime_id: r.anime_id,
+        title: r.title,
+        has_image_url: !!r.image_url,
+        image_url_preview: r.image_url?.substring(0, 50) + '...',
+      })));
+    }
 
     const duration = Date.now() - startTime;
 
@@ -858,7 +897,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
       status: 'success',
       season: season,
       year: year,
-      items_synced: animes.length,
+      items_synced: uniqueAnimes.length,
       items_created: itemsCreated,
       items_updated: itemsUpdated,
       duration_ms: duration,

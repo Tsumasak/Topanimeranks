@@ -29,16 +29,19 @@ BEGIN
   RAISE NOTICE '🔄 Starting rankings recalculation by season/year/week...';
   
   -- Loop através de cada combinação única de season + year
+  -- ✅ FIXED: Include CASE in SELECT for DISTINCT to work with ORDER BY
   FOR season_rec IN 
-    SELECT DISTINCT season, year 
-    FROM weekly_episodes 
-    ORDER BY year DESC, 
+    SELECT DISTINCT 
+      season, 
+      year,
       CASE season
         WHEN 'winter' THEN 1
         WHEN 'spring' THEN 2
         WHEN 'summer' THEN 3
         WHEN 'fall' THEN 4
-      END DESC
+      END as season_order
+    FROM weekly_episodes 
+    ORDER BY year DESC, season_order DESC
   LOOP
     RAISE NOTICE '📅 Processing: % %', season_rec.season, season_rec.year;
     

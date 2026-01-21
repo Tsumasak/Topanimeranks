@@ -94,8 +94,17 @@ export default function AdminSyncPage() {
         return;
       }
       
+      // ✅ CRITICAL FIX: Remove duplicates before sending to backend
+      const uniqueAnimes = Array.from(
+        new Map(filtered.map(anime => [anime.mal_id, anime])).values()
+      );
+      
+      if (uniqueAnimes.length < filtered.length) {
+        addLog(`⚠️ Removed ${filtered.length - uniqueAnimes.length} duplicate animes`, 'warning');
+      }
+      
       // Prepare data for Supabase
-      const seasonAnimes = filtered.map(anime => ({
+      const seasonAnimes = uniqueAnimes.map(anime => ({
         anime_id: anime.mal_id,
         title: anime.title,
         title_english: anime.title_english,

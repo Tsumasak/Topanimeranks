@@ -274,6 +274,55 @@ const { data } = await supabase
      -H "Authorization: Bearer [ANON_KEY]"
    ```
 
+## 🖼️ Troubleshooting: Imagens Ausentes
+
+### Sintomas:
+- ❌ Imagens não aparecem após rodar sync
+- ❌ Lightbox não mostra imagens
+- ❌ Cards aparecem sem poster
+
+### Verificar:
+
+1. **Execute o script de verificação de imagens:**
+   ```sql
+   -- No Supabase SQL Editor, execute:
+   -- /supabase/CHECK_IMAGES.sql
+   ```
+
+2. **Verifique os logs da função de sync:**
+   ```bash
+   supabase functions logs sync-anime-data --tail
+   ```
+
+   Procure por:
+   ```
+   🔍 DEBUG - First anime structure:
+   {
+     mal_id: 52991,
+     title: "Frieren",
+     has_images: true,
+     has_jpg: true,
+     large_image_url: "https://cdn.myanimelist.net/...",
+   }
+   ```
+
+3. **Verifique se as imagens foram salvas:**
+   ```sql
+   SELECT anime_id, title, image_url
+   FROM season_rankings
+   WHERE season = 'winter' AND year = 2026
+   LIMIT 5;
+   ```
+
+   **Resultado esperado:**
+   - ✅ `image_url` deve conter URLs como: `https://cdn.myanimelist.net/images/anime/...`
+   - ❌ Se estiver `NULL` ou vazio, há problema na API ou no sync
+
+4. **Se as imagens estão NULL no banco:**
+   - Verifique se a API Jikan está retornando as imagens
+   - Re-execute o sync: `Sync Season Rankings Winter 2026`
+   - Verifique os logs para mensagens de erro
+
 ## 📝 Notas Importantes
 
 - ⚠️ Este problema afetava APENAS o cálculo de `position_in_week` e `trend`

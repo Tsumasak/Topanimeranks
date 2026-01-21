@@ -762,6 +762,15 @@ app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
       return c.json({ success: false, error: 'No animes provided' }, 400);
     }
     
+    // ✅ CRITICAL FIX: Remove duplicates (Jikan API sometimes returns duplicates)
+    const uniqueAnimes = Array.from(
+      new Map(animes.map(anime => [anime.anime_id, anime])).values()
+    );
+    
+    if (uniqueAnimes.length < animes.length) {
+      console.log(`⚠️ Removed ${animes.length - uniqueAnimes.length} duplicate animes`);
+    }
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -775,7 +784,7 @@ app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get existing anime IDs
-    const animeIds = animes.map(a => a.anime_id);
+    const animeIds = uniqueAnimes.map(a => a.anime_id);
     const { data: existingAnimes } = await supabase
       .from('season_rankings')
       .select('anime_id')
@@ -784,13 +793,13 @@ app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
       .in('anime_id', animeIds);
     
     const existingIds = new Set(existingAnimes?.map(a => a.anime_id) || []);
-    console.log(`📊 Found ${existingIds.size} existing, ${animes.length - existingIds.size} new`);
+    console.log(`📊 Found ${existingIds.size} existing, ${uniqueAnimes.length - existingIds.size} new`);
 
     // Batch upsert
     const BATCH_SIZE = 100;
-    for (let i = 0; i < animes.length; i += BATCH_SIZE) {
-      const batch = animes.slice(i, i + BATCH_SIZE);
-      console.log(`📦 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(animes.length / BATCH_SIZE)}...`);
+    for (let i = 0; i < uniqueAnimes.length; i += BATCH_SIZE) {
+      const batch = uniqueAnimes.slice(i, i + BATCH_SIZE);
+      console.log(`📦 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(uniqueAnimes.length / BATCH_SIZE)}...`);
       
       const { error } = await supabase
         .from('season_rankings')
@@ -805,8 +814,8 @@ app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
       }
     }
 
-    const inserted = animes.filter(a => !existingIds.has(a.anime_id)).length;
-    const updated = animes.filter(a => existingIds.has(a.anime_id)).length;
+    const inserted = uniqueAnimes.filter(a => !existingIds.has(a.anime_id)).length;
+    const updated = uniqueAnimes.filter(a => existingIds.has(a.anime_id)).length;
 
     console.log(`✅ Save complete: ${inserted} inserted, ${updated} updated`);
 

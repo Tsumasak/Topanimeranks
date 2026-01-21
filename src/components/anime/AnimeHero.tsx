@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Star, Calendar, Users, TrendingUp, Image, Share2, ExternalLink, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Image, Share2, ExternalLink, X } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -444,7 +441,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
               {allPictures.length > 1 && (
                 <>
                   <button
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       handlePrevImage();
                     }}
@@ -456,7 +453,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                     </svg>
                   </button>
                   <button
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       handleNextImage();
                     }}

@@ -5,7 +5,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "../ui/tooltip";
 import {
   Carousel,
   CarouselContent,
@@ -13,10 +13,10 @@ import {
   CarouselPrevious,
   CarouselNext,
   type CarouselApi,
-} from "@/components/ui/carousel";
-import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+} from "../ui/carousel";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
-import { getTypeClass, getSeasonClass, getDemographicClass } from "@/utils/tagHelpers";
+import { getTypeClass, getSeasonClass, getDemographicClass } from "../../utils/tagHelpers";
 
 interface AnimeHeroProps {
   anime: any;

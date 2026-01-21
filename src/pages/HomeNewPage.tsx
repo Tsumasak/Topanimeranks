@@ -210,6 +210,7 @@ function HomeAnimeCard({
             alt={data.title}
             className="w-full h-full object-cover object-center transition-all duration-1500 ease-out group-hover:object-top"
             src={data.image}
+            loading="lazy"
           />
 
           {/* Tags Container - Top Right (only Type and Demographics) */}
@@ -334,6 +335,7 @@ function HomeAnimeCard({
           alt={data.title}
           className="w-full h-full object-cover object-center transition-all duration-1500 ease-out group-hover:object-top"
           src={data.image}
+          loading="lazy"
         />
 
         {/* Tags Container - Top Right (only Type and Demographics) */}
@@ -667,8 +669,29 @@ export function HomeNewPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
-        <div className="container mx-auto px-[24px] pt-[32px] pb-[32px]">
-          {/* Content renders immediately */}
+        {/* Hero Skeleton */}
+        <div className="relative w-full h-[50vh] md:h-[55vh] bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 animate-pulse">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-4 px-6">
+              <div className="h-8 w-64 bg-gray-300 dark:bg-gray-700 rounded-lg mx-auto"></div>
+              <div className="h-12 w-96 max-w-full bg-gray-300 dark:bg-gray-700 rounded-lg mx-auto"></div>
+              <div className="h-6 w-full max-w-md bg-gray-300 dark:bg-gray-700 rounded-lg mx-auto"></div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Content Skeleton */}
+        <div className="container mx-auto px-[24px] pt-[48px] pb-[32px] space-y-12">
+          {[1, 2, 3].map((section) => (
+            <div key={section} className="space-y-4">
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[1, 2, 3].map((card) => (
+                  <div key={card} className="h-96 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -681,9 +704,11 @@ export function HomeNewPage() {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <ImageWithFallback
-            src={heroBanner?.imageUrl || "https://images.unsplash.com/photo-1613723984367-a9b7ee9052d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZW9uJTIwY2l0eSUyMGxpZ2h0c3xlbnwxfHx8fDE3NjYxNTM0NzZ8MA&ixlib=rb-4.1.0&q=80&w=1080"}
+            src={heroBanner?.imageUrl || "https://images.unsplash.com/photo-1613723984367-a9b7ee9052d8?w=1920&q=75&fm=webp&fit=crop"}
             alt={heroBanner?.title || "Hero Banner"}
             className="w-full h-full object-cover"
+            loading="eager"
+            fetchpriority="high"
           />
           {/* Gradient Overlays - Adapts to theme with balanced mobile gradients */}
           {/* Mobile gradients - strong but allows image visibility */}
@@ -1336,6 +1361,7 @@ export function HomeNewPage() {
             src={topSeasonAnimes.length > 0 ? topSeasonAnimes[0].image : "https://images.unsplash.com/photo-1764730282847-fbea83b8e932?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmltZSUyMGNoYXJhY3RlciUyMGJsdXJ8ZW58MXx8fHwxNzY4MzUwMjAwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"}
             alt="Footer Background"
             className="w-full h-full object-cover"
+            loading="lazy"
             style={{
               filter: 'blur(8px)',
               opacity: 'var(--bg-opacity)'

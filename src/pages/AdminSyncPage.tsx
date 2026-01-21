@@ -158,6 +158,74 @@ export default function AdminSyncPage() {
       }
       
       addLog(`✅ COMPLETE: ${data.inserted} inserted, ${data.updated} updated`, 'success');
+      
+      // ✅ FETCH PICTURES: Now fetch pictures for all saved animes (in parallel batches)
+      addLog(`\n🖼️ Fetching pictures for ${uniqueAnimes.length} animes...`, 'info');
+      
+      let picturesFetched = 0;
+      let picturesSkipped = 0;
+      
+      // Process in batches of 3 to respect rate limit (3 req/sec)
+      const PICTURES_BATCH_SIZE = 3;
+      for (let i = 0; i < uniqueAnimes.length; i += PICTURES_BATCH_SIZE) {
+        const batch = uniqueAnimes.slice(i, i + PICTURES_BATCH_SIZE);
+        
+        const promises = batch.map(async (anime) => {
+          try {
+            const picturesUrl = `https://api.jikan.moe/v4/anime/${anime.mal_id}/pictures`;
+            const picturesResponse = await fetch(picturesUrl);
+            
+            if (!picturesResponse.ok) {
+              return { success: false };
+            }
+            
+            const picturesData = await picturesResponse.json();
+            
+            if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
+              const pictures = picturesData.data.map((p: any) => ({
+                jpg: p.jpg,
+                webp: p.webp,
+              }));
+              
+              // Update via backend
+              const updateUrl = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/update-anime-pictures`;
+              await fetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${publicAnonKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  anime_id: anime.mal_id,
+                  season,
+                  year,
+                  pictures
+                })
+              });
+              
+              return { success: true };
+            }
+            return { success: false };
+          } catch (error) {
+            return { success: false };
+          }
+        });
+        
+        const results = await Promise.all(promises);
+        picturesFetched += results.filter(r => r.success).length;
+        picturesSkipped += results.filter(r => !r.success).length;
+        
+        if ((i + PICTURES_BATCH_SIZE) % 15 === 0) {
+          addLog(`📸 Progress: ${Math.min(i + PICTURES_BATCH_SIZE, uniqueAnimes.length)}/${uniqueAnimes.length} animes (${picturesFetched} with pictures)`, 'info');
+        }
+        
+        // Rate limiting: Wait 1 second between batches
+        if (i + PICTURES_BATCH_SIZE < uniqueAnimes.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      addLog(`✅ Pictures sync complete: ${picturesFetched} animes updated, ${picturesSkipped} skipped`, 'success');
       addLog(`📊 NOTE: Only ${MAX_PAGES} pages synced. Run again to sync more pages.`, 'warning');
       
     } catch (error) {

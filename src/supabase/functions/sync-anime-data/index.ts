@@ -847,6 +847,7 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
       synopsis: anime.synopsis,
       season: season,
       year: year,
+      pictures: [], // ✅ Will be populated later
     }));
 
     // ✅ OPTIMIZATION: Batch upsert in chunks of 100 to avoid payload limits
@@ -889,6 +890,65 @@ async function syncSeasonRankings(supabase: any, season: string, year: number) {
         image_url_preview: r.image_url?.substring(0, 50) + '...',
       })));
     }
+
+    // ✅ FETCH PICTURES: Now fetch pictures for all animes (in parallel batches)
+    console.log(`\n🖼️ Fetching pictures for ${uniqueAnimes.length} animes...`);
+    let picturesFetched = 0;
+    let picturesSkipped = 0;
+    
+    // Process in batches of 3 to respect rate limit (3 req/sec)
+    const PICTURES_BATCH_SIZE = 3;
+    for (let i = 0; i < uniqueAnimes.length; i += PICTURES_BATCH_SIZE) {
+      const batch = uniqueAnimes.slice(i, i + PICTURES_BATCH_SIZE);
+      
+      const promises = batch.map(async (anime) => {
+        try {
+          const picturesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/pictures`;
+          const picturesData = await fetchWithRetry(picturesUrl);
+          
+          if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
+            const pictures = picturesData.data.map((p: any) => ({
+              jpg: p.jpg,
+              webp: p.webp,
+            }));
+            
+            // Update the anime with pictures
+            const { error } = await supabase
+              .from('season_rankings')
+              .update({ pictures })
+              .eq('anime_id', anime.mal_id)
+              .eq('season', season)
+              .eq('year', year);
+            
+            if (!error) {
+              return { success: true };
+            } else {
+              console.error(`❌ Error updating pictures for ${anime.mal_id}:`, error);
+              return { success: false };
+            }
+          }
+          return { success: false };
+        } catch (error) {
+          console.error(`⚠️ Failed to fetch pictures for ${anime.mal_id}:`, error);
+          return { success: false };
+        }
+      });
+      
+      const results = await Promise.all(promises);
+      picturesFetched += results.filter(r => r.success).length;
+      picturesSkipped += results.filter(r => !r.success).length;
+      
+      if ((i + PICTURES_BATCH_SIZE) % 15 === 0) {
+        console.log(`📸 Progress: ${Math.min(i + PICTURES_BATCH_SIZE, uniqueAnimes.length)}/${uniqueAnimes.length} animes (${picturesFetched} with pictures)`);
+      }
+      
+      // Rate limiting: Wait 1 second between batches
+      if (i + PICTURES_BATCH_SIZE < uniqueAnimes.length) {
+        await delay(1000);
+      }
+    }
+    
+    console.log(`✅ Pictures sync complete: ${picturesFetched} animes updated, ${picturesSkipped} skipped`);
 
     const duration = Date.now() - startTime;
 

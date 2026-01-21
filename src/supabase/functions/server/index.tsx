@@ -835,6 +835,52 @@ app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
   }
 });
 
+// ============================================
+// UPDATE ANIME PICTURES - Update pictures for a specific anime
+// ============================================
+app.post("/make-server-c1d1bfd8/update-anime-pictures", async (c) => {
+  try {
+    const { anime_id, season, year, pictures } = await c.req.json();
+    
+    if (!anime_id || !season || !year || !pictures) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ 
+        success: false, 
+        error: "Missing Supabase credentials" 
+      }, 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { error } = await supabase
+      .from('season_rankings')
+      .update({ pictures })
+      .eq('anime_id', anime_id)
+      .eq('season', season)
+      .eq('year', year);
+    
+    if (error) {
+      console.error(`❌ Error updating pictures for anime ${anime_id}:`, error);
+      return c.json({ success: false, error: error.message }, 500);
+    }
+
+    return c.json({ success: true });
+
+  } catch (error) {
+    console.error("❌ Update pictures error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
 app.post("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
   try {
     const season = c.req.param('season');

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, ExternalLink, X } from "lucide-react";
+import { Share2, ExternalLink, X, Images } from "lucide-react";
 import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { getTypeClass, getSeasonClass, getDemographicClass } from "../../utils/tagHelpers";
@@ -17,6 +17,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "../ui/carousel";
 
 interface AnimeHeroProps {
@@ -26,14 +27,44 @@ interface AnimeHeroProps {
 export function AnimeHero({ anime }: AnimeHeroProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
 
   // Get all available pictures (including main image)
   const allPictures = anime.pictures && Array.isArray(anime.pictures) && anime.pictures.length > 0
-    ? anime.pictures.map((pic: any) => ({
-        large: pic.jpg?.large_image_url || pic.webp?.large_image_url || pic.jpg?.image_url || pic.webp?.image_url,
-        small: pic.jpg?.small_image_url || pic.webp?.small_image_url || pic.jpg?.image_url || pic.webp?.image_url,
-      }))
+    ? [
+        // ALWAYS start with the main image (default poster)
+        { large: anime.image_url, small: anime.image_url },
+        // Then add the rest of the pictures
+        ...anime.pictures.map((pic: any) => ({
+          large: pic.jpg?.large_image_url || pic.webp?.large_image_url || pic.jpg?.image_url || pic.webp?.image_url,
+          small: pic.jpg?.image_url || pic.webp?.image_url || pic.jpg?.large_image_url || pic.webp?.large_image_url, // Use full image, not thumbnail
+        }))
+      ]
     : [{ large: anime.image_url, small: anime.image_url }];
+
+  // Navigate to previous image
+  const handlePrevImage = () => {
+    setSelectedImageIndex((prev) => {
+      const newIndex = prev > 0 ? prev - 1 : allPictures.length - 1;
+      // Scroll carousel to center the selected thumbnail
+      if (carouselApi) {
+        carouselApi.scrollTo(newIndex);
+      }
+      return newIndex;
+    });
+  };
+
+  // Navigate to next image
+  const handleNextImage = () => {
+    setSelectedImageIndex((prev) => {
+      const newIndex = prev < allPictures.length - 1 ? prev + 1 : 0;
+      // Scroll carousel to center the selected thumbnail
+      if (carouselApi) {
+        carouselApi.scrollTo(newIndex);
+      }
+      return newIndex;
+    });
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -125,19 +156,37 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           {/* Poster */}
           <div className="flex-shrink-0 mx-auto md:mx-0">
             <div
-              className="w-64 rounded-lg overflow-hidden border-2 cursor-pointer hover:opacity-90 transition-opacity"
+              className="w-64 rounded-lg overflow-hidden border-2 cursor-pointer hover:opacity-90 transition-opacity relative"
               style={{
                 borderColor: "var(--card-border)",
                 boxShadow:
                   "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
-              onClick={() => setLightboxOpen(true)}
+              onClick={() => {
+                setSelectedImageIndex(0); // Reset to first image when opening
+                setLightboxOpen(true);
+              }}
             >
               <ImageWithFallback
                 src={anime.image_url}
                 alt={anime.title_english || anime.title}
                 className="w-full h-[400px] object-cover"
               />
+              
+              {/* Image Count Badge - Only show if multiple images */}
+              {allPictures.length > 1 && (
+                <div 
+                  className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-md flex items-center gap-1.5 backdrop-blur-sm border border-white/20 shadow-lg"
+                  style={{ 
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                  }}
+                >
+                  <Images className="h-4 w-4 text-white" />
+                  <span className="text-white text-sm font-semibold">
+                    {allPictures.length}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -397,45 +446,58 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
 
             {/* Thumbnail Carousel - Only show if there are multiple images */}
             {allPictures.length > 1 && (
-              <div className="w-full max-w-[600px]">
+              <div className="w-full max-w-[700px] relative">
                 <Carousel
                   opts={{
-                    align: "start",
+                    align: "center",
                     loop: false,
                   }}
-                  className="w-full"
+                  setApi={setCarouselApi}
+                  className="w-full px-16"
                 >
-                  <CarouselContent className="-ml-2 md:-ml-4">
-                    {allPictures.map((pic, index) => (
+                  <CarouselContent className="-ml-3">
+                    {allPictures.map((pic: { large: string; small: string }, index: number) => (
                       <CarouselItem 
                         key={index} 
-                        className="pl-2 md:pl-4 basis-1/3 md:basis-1/5"
+                        className="pl-3 basis-1/3 md:basis-1/5"
                       >
                         <div
-                          className={`cursor-pointer rounded-md overflow-hidden border-2 transition-all ${
+                          className={`cursor-pointer rounded-md overflow-hidden transition-all p-1 ${
                             index === selectedImageIndex
-                              ? "border-white opacity-100 scale-105"
-                              : "border-white/20 opacity-60 hover:opacity-90"
+                              ? "opacity-100 scale-105 ring-4 ring-[#fbbf24]"
+                              : "opacity-60 hover:opacity-90 ring-2 ring-white/20"
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedImageIndex(index);
+                            // Center the selected thumbnail
+                            if (carouselApi) {
+                              carouselApi.scrollTo(index);
+                            }
                           }}
                         >
                           <img
                             src={pic.small}
                             alt={`${anime.title_english || anime.title} - ${index + 1}`}
-                            className="w-full h-[100px] object-cover"
+                            className="w-full h-[100px] object-cover rounded"
                           />
                         </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
                   <CarouselPrevious 
-                    className="bg-white/10 hover:bg-white/20 border-white/20 text-white -left-4"
+                    className="absolute -left-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
                   />
                   <CarouselNext 
-                    className="bg-white/10 hover:bg-white/20 border-white/20 text-white -right-4"
+                    className="absolute -right-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
                   />
                 </Carousel>
               </div>

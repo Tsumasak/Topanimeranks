@@ -56,12 +56,28 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
     });
   };
 
-  // Sync carousel with selected image
+  // Sync carousel with selected image and CENTER it
   useEffect(() => {
-    if (carouselApi && lightboxOpen) {
+    if (carouselApi) {
+      // Scroll to selected index whenever it changes
       carouselApi.scrollTo(selectedImageIndex);
     }
-  }, [selectedImageIndex, carouselApi, lightboxOpen]);
+  }, [selectedImageIndex, carouselApi]);
+
+  // Handle carousel slide change (when user clicks on carousel arrows)
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    const onSelect = () => {
+      const newIndex = carouselApi.selectedScrollSnap();
+      setSelectedImageIndex(newIndex);
+    };
+
+    carouselApi.on("select", onSelect);
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
+  }, [carouselApi]);
 
   const handleShare = async () => {
     const shareData = {
@@ -476,62 +492,49 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
 
             {/* Thumbnail Carousel - Only show if there are multiple images */}
             {allPictures.length > 1 && (
-              <div className="w-full max-w-[800px] relative py-[20px] px-[0px]">
+              <div className="w-full max-w-[600px] relative">
                 <Carousel
                   opts={{
                     align: "center",
                     loop: false,
-                    containScroll: "trimSnaps",
+                    containScroll: false, // Permite espaço vazio nas pontas!
                   }}
                   setApi={setCarouselApi}
-                  className="w-full md:px-24 px-[24px] py-[5px]"
+                  className="w-full"
                 >
-                  <CarouselContent className="-ml-2 md:-ml-4">
+                  <CarouselContent className="-ml-2">
                     {allPictures.map((pic: { large: string; small: string }, index: number) => (
                       <CarouselItem 
                         key={index} 
-                        className="md:pl-4 basis-1/4 md:basis-1/5 pt-[0px] pr-[0px] pb-[0px] pl-[12px]"
+                        className="pl-2 basis-[80px] md:basis-[100px]"
                       >
                         <div
-                          className={`cursor-pointer rounded-lg transition-all p-1 ${
+                          className={`cursor-pointer rounded-lg overflow-hidden transition-all ${
                             index === selectedImageIndex
-                              ? "opacity-100 scale-105"
-                              : "opacity-60 hover:opacity-90"
+                              ? "ring-4 ring-[#fbbf24] opacity-100"
+                              : "ring-2 ring-white/20 opacity-60 hover:opacity-90"
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedImageIndex(index);
                           }}
                         >
-                          <div className={`rounded-lg overflow-hidden aspect-square ${
-                            index === selectedImageIndex
-                              ? "ring-4 ring-[#fbbf24]"
-                              : "ring-2 ring-white/20"
-                          }`}>
-                            <img
-                              src={pic.small}
-                              alt={`${anime.title_english || anime.title} - ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          <img
+                            src={pic.small}
+                            alt={`${anime.title_english || anime.title} - ${index + 1}`}
+                            className="w-full aspect-square object-cover"
+                          />
                         </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  {/* Desktop Navigation Arrows - Outside carousel */}
+                  
+                  {/* Desktop Navigation Arrows */}
                   <CarouselPrevious 
-                    className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePrevImage();
-                    }}
+                    className="hidden md:flex -left-12 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-30"
                   />
                   <CarouselNext 
-                    className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNextImage();
-                    }}
+                    className="hidden md:flex -right-12 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-30"
                   />
                 </Carousel>
               </div>

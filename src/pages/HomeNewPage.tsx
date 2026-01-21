@@ -795,11 +795,13 @@ export function HomeNewPage() {
             >
               <Link
                 to={heroBanner?.buttonLink || "/ranks"}
-                className="group relative px-6 py-3 rounded-xl overflow-hidden transition-all duration-300 hover:scale-105"
+                className="group relative px-6 py-3 rounded-xl overflow-hidden transition-all duration-300"
                 style={{
                   backgroundColor: 'var(--rank-background)',
                   color: 'var(--rank-text)',
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <span className="relative flex items-center gap-2 font-semibold text-sm">
@@ -1408,11 +1410,13 @@ export function HomeNewPage() {
                   href="https://www.instagram.com/topanimeranks"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 hover:scale-105"
+                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300"
                   style={{
                     backgroundColor: 'var(--card-background)',
                     border: '2px solid var(--card-border)',
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   aria-label="Follow us on Instagram"
                 >
                   <Instagram className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
@@ -1422,11 +1426,13 @@ export function HomeNewPage() {
                   href="https://x.com/topanimeranks"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 hover:scale-105"
+                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300"
                   style={{
                     backgroundColor: 'var(--card-background)',
                     border: '2px solid var(--card-border)',
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   aria-label="Follow us on X (Twitter)"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--foreground)' }}>
@@ -1438,11 +1444,13 @@ export function HomeNewPage() {
                   href="https://www.threads.com/@topanimeranks"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 hover:scale-105"
+                  className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300"
                   style={{
                     backgroundColor: 'var(--card-background)',
                     border: '2px solid var(--card-border)',
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   aria-label="Follow us on Threads"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 192 192" style={{ color: 'var(--foreground)' }}>

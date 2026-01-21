@@ -438,7 +438,7 @@ export function RankEvolutionChart({ animeId }: RankEvolutionChartProps) {
 
       {/* Chart */}
       {rankData.length > 0 ? (
-        <div className="w-full h-[200px] md:h-[280px]">
+        <div className="w-full" style={{ height: '280px', minHeight: '280px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={rankData}

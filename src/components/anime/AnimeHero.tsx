@@ -1,24 +1,25 @@
-"use client";
-
-import { useState } from "react";
-import { Share2, ExternalLink, X, Images } from "lucide-react";
-import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
-import { ImageWithFallback } from "../figma/ImageWithFallback";
-import { getTypeClass, getSeasonClass, getDemographicClass } from "../../utils/tagHelpers";
+import { useState, useEffect } from "react";
+import { Play, Star, Calendar, Users, TrendingUp, Image, Share2, ExternalLink, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../ui/tooltip";
+} from "@/components/ui/tooltip";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
   CarouselPrevious,
+  CarouselNext,
   type CarouselApi,
-} from "../ui/carousel";
+} from "@/components/ui/carousel";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { AnimeBreadcrumb } from "./AnimeBreadcrumb";
+import { getTypeClass, getSeasonClass, getDemographicClass } from "@/utils/tagHelpers";
 
 interface AnimeHeroProps {
   anime: any;
@@ -46,10 +47,6 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
   const handlePrevImage = () => {
     setSelectedImageIndex((prev) => {
       const newIndex = prev > 0 ? prev - 1 : allPictures.length - 1;
-      // Scroll carousel to center the selected thumbnail
-      if (carouselApi) {
-        carouselApi.scrollTo(newIndex);
-      }
       return newIndex;
     });
   };
@@ -58,13 +55,16 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
   const handleNextImage = () => {
     setSelectedImageIndex((prev) => {
       const newIndex = prev < allPictures.length - 1 ? prev + 1 : 0;
-      // Scroll carousel to center the selected thumbnail
-      if (carouselApi) {
-        carouselApi.scrollTo(newIndex);
-      }
       return newIndex;
     });
   };
+
+  // Sync carousel with selected image
+  useEffect(() => {
+    if (carouselApi && lightboxOpen) {
+      carouselApi.scrollTo(selectedImageIndex);
+    }
+  }, [selectedImageIndex, carouselApi, lightboxOpen]);
 
   const handleShare = async () => {
     const shareData = {
@@ -181,7 +181,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                     backgroundColor: "rgba(0, 0, 0, 0.6)",
                   }}
                 >
-                  <Images className="h-4 w-4 text-white" />
+                  <Image className="h-4 w-4 text-white" />
                   <span className="text-white text-sm font-semibold">
                     {allPictures.length}
                   </span>
@@ -425,75 +425,112 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 gap-4"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 pt-24 gap-4"
           style={{ 
             backgroundColor: "rgba(0, 0, 0, 0.9)",
             animation: "fadeIn 0.3s ease-in-out"
           }}
           onClick={() => setLightboxOpen(false)}
         >
-          {/* Main Image */}
+          {/* Main Image Container with Navigation Arrows */}
           <div 
-            className="flex flex-col items-center gap-4 max-w-[90vw]"
+            className="flex flex-col items-center gap-4 max-w-[90vw] w-full"
             style={{ animation: "zoomIn 0.3s ease-in-out" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={allPictures[selectedImageIndex].large}
-              alt={anime.title_english || anime.title}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
-            />
+            {/* Image with arrows overlay (mobile only) */}
+            <div className="relative w-full flex items-center justify-center">
+              {/* Mobile Navigation Arrows - Inside image on mobile */}
+              {allPictures.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
+                    className="md:hidden absolute left-2 z-20 p-3 rounded-full bg-black/50 hover:bg-black/70 border border-white/20 text-white transition-all"
+                    aria-label="Previous image"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
+                    className="md:hidden absolute right-2 z-20 p-3 rounded-full bg-black/50 hover:bg-black/70 border border-white/20 text-white transition-all"
+                    aria-label="Next image"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                </>
+              )}
+              
+              <img
+                src={allPictures[selectedImageIndex].large}
+                alt={anime.title_english || anime.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+              />
+            </div>
 
             {/* Thumbnail Carousel - Only show if there are multiple images */}
             {allPictures.length > 1 && (
-              <div className="w-full max-w-[700px] relative">
+              <div className="w-full max-w-[800px] relative py-10">
                 <Carousel
                   opts={{
                     align: "center",
                     loop: false,
+                    containScroll: "trimSnaps",
                   }}
                   setApi={setCarouselApi}
-                  className="w-full px-16"
+                  className="w-full px-4 md:px-24"
                 >
-                  <CarouselContent className="-ml-3">
+                  <CarouselContent className="-ml-2 md:-ml-4">
                     {allPictures.map((pic: { large: string; small: string }, index: number) => (
                       <CarouselItem 
                         key={index} 
-                        className="pl-3 basis-1/3 md:basis-1/5"
+                        className="pl-2 md:pl-4 basis-1/4 md:basis-1/5"
                       >
                         <div
-                          className={`cursor-pointer rounded-md overflow-hidden transition-all p-1 ${
+                          className={`cursor-pointer rounded-lg transition-all p-1 ${
                             index === selectedImageIndex
-                              ? "opacity-100 scale-105 ring-4 ring-[#fbbf24]"
-                              : "opacity-60 hover:opacity-90 ring-2 ring-white/20"
+                              ? "opacity-100 scale-105"
+                              : "opacity-60 hover:opacity-90"
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedImageIndex(index);
-                            // Center the selected thumbnail
-                            if (carouselApi) {
-                              carouselApi.scrollTo(index);
-                            }
                           }}
                         >
-                          <img
-                            src={pic.small}
-                            alt={`${anime.title_english || anime.title} - ${index + 1}`}
-                            className="w-full h-[100px] object-cover rounded"
-                          />
+                          <div className={`rounded-lg overflow-hidden aspect-square ${
+                            index === selectedImageIndex
+                              ? "ring-4 ring-[#fbbf24]"
+                              : "ring-2 ring-white/20"
+                          }`}>
+                            <img
+                              src={pic.small}
+                              alt={`${anime.title_english || anime.title} - ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
+                  {/* Desktop Navigation Arrows - Outside carousel */}
                   <CarouselPrevious 
-                    className="absolute -left-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                    className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white z-10"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePrevImage();
                     }}
                   />
                   <CarouselNext 
-                    className="absolute -right-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                    className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 border-white/20 text-white z-10"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNextImage();

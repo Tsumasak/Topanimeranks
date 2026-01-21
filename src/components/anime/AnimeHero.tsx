@@ -476,7 +476,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
 
             {/* Thumbnail Carousel - Only show if there are multiple images */}
             {allPictures.length > 1 && (
-              <div className="w-full max-w-[800px] relative py-10">
+              <div className="w-full max-w-[800px] relative py-[20px] px-[0px]">
                 <Carousel
                   opts={{
                     align: "center",
@@ -484,13 +484,13 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                     containScroll: "trimSnaps",
                   }}
                   setApi={setCarouselApi}
-                  className="w-full px-4 md:px-24"
+                  className="w-full md:px-24 px-[24px] py-[5px]"
                 >
                   <CarouselContent className="-ml-2 md:-ml-4">
                     {allPictures.map((pic: { large: string; small: string }, index: number) => (
                       <CarouselItem 
                         key={index} 
-                        className="pl-2 md:pl-4 basis-1/4 md:basis-1/5"
+                        className="md:pl-4 basis-1/4 md:basis-1/5 pt-[0px] pr-[0px] pb-[0px] pl-[12px]"
                       >
                         <div
                           className={`cursor-pointer rounded-lg transition-all p-1 ${

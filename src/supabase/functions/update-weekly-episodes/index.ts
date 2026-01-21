@@ -168,11 +168,13 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
     // RECALCULATE POSITIONS AND TRENDS
     console.log(`\n🔄 Recalculating positions and trends for week ${weekNumber}...`);
     
-    // Fetch updated episodes
+    // Fetch updated episodes - ✅ FIXED: Filter by season and year too!
     const { data: updatedEpisodes, error: refetchError } = await supabase
       .from('weekly_episodes')
       .select('*')
-      .eq('week_number', weekNumber);
+      .eq('week_number', weekNumber)
+      .eq('season', 'winter')
+      .eq('year', 2026);
 
     if (refetchError) {
       console.error(`❌ Error refetching episodes:`, refetchError);
@@ -193,11 +195,14 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
         // Calculate trend
         let newTrend = episode.trend;
         if (weekNumber > 1) {
+          // ✅ FIXED: Filter by season and year when looking for previous episode
           const { data: prevEpisode } = await supabase
             .from('weekly_episodes')
             .select('position_in_week')
             .eq('anime_id', episode.anime_id)
             .eq('episode_number', episode.episode_number)
+            .eq('season', 'winter')
+            .eq('year', 2026)
             .eq('week_number', weekNumber - 1)
             .maybeSingle();
 

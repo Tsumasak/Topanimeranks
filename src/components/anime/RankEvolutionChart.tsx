@@ -325,6 +325,7 @@ export function RankEvolutionChart({ animeId }: RankEvolutionChartProps) {
       style={{
         background: "var(--card-background)",
         borderColor: "var(--card-border)",
+        minHeight: "400px",
       }}
     >
       {/* Header */}
@@ -438,8 +439,8 @@ export function RankEvolutionChart({ animeId }: RankEvolutionChartProps) {
 
       {/* Chart */}
       {rankData.length > 0 ? (
-        <div className="w-full" style={{ height: '280px', minHeight: '280px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="w-full" style={{ height: '280px', minHeight: '280px', width: '100%' }}>
+          <ResponsiveContainer width="100%" height={280} minHeight={280}>
             <AreaChart
               data={rankData}
               margin={{ 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -20,9 +20,13 @@ const SeasonControl = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userSwitched, setUserSwitched] = useState(false);
+  const [displayedCount, setDisplayedCount] = useState(12); // Infinite scroll: start with 12 animes
   
   // CRITICAL: Animation key that only changes when NEW data is ready
   const [animationKey, setAnimationKey] = useState(activeSeason);
+  
+  // Ref for intersection observer
+  const observerTarget = useRef<HTMLDivElement>(null);
   
   const currentSeason = SEASONS_DATA.find(season => season.id === activeSeason);
 
@@ -225,6 +229,42 @@ const SeasonControl = () => {
     loadSeasonAnimes();
   }, [activeSeason]); // userSwitched is read but NOT a dependency to avoid double-triggering
 
+  // Infinite scroll - instant, no delay
+  const loadMoreAnimes = useCallback(() => {
+    if (displayedCount >= displayedAnimes.length) return;
+    
+    console.log('[SeasonControl] 📦 Loading more animes...');
+    setDisplayedCount(prev => Math.min(prev + 12, displayedAnimes.length));
+  }, [displayedCount, displayedAnimes.length]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !loading) {
+          loadMoreAnimes();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [loadMoreAnimes, loading]);
+
+  // Reset displayed count when season changes
+  useEffect(() => {
+    setDisplayedCount(12);
+  }, [activeSeason]);
+
   // No loading screen - render directly
   if (loading) {
     console.log(`[SeasonControl] 🚫 Render blocked: loading is true`);
@@ -384,17 +424,6 @@ const SeasonControl = () => {
           >
             {displayedAnimes
               .filter(anime => {
-                // DEBUG: Log first 3 animes to see what we're getting
-                if (displayedAnimes.indexOf(anime) < 3) {
-                  console.log(`[SeasonControl] 🎯 DEBUG - Anime #${displayedAnimes.indexOf(anime)}:`, {
-                    id: anime.id,
-                    title: anime.title,
-                    imageUrl: anime.imageUrl,
-                    imageUrlType: typeof anime.imageUrl,
-                    imageUrlLength: anime.imageUrl?.length,
-                  });
-                }
-                
                 // CRITICAL: Filter out animes with invalid data
                 if (!anime.imageUrl || anime.imageUrl.trim() === '') {
                   console.warn(`⚠️  Skipping anime with empty imageUrl:`, anime.title);
@@ -402,6 +431,7 @@ const SeasonControl = () => {
                 }
                 return true;
               })
+              .slice(0, displayedCount) // Only show displayedCount animes
               .map((anime, index) => (
               <motion.div
                 key={`${animationKey}-${anime.id}-${index}`}
@@ -432,6 +462,24 @@ const SeasonControl = () => {
             ))}
           </motion.div>
         </AnimatePresence>
+      )}
+      
+      {/* Intersection Observer Target - MUST be outside AnimatePresence */}
+      {displayedCount < displayedAnimes.length && (
+        <div ref={observerTarget} className="h-20 flex items-center justify-center">
+          <p className="text-sm" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
+            Loading more...
+          </p>
+        </div>
+      )}
+
+      {/* End Message */}
+      {displayedCount >= displayedAnimes.length && displayedAnimes.length > 0 && (
+        <div className="flex flex-col items-center py-8">
+          <p className="text-sm" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
+            You've reached the end! ({displayedAnimes.length} animes total)
+          </p>
+        </div>
       )}
     </div>
   );

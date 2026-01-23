@@ -357,19 +357,13 @@ const WeekControl = () => {
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
-    // Don't set up observer if there's nothing more to load
-    if (displayedCount >= displayedEpisodes.length) {
-      return;
-    }
-    
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && displayedCount < displayedEpisodes.length) {
-          console.log('[WeekControl] 🔄 IntersectionObserver triggered - loading more episodes');
+      entries => {
+        if (entries[0].isIntersecting && !loading) {
           loadMoreEpisodes();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' } // Start loading 100px before reaching the element
+      { threshold: 0.1 }
     );
 
     const currentTarget = observerTarget.current;
@@ -382,8 +376,8 @@ const WeekControl = () => {
         observer.unobserve(currentTarget);
       }
     };
-  }, [displayedCount, displayedEpisodes.length, loadMoreEpisodes]);
-
+  }, [loadMoreEpisodes, loading]);
+  
   // Auto-load more if content doesn't fill the viewport (fallback for when observer doesn't trigger)
   useEffect(() => {
     if (loading || displayedCount >= displayedEpisodes.length) return;
@@ -684,17 +678,20 @@ const WeekControl = () => {
             </motion.div>
           </AnimatePresence>
           
-          {/* Infinite Scroll Observer Target - Auto-loads more episodes as user scrolls */}
-          {displayedCount < displayedEpisodes.length ? (
-            <div ref={observerTarget} className="flex flex-col items-center gap-4 mt-8 py-8">
-              <p className="text-xs opacity-50" style={{color: 'var(--foreground)'}}>
-                Scroll to load more ({displayedCount}/{displayedEpisodes.length})
+          {/* Intersection Observer Target - MUST be outside AnimatePresence */}
+          {displayedCount < displayedEpisodes.length && (
+            <div ref={observerTarget} className="h-20 flex items-center justify-center">
+              <p className="text-sm" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
+                Loading more...
               </p>
             </div>
-          ) : (
-            <div className="text-center mt-8 py-8">
-              <p className="text-sm" style={{color: 'var(--foreground)', opacity: 0.5}}>
-                All {episodes.length} episodes loaded
+          )}
+
+          {/* End Message */}
+          {displayedCount >= displayedEpisodes.length && displayedEpisodes.length > 0 && (
+            <div className="flex flex-col items-center py-8">
+              <p className="text-sm" style={{ color: 'var(--foreground)', opacity: 0.5 }}>
+                You've reached the end! ({displayedEpisodes.length} episodes total)
               </p>
             </div>
           )}

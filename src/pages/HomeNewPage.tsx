@@ -708,7 +708,6 @@ export function HomeNewPage() {
             alt={heroBanner?.title || "Hero Banner"}
             className="w-full h-full object-cover"
             loading="eager"
-            fetchPriority="high"
           />
           {/* Gradient Overlays - Adapts to theme with balanced mobile gradients */}
           {/* Mobile gradients - strong but allows image visibility */}

@@ -141,10 +141,11 @@ const WeekControl = () => {
 
   // Load more episodes automatically (infinite scroll) - instant, no loading
   const loadMoreEpisodes = useCallback(() => {
-    if (displayedCount >= episodes.length) return;
+    if (displayedCount >= displayedEpisodes.length) return;
     
-    setDisplayedCount(prev => Math.min(prev + 12, episodes.length));
-  }, [displayedCount, episodes.length]);
+    console.log('[WeekControl] 📦 Loading more episodes...');
+    setDisplayedCount(prev => Math.min(prev + 12, displayedEpisodes.length));
+  }, [displayedCount, displayedEpisodes.length]);
   
   // Load available weeks on mount (check which weeks have 5+ episodes WITH SCORE)
   useEffect(() => {
@@ -363,14 +364,12 @@ const WeekControl = () => {
     
     const observer = new IntersectionObserver(
       (entries) => {
-        const isIntersecting = entries[0].isIntersecting;
-        const canLoadMore = displayedCount < displayedEpisodes.length;
-        
-        if (isIntersecting && canLoadMore) {
+        if (entries[0].isIntersecting && displayedCount < displayedEpisodes.length) {
+          console.log('[WeekControl] 🔄 IntersectionObserver triggered - loading more episodes');
           loadMoreEpisodes();
         }
       },
-      { threshold: 0.1, rootMargin: '200px' } // Start loading earlier for seamless experience
+      { threshold: 0.1, rootMargin: '100px' } // Start loading 100px before reaching the element
     );
 
     const currentTarget = observerTarget.current;
@@ -379,7 +378,9 @@ const WeekControl = () => {
     }
 
     return () => {
-      observer.disconnect();
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
     };
   }, [displayedCount, displayedEpisodes.length, loadMoreEpisodes]);
 
@@ -391,13 +392,14 @@ const WeekControl = () => {
     const checkViewportId = setTimeout(() => {
       const hasScrollbar = document.documentElement.scrollHeight > window.innerHeight;
       
-      if (!hasScrollbar && displayedCount < episodes.length) {
+      if (!hasScrollbar && displayedCount < displayedEpisodes.length) {
+        console.log('[WeekControl] 🔄 Auto-loading more episodes (no scrollbar detected)');
         loadMoreEpisodes();
       }
     }, 300); // Reduced delay for instant feel
     
     return () => clearTimeout(checkViewportId);
-  }, [loading, displayedEpisodes.length, displayedCount, loadMoreEpisodes]);
+  }, [loading, displayedEpisodes.length, displayedCount, loadMoreEpisodes, episodes.length]);
 
   // Scroll to anime card if hash is present in URL
   useEffect(() => {
@@ -682,23 +684,12 @@ const WeekControl = () => {
             </motion.div>
           </AnimatePresence>
           
-          {/* Infinite Scroll Observer Target + Load More Button */}
+          {/* Infinite Scroll Observer Target - Auto-loads more episodes as user scrolls */}
           {displayedCount < displayedEpisodes.length ? (
             <div ref={observerTarget} className="flex flex-col items-center gap-4 mt-8 py-8">
               <p className="text-xs opacity-50" style={{color: 'var(--foreground)'}}>
                 Scroll to load more ({displayedCount}/{displayedEpisodes.length})
               </p>
-              {/* Manual Load More Button as fallback */}
-              <button
-                onClick={loadMoreEpisodes}
-                className="px-6 py-2 rounded-lg transition-all hover:opacity-80"
-                style={{
-                  backgroundColor: 'var(--rank-background)',
-                  color: 'var(--rank-text)',
-                }}
-              >
-                Load More Episodes
-              </button>
             </div>
           ) : (
             <div className="text-center mt-8 py-8">

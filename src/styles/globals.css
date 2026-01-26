@@ -1007,4 +1007,16 @@ html {
   html {
     -webkit-overflow-scrolling: touch;
   }
+  
+  /* CRITICAL FIX: Force carousel items to have uniform height */
+  [data-slot="carousel-item"] {
+    height: var(--carousel-item-height) !important;
+    display: flex !important;
+  }
+  
+  [data-slot="carousel-item"] > * {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+  }
 }

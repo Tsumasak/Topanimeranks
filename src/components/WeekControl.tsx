@@ -627,7 +627,7 @@ const WeekControl = () => {
             No episode data available for this week yet.
           </p>
         </div>
-      ) : displayedEpisodes.length > 0 ? (
+      ) : displayedEpisodes.length > 0 && (
         <>
           <AnimatePresence mode="wait">
             <motion.div 
@@ -696,7 +696,7 @@ const WeekControl = () => {
             </div>
           )}
         </>
-      ) : null}
+      )}
     </div>
   );
 };

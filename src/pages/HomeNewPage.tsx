@@ -482,10 +482,10 @@ export function HomeNewPage() {
           "score",
         );
 
-        // Process Top Season Animes (top 3)
+        // Process Top Season Animes (top 5)
         if (seasonAnimes.length > 0) {
           const topSeason = seasonAnimes
-            .slice(0, 3)
+            .slice(0, 5)
             .map((anime, index) => ({
               rank: index + 1,
               title: anime.title_english || anime.title,
@@ -523,7 +523,7 @@ export function HomeNewPage() {
 
         if (spring2026Animes.length > 0) {
           const topAnticipated = spring2026Animes
-            .slice(0, 3)
+            .slice(0, 5)
             .map((anime, index) => ({
               rank: index + 1,
               title: anime.title,
@@ -603,7 +603,7 @@ export function HomeNewPage() {
 
         if (weeklyEpisodesData.episodes.length > 0) {
           const topWeekly = weeklyEpisodesData.episodes
-            .slice(0, 3)
+            .slice(0, 5)
             .map((episode, index) => ({
               rank: index + 1,
               title: episode.animeTitle,
@@ -896,7 +896,7 @@ export function HomeNewPage() {
                               </motion.div>
                             </CarouselItem>
                           ))
-                        : [1, 2, 3].map((i) => (
+                        : [1, 2, 3, 4, 5].map((i) => (
                             <CarouselItem
                               key={`placeholder-${i}`}
                               className="pl-0 basis-[280px]"
@@ -963,7 +963,7 @@ export function HomeNewPage() {
                               />
                             </motion.div>
                           ))
-                        : [1, 2, 3].map((i) => (
+                        : [1, 2, 3, 4, 5].map((i) => (
                             <div
                               key={`placeholder-episode-${i}`}
                               className="bg-slate-700/50 h-[320px] flex-1 rounded-[10px] flex items-center justify-center"
@@ -1080,7 +1080,7 @@ export function HomeNewPage() {
                                 </motion.div>
                               </CarouselItem>
                             ))
-                          : [1, 2, 3].map((i) => (
+                          : [1, 2, 3, 4, 5].map((i) => (
                               <CarouselItem
                                 key={`placeholder-${i}`}
                                 className="pl-0 basis-[280px]"
@@ -1146,7 +1146,7 @@ export function HomeNewPage() {
                                 />
                               </motion.div>
                             ))
-                          : [1, 2, 3].map((i) => (
+                          : [1, 2, 3, 4, 5].map((i) => (
                               <div
                                 key={`placeholder-top-${i}`}
                                 className="bg-slate-700/50 h-[380px] rounded-[10px] flex items-center justify-center"
@@ -1258,7 +1258,7 @@ export function HomeNewPage() {
                                 </motion.div>
                               </CarouselItem>
                             ))
-                          : [1, 2, 3].map((i) => (
+                          : [1, 2, 3, 4, 5].map((i) => (
                               <CarouselItem
                                 key={`placeholder-${i}`}
                                 className="pl-0 basis-[280px]"
@@ -1324,7 +1324,7 @@ export function HomeNewPage() {
                                 />
                               </motion.div>
                             ))
-                          : [1, 2, 3].map((i) => (
+                          : [1, 2, 3, 4, 5].map((i) => (
                               <div
                                 key={`placeholder-anticipated-${i}`}
                                 className="bg-slate-700/50 h-[380px] rounded-[10px] flex items-center justify-center"

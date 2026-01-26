@@ -572,7 +572,7 @@ export function HomePage() {
                   e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                View All &gt;
+                View All →
               </Link>
             </div>
             <p
@@ -642,7 +642,7 @@ export function HomePage() {
                               </motion.div>
                             </CarouselItem>
                           ))
-                        : [1, 2, 3].map((i) => (
+                        : [1, 2, 3, 4, 5].map((i) => (
                             <CarouselItem
                               key={`placeholder-episode-${i}`}
                               className="pl-0 basis-[280px] h-[420px]"
@@ -817,7 +817,7 @@ export function HomePage() {
                               </CarouselItem>
                             ),
                           )
-                        : [1, 2, 3].map((i) => (
+                        : [1, 2, 3, 4, 5].map((i) => (
                             <CarouselItem
                               key={`placeholder-season-${i}`}
                               className="pl-0 basis-[280px] h-[480px]"
@@ -980,7 +980,7 @@ export function HomePage() {
                               </motion.div>
                             </CarouselItem>
                           ))
-                        : [1, 2, 3].map((i) => (
+                        : [1, 2, 3, 4, 5].map((i) => (
                             <CarouselItem
                               key={`placeholder-anticipated-${i}`}
                               className="pl-0 basis-[280px] h-[480px]"

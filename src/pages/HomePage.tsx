@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { WEEKS_DATA } from "../config/weeks";
 import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
 import {
   projectId,

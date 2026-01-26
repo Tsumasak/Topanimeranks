@@ -27,6 +27,18 @@ General development guidelines and best practices for the project.
 ### **[CONTROLLER_PATTERN.md](./CONTROLLER_PATTERN.md)**
 Architecture patterns and controller structure used in the codebase.
 
+### **[CAROUSEL_UNIFORM_CARDS.md](./CAROUSEL_UNIFORM_CARDS.md)** 🆕
+**MANDATORY PATTERN for carousel card implementation.**
+
+Contains:
+- ✅ How to ensure uniform card heights in carousels
+- 📐 CSS + Flexbox solution with `!important` overrides
+- 🎯 Complete implementation checklist
+- ❌ Common mistakes to avoid
+- 🔍 Debugging guide
+
+**Critical for:** Mobile responsiveness, consistent UI, professional appearance
+
 ---
 
 ## 🗂️ **Related Documentation**

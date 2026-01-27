@@ -908,6 +908,8 @@ export function HomeNewPage() {
                               </div>
                             </CarouselItem>
                           ))}
+                      {/* Spacer for right margin */}
+                      <div className="w-[18px] flex-shrink-0" aria-hidden="true" />
                     </CarouselContent>
                   </Carousel>
                 </div>
@@ -1092,6 +1094,8 @@ export function HomeNewPage() {
                                 </div>
                               </CarouselItem>
                             ))}
+                      {/* Spacer for right margin */}
+                      <div className="w-[18px] flex-shrink-0" aria-hidden="true" />
                       </CarouselContent>
                     </Carousel>
                   </div>
@@ -1270,6 +1274,8 @@ export function HomeNewPage() {
                                 </div>
                               </CarouselItem>
                             ))}
+                      {/* Spacer for right margin */}
+                      <div className="w-[18px] flex-shrink-0" aria-hidden="true" />
                       </CarouselContent>
                     </Carousel>
                   </div>

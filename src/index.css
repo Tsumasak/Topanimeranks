@@ -1029,6 +1029,10 @@
     width: calc(var(--spacing) * 96);
   }
 
+  .w-\[18px\] {
+    width: 18px;
+  }
+
   .w-\[280px\] {
     width: 280px;
   }

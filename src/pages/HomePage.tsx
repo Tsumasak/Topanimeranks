@@ -453,7 +453,6 @@ export function HomePage() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [animationKey, setAnimationKey] = useState(0);
-  const [weekPeriod, setWeekPeriod] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -500,7 +499,6 @@ export function HomePage() {
         setTopEpisodes(episodesData.items || []);
         setTopSeasonAnimes(seasonData.items || []);
         setAnticipated(anticipatedData.items || []);
-        setWeekPeriod(episodesData.period || "");
 
         setIsLoading(false);
         setAnimationKey((prev) => prev + 1);

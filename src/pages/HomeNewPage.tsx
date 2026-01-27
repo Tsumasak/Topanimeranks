@@ -482,7 +482,7 @@ export function HomeNewPage() {
           "score",
         );
 
-        // Process Top Season Animes (top 5)
+        // Process Top Season Animes (top 3)
         if (seasonAnimes.length > 0) {
           const topSeason = seasonAnimes
             .slice(0, 5)
@@ -864,7 +864,7 @@ export function HomeNewPage() {
                     className="w-full"
                     opts={{ align: "start", loop: false }}
                   >
-                    <CarouselContent className="gap-3 px-[18px]">
+                    <CarouselContent className="gap-3 px-[18px] items-stretch">
                       {topEpisodes.length > 0
                         ? topEpisodes.map((ep, index) => (
                             <CarouselItem
@@ -1049,7 +1049,7 @@ export function HomeNewPage() {
                       className="w-full"
                       opts={{ align: "start", loop: false }}
                     >
-                      <CarouselContent className="gap-3 px-[18px]">
+                      <CarouselContent className="gap-3 px-[18px] items-stretch">
                         {topSeasonAnimes.length > 0
                           ? topSeasonAnimes.map((anime, index) => (
                               <CarouselItem
@@ -1121,7 +1121,7 @@ export function HomeNewPage() {
                         className="grid grid-cols-3 gap-[24px] w-full"
                       >
                         {topSeasonAnimes.length > 0
-                          ? topSeasonAnimes.map((anime, index) => (
+                          ? topSeasonAnimes.slice(0, 3).map((anime, index) => (
                               <motion.div
                                 key={`top-anime-${anime.rank}`}
                                 initial={{
@@ -1146,7 +1146,7 @@ export function HomeNewPage() {
                                 />
                               </motion.div>
                             ))
-                          : [1, 2, 3, 4, 5].map((i) => (
+                          : [1, 2, 3].map((i) => (
                               <div
                                 key={`placeholder-top-${i}`}
                                 className="bg-slate-700/50 h-[380px] rounded-[10px] flex items-center justify-center"
@@ -1227,7 +1227,7 @@ export function HomeNewPage() {
                       className="w-full"
                       opts={{ align: "start", loop: false }}
                     >
-                      <CarouselContent className="gap-3 px-[18px]">
+                      <CarouselContent className="gap-3 px-[18px] items-stretch">
                         {anticipated.length > 0
                           ? anticipated.map((anime, index) => (
                               <CarouselItem
@@ -1299,7 +1299,7 @@ export function HomeNewPage() {
                         className="grid grid-cols-3 gap-[24px] w-full"
                       >
                         {anticipated.length > 0
-                          ? anticipated.map((anime, index) => (
+                          ? anticipated.slice(0, 3).map((anime, index) => (
                               <motion.div
                                 key={`anticipated-${anime.rank}`}
                                 initial={{
@@ -1324,7 +1324,7 @@ export function HomeNewPage() {
                                 />
                               </motion.div>
                             ))
-                          : [1, 2, 3, 4, 5].map((i) => (
+                          : [1, 2, 3].map((i) => (
                               <div
                                 key={`placeholder-anticipated-${i}`}
                                 className="bg-slate-700/50 h-[380px] rounded-[10px] flex items-center justify-center"

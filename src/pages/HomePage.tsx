@@ -572,15 +572,9 @@ export function HomePage() {
                   e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                View All →
+                View All {'>'}
               </Link>
             </div>
-            <p
-              className="font-['Arial'] leading-[16px] text-[12px] break-words hidden"
-              style={{ color: "var(--rating-text)" }}
-            >
-              {weekPeriod || "Loading period..."}
-            </p>
           </div>
 
           {/* Mobile: Carousel without card container */}
@@ -761,7 +755,7 @@ export function HomePage() {
                   e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                View All &gt;
+                View All {'>'}
               </Link>
             </div>
           </div>
@@ -926,7 +920,7 @@ export function HomePage() {
                   e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                View All &gt;
+                View All {'>'}
               </Link>
             </div>
           </div>

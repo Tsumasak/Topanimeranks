@@ -311,60 +311,104 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Auto-detect current week based on Winter 2026
-    // Winter 2026 starts January 1, 2026 (Wednesday)
-    // Week 1: Jan 1-4 (Wed-Sun, partial week)
-    // Week 2+: Monday-Sunday (full weeks)
-    const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
-    const today = new Date();
-    
-    // Find the first Sunday of the season
-    const firstSunday = new Date(seasonStartDate);
-    const dayOfWeek = firstSunday.getUTCDay();
-    const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
-    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
-    
-    let currentWeek: number;
-    
-    // Check if today is in Week 1
-    if (today >= seasonStartDate && today <= firstSunday) {
-      currentWeek = 1;
-    } else {
-      // Week 2+ starts on Monday after first Sunday
-      const firstMonday = new Date(firstSunday);
-      firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
-      
-      const diffTime = today.getTime() - firstMonday.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
-      currentWeek = Math.max(1, Math.min(13, currentWeek));
-    }
-    
-    console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
+    // Get week_number from request body (if provided)
+    const body = await req.text();
+    const { week_number } = body ? JSON.parse(body) : {};
 
-    // Update current week and previous 2 weeks (to keep recent scores fresh)
-    const weeksToUpdate = [];
-    for (let i = Math.max(1, currentWeek - 2); i <= currentWeek; i++) {
-      weeksToUpdate.push(i);
-    }
+    let weekToProcess: number;
     
-    console.log(`📅 Updating weeks: ${weeksToUpdate.join(', ')}`);
-
-    const results = [];
-    for (const week of weeksToUpdate) {
-      const weekResult = await updateWeeklyEpisodes(supabase, week);
-      results.push(weekResult);
+    // Auto-detect current week if not provided
+    if (week_number) {
+      // Support dynamic week values: "current", "current-1", "current-2", or numeric
+      // Winter 2026 starts January 1, 2026 (Wednesday)
+      // Week 1: Jan 1-4 (Wed-Sun, partial week)
+      // Week 2+: Monday-Sunday (full weeks)
+      const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
+      const today = new Date();
       
-      if (week !== weeksToUpdate[weeksToUpdate.length - 1]) {
-        await delay(2000); // Small delay between weeks
+      // Find the first Sunday of the season
+      const firstSunday = new Date(seasonStartDate);
+      const dayOfWeek = firstSunday.getUTCDay();
+      const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+      firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+      
+      let currentWeek: number;
+      
+      // Check if today is in Week 1
+      if (today >= seasonStartDate && today <= firstSunday) {
+        currentWeek = 1;
+      } else {
+        // Week 2+ starts on Monday after first Sunday
+        const firstMonday = new Date(firstSunday);
+        firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+        
+        const diffTime = today.getTime() - firstMonday.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
+        currentWeek = Math.max(1, Math.min(13, currentWeek));
       }
+      
+      if (week_number === "current") {
+        weekToProcess = currentWeek;
+        console.log(`📅 Using current week: ${weekToProcess}`);
+      } else if (week_number === "current-1") {
+        weekToProcess = Math.max(1, currentWeek - 1);
+        console.log(`📅 Using previous week (current-1): ${weekToProcess}`);
+      } else if (week_number === "current-2") {
+        weekToProcess = Math.max(1, currentWeek - 2);
+        console.log(`📅 Using 2 weeks ago (current-2): ${weekToProcess}`);
+      } else if (typeof week_number === "number") {
+        weekToProcess = week_number;
+        console.log(`📅 Using provided numeric week: ${weekToProcess}`);
+      } else {
+        // Fallback to current week
+        weekToProcess = currentWeek;
+        console.log(`📅 Invalid week_number format, using current week: ${weekToProcess}`);
+      }
+    } else {
+      // Auto-detect current week based on Winter 2026
+      // Winter 2026 starts January 1, 2026 (Wednesday)
+      // Week 1: Jan 1-4 (Wed-Sun, partial week)
+      // Week 2+: Monday-Sunday (full weeks)
+      const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
+      const today = new Date();
+      
+      // Find the first Sunday of the season
+      const firstSunday = new Date(seasonStartDate);
+      const dayOfWeek = firstSunday.getUTCDay();
+      const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+      firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+      
+      let currentWeek: number;
+      
+      // Check if today is in Week 1
+      if (today >= seasonStartDate && today <= firstSunday) {
+        currentWeek = 1;
+      } else {
+        // Week 2+ starts on Monday after first Sunday
+        const firstMonday = new Date(firstSunday);
+        firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
+        
+        const diffTime = today.getTime() - firstMonday.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
+        currentWeek = Math.max(1, Math.min(13, currentWeek));
+      }
+      
+      weekToProcess = currentWeek;
+      console.log(`📅 Auto-detected current week: ${weekToProcess} (Date: ${today.toISOString().split('T')[0]})`);
     }
+
+    // Process ONLY ONE week per execution
+    console.log(`📅 Updating week: ${weekToProcess}`);
+
+    const result = await updateWeeklyEpisodes(supabase, weekToProcess);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        weeks_updated: weeksToUpdate,
-        results 
+        week_updated: weekToProcess,
+        itemsUpdated: result.itemsUpdated
       }),
       {
         headers: {

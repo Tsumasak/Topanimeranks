@@ -9,7 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
-const BATCH_SIZE = 10; // Process 10 animes per batch to avoid timeout (150s limit)
+const BATCH_SIZE = 15; // Process 15 animes per execution to avoid timeout
 const MAX_EXECUTION_TIME = 140000; // 140 seconds (leave 10s buffer before 150s timeout)
 
 // ============================================
@@ -548,42 +548,55 @@ serve(async (req) => {
     const body = await req.text();
     const { week_number } = body ? JSON.parse(body) : {};
 
-    let weeksToProcess: number[] = [];
+    let weekToProcess: number;
     
     // Auto-detect current week if not provided
     if (week_number) {
-      console.log(`📅 Using provided week number: ${week_number}`);
-      weeksToProcess = [week_number];
-    } else {
-      // Auto-detect current week based on Winter 2026
+      // Support dynamic week values: "current", "current-1", "current-2", or numeric
       const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
       const today = new Date();
       const diffTime = today.getTime() - baseDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
       
-      // Process current week AND previous week (to catch late-scored episodes)
-      weeksToProcess = currentWeek > 1 ? [currentWeek - 1, currentWeek] : [currentWeek];
+      if (week_number === "current") {
+        weekToProcess = currentWeek;
+        console.log(`📅 Using current week: ${weekToProcess}`);
+      } else if (week_number === "current-1") {
+        weekToProcess = Math.max(1, currentWeek - 1);
+        console.log(`📅 Using previous week (current-1): ${weekToProcess}`);
+      } else if (week_number === "current-2") {
+        weekToProcess = Math.max(1, currentWeek - 2);
+        console.log(`📅 Using 2 weeks ago (current-2): ${weekToProcess}`);
+      } else if (typeof week_number === "number") {
+        weekToProcess = week_number;
+        console.log(`📅 Using provided numeric week: ${weekToProcess}`);
+      } else {
+        // Fallback to current week
+        weekToProcess = currentWeek;
+        console.log(`📅 Invalid week_number format, using current week: ${weekToProcess}`);
+      }
+    } else {
+      // Auto-detect current week based on Winter 2026
+      const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
+      const today = new Date();
+      const diffTime = today.getTime() - baseDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      weekToProcess = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
       
-      console.log(`📅 Auto-detected current week: ${currentWeek} (Date: ${today.toISOString().split('T')[0]})`);
-      console.log(`📅 Will process weeks: ${weeksToProcess.join(', ')}`);
+      console.log(`📅 Auto-detected current week: ${weekToProcess} (Date: ${today.toISOString().split('T')[0]})`);
     }
 
-    // Process all weeks
-    const results = [];
-    for (const weekNum of weeksToProcess) {
-      const result = await insertWeeklyEpisodes(supabase, weekNum);
-      results.push(result);
-    }
-
-    const totalCreated = results.reduce((sum, r) => sum + r.itemsCreated, 0);
+    // Process ONLY ONE week per execution
+    console.log(`📅 Processing week: ${weekToProcess}`);
+    const result = await insertWeeklyEpisodes(supabase, weekToProcess);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        weeksProcessed: weeksToProcess,
-        totalItemsCreated: totalCreated,
-        results 
+        weekProcessed: weekToProcess,
+        itemsCreated: result.itemsCreated,
+        timeoutReached: result.timeoutReached
       }),
       {
         headers: {

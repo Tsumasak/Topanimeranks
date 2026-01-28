@@ -42,177 +42,298 @@ supabase functions deploy update-weekly-episodes
 
 Antes de criar as novas crons, você precisa **DELETAR as crons antigas** que processam múltiplas weeks.
 
+#### **Opção A: Via SQL Editor (RECOMENDADO - Mais Rápido)**
+
 1. Acesse o Supabase Dashboard: https://supabase.com/dashboard
 2. Selecione seu projeto
-3. No menu lateral, clique em **"Edge Functions"**
-4. Clique na aba **"Cron Jobs"**
-5. **DELETE as seguintes crons** (se existirem):
+3. No menu lateral, clique em **"SQL Editor"**
+4. Clique em **"New query"**
+5. Cole e execute o SQL abaixo para ver todas as crons existentes:
 
-| Nome da Cron | Ação |
-|-------------|------|
-| `insert-weekly-episodes-daily` | ❌ DELETAR |
-| `insert-weekly-episodes-hourly` | ❌ DELETAR |
-| `update-weekly-episodes-hourly` | ❌ DELETAR |
-| `update-weekly-episodes-daily` | ❌ DELETAR |
-| Qualquer outra cron relacionada a `insert` ou `update` | ❌ DELETAR |
+```sql
+-- Ver todas as crons existentes
+SELECT jobid, jobname, schedule, command 
+FROM cron.job 
+ORDER BY jobname;
+```
+
+6. Copie os `jobid` das crons que você quer deletar e execute:
+
+```sql
+-- Deletar crons antigas (substitua os IDs pelos IDs reais)
+SELECT cron.unschedule(1); -- Substitua 1 pelo jobid real
+SELECT cron.unschedule(2); -- Substitua 2 pelo jobid real
+-- Repita para cada cron antiga que você quer deletar
+```
+
+#### **Opção B: Via Dashboard UI**
+
+1. Vá em **Edge Functions > Cron Jobs**
+2. Encontre crons como:
+   - `insert-weekly-episodes-daily`
+   - `insert-weekly-episodes-hourly`
+   - `update-weekly-episodes-hourly`
+   - `update-weekly-episodes-daily`
+3. Clique nos 3 pontinhos (...) > **Delete** em cada uma
 
 **⚠️ IMPORTANTE:** Certifique-se de deletar TODAS as crons antigas relacionadas a insert/update antes de criar as novas!
 
 ---
 
-### **PASSO 3: Criar Novas Crons** ⏰
+### **PASSO 3: Criar Crons via SQL** 🎯
 
-Agora você vai criar **6 novas crons** (3 para insert, 3 para update).
+Agora você vai criar **6 novas crons** (3 para insert, 3 para update) usando SQL.
 
-#### **📥 CRONS DE INSERT (3 crons)**
+1. No Supabase Dashboard, vá em **SQL Editor**
+2. Clique em **"New query"**
+3. Cole e execute o SQL snippet completo abaixo:
 
-##### **Cron 1: Insert Current Week (Diário - 6:00 AM)**
-```
-Nome: insert-current-week
-Function: insert-weekly-episodes
-Schedule (Cron): 0 6 * * *
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current"}
+```sql
+-- ============================================
+-- CRIAR TODAS AS 6 CRONS DE UMA VEZ
+-- ============================================
+
+-- 📥 CRON 1: Insert Current Week (A cada 3 horas)
+SELECT cron.schedule(
+    'insert-current-week',
+    '0 */3 * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current"}'::jsonb
+      ) AS request_id;
+    $$
+);
+
+-- 📥 CRON 2: Insert Previous Week (Diário - 8:00 AM UTC)
+SELECT cron.schedule(
+    'insert-previous-week',
+    '0 8 * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current-1"}'::jsonb
+      ) AS request_id;
+    $$
+);
+
+-- 📥 CRON 3: Insert 2 Weeks Ago (Domingos - 10:00 AM UTC)
+SELECT cron.schedule(
+    'insert-2-weeks-ago',
+    '0 10 * * 0',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current-2"}'::jsonb
+      ) AS request_id;
+    $$
+);
+
+-- 🔄 CRON 4: Update Current Week (A cada 2 horas)
+SELECT cron.schedule(
+    'update-current-week',
+    '0 */2 * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/update-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current"}'::jsonb
+      ) AS request_id;
+    $$
+);
+
+-- 🔄 CRON 5: Update Previous Week (A cada 6 horas)
+SELECT cron.schedule(
+    'update-previous-week',
+    '0 */6 * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/update-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current-1"}'::jsonb
+      ) AS request_id;
+    $$
+);
+
+-- 🔄 CRON 6: Update 2 Weeks Ago (Diário - Meia-noite UTC)
+SELECT cron.schedule(
+    'update-2-weeks-ago',
+    '0 0 * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/update-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current-2"}'::jsonb
+      ) AS request_id;
+    $$
+);
 ```
 
-##### **Cron 2: Insert Previous Week (Diário - 8:00 AM)**
-```
-Nome: insert-previous-week
-Function: insert-weekly-episodes
-Schedule (Cron): 0 8 * * *
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current-1"}
-```
-
-##### **Cron 3: Insert 2 Weeks Ago (Domingos - 10:00 AM)**
-```
-Nome: insert-2-weeks-ago
-Function: insert-weekly-episodes
-Schedule (Cron): 0 10 * * 0
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current-2"}
-```
+4. Clique em **"RUN"** para executar
+5. Você deve ver 6 resultados de sucesso (um para cada cron)
 
 ---
 
-#### **🔄 CRONS DE UPDATE (3 crons)**
+### **PASSO 4: Verificar Crons Criadas** ✅
 
-##### **Cron 4: Update Current Week (A cada 2 horas)**
-```
-Nome: update-current-week
-Function: update-weekly-episodes
-Schedule (Cron): 0 */2 * * *
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current"}
-```
+Execute este SQL para confirmar que as 6 crons foram criadas:
 
-##### **Cron 5: Update Previous Week (A cada 6 horas)**
-```
-Nome: update-previous-week
-Function: update-weekly-episodes
-Schedule (Cron): 0 */6 * * *
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current-1"}
+```sql
+-- Ver todas as crons criadas
+SELECT 
+    jobid,
+    jobname,
+    schedule,
+    active,
+    nodename
+FROM cron.job 
+WHERE jobname IN (
+    'insert-current-week',
+    'insert-previous-week',
+    'insert-2-weeks-ago',
+    'update-current-week',
+    'update-previous-week',
+    'update-2-weeks-ago'
+)
+ORDER BY jobname;
 ```
 
-##### **Cron 6: Update 2 Weeks Ago (Diário - Meia-noite)**
-```
-Nome: update-2-weeks-ago
-Function: update-weekly-episodes
-Schedule (Cron): 0 0 * * *
-HTTP Request Method: POST
-HTTP Headers: 
-  Content-Type: application/json
-HTTP Body:
-  {"week_number":"current-2"}
-```
+**Você deve ver 6 linhas com `active = true`:**
+- ✅ `insert-current-week`
+- ✅ `insert-previous-week`
+- ✅ `insert-2-weeks-ago`
+- ✅ `update-current-week`
+- ✅ `update-previous-week`
+- ✅ `update-2-weeks-ago`
 
 ---
 
-### **PASSO 4: Como Criar Cada Cron no Dashboard** 🖱️
+### **PASSO 5: Testar Manualmente (Opcional)** 🧪
 
-Para CADA cron listada acima:
+Para testar uma cron manualmente via SQL:
 
-1. No Supabase Dashboard, vá em **Edge Functions > Cron Jobs**
-2. Clique no botão **"Create a new Cron Job"**
-3. Preencha os campos:
-   - **Name:** (nome da cron, ex: `insert-current-week`)
-   - **Function:** Selecione a function no dropdown (ex: `insert-weekly-episodes`)
-   - **Schedule:** Digite o cron schedule (ex: `0 6 * * *`)
-   - **HTTP Request:**
-     - Method: `POST`
-     - Headers: Clique em "Add Header"
-       - Key: `Content-Type`
-       - Value: `application/json`
-     - Body: Cole o JSON (ex: `{"week_number":"current"}`)
-4. Clique em **"Create Cron Job"**
-5. Repita para todas as 6 crons
+```sql
+-- Executar insert-current-week manualmente
+SELECT
+  net.http_post(
+    url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+    ),
+    body := '{"week_number":"current"}'::jsonb
+  ) AS request_id;
+```
 
----
-
-### **PASSO 5: Verificar Configuração** ✅
-
-Após criar todas as crons, verifique se tudo está correto:
-
-1. No dashboard, vá em **Edge Functions > Cron Jobs**
-2. Você deve ver **6 crons ativas**:
-   - ✅ `insert-current-week`
-   - ✅ `insert-previous-week`
-   - ✅ `insert-2-weeks-ago`
-   - ✅ `update-current-week`
-   - ✅ `update-previous-week`
-   - ✅ `update-2-weeks-ago`
-
-3. Clique em cada uma e verifique:
-   - ✅ Function correta selecionada
-   - ✅ Schedule correto
-   - ✅ Body com JSON correto
-
----
-
-### **PASSO 6: Testar Manualmente (Opcional)** 🧪
-
-Para testar se está funcionando:
-
-1. No dashboard, vá em **Edge Functions > Cron Jobs**
-2. Clique em uma das crons (ex: `insert-current-week`)
-3. Clique no botão **"Run Now"** ou **"Trigger Manually"**
-4. Aguarde a execução
-5. Vá em **Edge Functions > Logs** para ver os resultados
-6. Procure por logs como:
-   ```
-   📅 Using current week: 5
-   📅 Processing week: 5
-   ✅ Week 5 INSERT completed!
-   ```
+Ou teste via Dashboard:
+1. Vá em **Edge Functions > insert-weekly-episodes**
+2. Clique em **"Invoke Function"**
+3. No Body, cole: `{"week_number":"current"}`
+4. Clique em **"Run"**
+5. Veja os logs em **Edge Functions > Logs**
 
 ---
 
 ## 📊 RESUMO DAS CRONS
 
-| Nome | Function | Frequência | Week | Propósito |
-|------|----------|-----------|------|-----------|
-| `insert-current-week` | `insert-weekly-episodes` | Diário 6AM | `current` | Insere episódios da semana atual |
-| `insert-previous-week` | `insert-weekly-episodes` | Diário 8AM | `current-1` | Pega atrasos da semana passada |
-| `insert-2-weeks-ago` | `insert-weekly-episodes` | Domingo 10AM | `current-2` | Pega atrasos de 2 weeks atrás |
-| `update-current-week` | `update-weekly-episodes` | A cada 2h | `current` | Atualiza scores da semana atual |
-| `update-previous-week` | `update-weekly-episodes` | A cada 6h | `current-1` | Atualiza scores da semana passada |
-| `update-2-weeks-ago` | `update-weekly-episodes` | Diário 0:00 | `current-2` | Atualiza scores de 2 weeks atrás |
+| Nome | Function | Schedule (UTC) | Week | Propósito |
+|------|----------|---------------|------|-----------|
+| `insert-current-week` | `insert-weekly-episodes` | `0 6 * * *` (Diário 6AM) | `current` | Insere episódios da semana atual |
+| `insert-previous-week` | `insert-weekly-episodes` | `0 8 * * *` (Diário 8AM) | `current-1` | Pega atrasos da semana passada |
+| `insert-2-weeks-ago` | `insert-weekly-episodes` | `0 10 * * 0` (Domingo 10AM) | `current-2` | Pega atrasos de 2 weeks atrás |
+| `update-current-week` | `update-weekly-episodes` | `0 */2 * * *` (A cada 2h) | `current` | Atualiza scores da semana atual |
+| `update-previous-week` | `update-weekly-episodes` | `0 */6 * * *` (A cada 6h) | `current-1` | Atualiza scores da semana passada |
+| `update-2-weeks-ago` | `update-weekly-episodes` | `0 0 * * *` (Diário 0:00) | `current-2` | Atualiza scores de 2 weeks atrás |
+
+**⚠️ NOTA:** Todos os horários são em **UTC**. Ajuste mentalmente para seu fuso horário local!
+
+---
+
+## 🔧 COMANDOS SQL ÚTEIS
+
+### **Ver todas as crons:**
+```sql
+SELECT jobid, jobname, schedule, active, nodename 
+FROM cron.job 
+ORDER BY jobname;
+```
+
+### **Ver histórico de execuções:**
+```sql
+SELECT * 
+FROM cron.job_run_details 
+WHERE jobid IN (
+    SELECT jobid FROM cron.job WHERE jobname LIKE '%insert%' OR jobname LIKE '%update%'
+)
+ORDER BY start_time DESC
+LIMIT 20;
+```
+
+### **Desabilitar uma cron temporariamente:**
+```sql
+-- Substitua 'insert-current-week' pelo nome da cron
+UPDATE cron.job 
+SET active = false 
+WHERE jobname = 'insert-current-week';
+```
+
+### **Reabilitar uma cron:**
+```sql
+UPDATE cron.job 
+SET active = true 
+WHERE jobname = 'insert-current-week';
+```
+
+### **Deletar uma cron específica:**
+```sql
+-- Primeiro, encontre o jobid
+SELECT jobid, jobname FROM cron.job WHERE jobname = 'insert-current-week';
+
+-- Depois, delete usando o jobid
+SELECT cron.unschedule(123); -- Substitua 123 pelo jobid real
+```
+
+### **Deletar TODAS as crons de uma vez:**
+```sql
+-- ⚠️ CUIDADO: Isso deleta TODAS as 6 crons!
+SELECT cron.unschedule(jobid) 
+FROM cron.job 
+WHERE jobname IN (
+    'insert-current-week',
+    'insert-previous-week',
+    'insert-2-weeks-ago',
+    'update-current-week',
+    'update-previous-week',
+    'update-2-weeks-ago'
+);
+```
 
 ---
 
@@ -223,44 +344,119 @@ Para testar se está funcionando:
 ✅ **Scores Atualizados:** Weeks antigas também recebem updates de scores  
 ✅ **Flexível:** Fácil adicionar ou remover weeks sem mexer no código  
 ✅ **Logs Claros:** Cada cron tem seus próprios logs independentes  
+✅ **Setup Rápido:** Cria todas as 6 crons com 1 comando SQL  
 
 ---
 
 ## 🐛 TROUBLESHOOTING
 
+### **Problema: Erro "function cron.schedule does not exist"**
+**Solução:** A extensão `pg_cron` não está habilitada. Execute:
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+```
+
+### **Problema: Erro "extension http does not exist"**
+**Solução:** A extensão `http` não está habilitada. Execute:
+```sql
+CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
+```
+
 ### **Problema: Cron não está executando**
-- Verifique se o schedule está correto (formato cron: `minuto hora dia mês dia-da-semana`)
-- Certifique-se que a cron está **habilitada** (toggle verde)
+**Solução:** Verifique se a cron está ativa:
+```sql
+SELECT jobname, active FROM cron.job WHERE jobname = 'insert-current-week';
+```
+Se `active = false`, reative com:
+```sql
+UPDATE cron.job SET active = true WHERE jobname = 'insert-current-week';
+```
 
-### **Problema: Erro "Function not found"**
-- Certifique-se que fez o **deploy** das functions (Passo 1)
-- Verifique se selecionou a function correta no dropdown
-
-### **Problema: Erro "Invalid JSON"**
-- Verifique se o HTTP Body está no formato correto: `{"week_number":"current"}`
-- Certifique-se que o Header `Content-Type: application/json` está configurado
+### **Problema: Erro "Permission denied for schema cron"**
+**Solução:** Você precisa de permissões de `postgres` ou `service_role`. Certifique-se de estar logado com o usuário correto no SQL Editor.
 
 ### **Problema: Week errada sendo processada**
-- Verifique se o `week_number` no Body está correto
-- Vá em **Edge Functions > Logs** e procure por linhas como:
-  ```
-  📅 Using current week: X
-  ```
+**Solução:** 
+1. Verifique os logs da Edge Function:
+   - Dashboard > Edge Functions > Logs
+   - Procure por linhas como: `📅 Using current week: X`
+2. Confirme que o body da cron está correto:
+```sql
+SELECT jobname, command FROM cron.job WHERE jobname = 'insert-current-week';
+```
+
+### **Problema: Cron executa mas nada acontece**
+**Solução:** Verifique se:
+1. ✅ Edge Functions foram deployed (Passo 1)
+2. ✅ Tabela `app_config` tem `supabase_url` e `supabase_anon_key` configurados
+3. ✅ Edge Function está rodando sem erros (veja logs)
 
 ---
 
 ## 📝 MANUTENÇÃO FUTURA
 
-### **Para adicionar uma nova week:**
-1. Crie uma nova cron no dashboard
-2. Escolha a function (`insert-weekly-episodes` ou `update-weekly-episodes`)
-3. Configure o schedule
-4. No HTTP Body, use: `{"week_number":"current-3"}` (ou qualquer offset)
+### **Adicionar uma nova week (ex: current-3):**
+```sql
+SELECT cron.schedule(
+    'insert-3-weeks-ago',
+    '0 12 * * 6', -- Sábados às 12:00 UTC
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current-3"}'::jsonb
+      ) AS request_id;
+    $$
+);
+```
 
-### **Para remover uma week:**
-1. Vá em **Edge Functions > Cron Jobs**
-2. Encontre a cron
-3. Clique nos 3 pontinhos (...) > **Delete**
+### **Alterar o horário de uma cron:**
+```sql
+-- 1. Delete a cron antiga
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'insert-current-week';
+
+-- 2. Recrie com novo horário (ex: 7AM ao invés de 6AM)
+SELECT cron.schedule(
+    'insert-current-week',
+    '0 7 * * *', -- Mudou de 6 para 7
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/insert-weekly-episodes',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        ),
+        body := '{"week_number":"current"}'::jsonb
+      ) AS request_id;
+    $$
+);
+```
+
+---
+
+## 🕐 REFERÊNCIA: Formato Cron Schedule
+
+```
+┌───────────── minuto (0 - 59)
+│ ┌───────────── hora (0 - 23)
+│ │ ┌───────────── dia do mês (1 - 31)
+│ │ │ ┌───────────── mês (1 - 12)
+│ │ │ │ ┌───────────── dia da semana (0 - 6) (Domingo = 0 ou 7)
+│ │ │ │ │
+* * * * *
+```
+
+**Exemplos:**
+- `0 6 * * *` - Todo dia às 6:00 AM
+- `0 */2 * * *` - A cada 2 horas
+- `0 0 * * 0` - Todo domingo à meia-noite
+- `*/15 * * * *` - A cada 15 minutos
+- `0 9 * * 1-5` - Segunda a Sexta às 9:00 AM
 
 ---
 

@@ -476,7 +476,13 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
           .insert(episode);
 
         if (error) {
-          console.error(`❌ Insert error for ${episode.anime_title_english} EP${episode.episode_number}:`, error);
+          // Check if it's a duplicate key error (code 23505)
+          if (error.code === '23505') {
+            console.log(`ℹ️ SKIP: ${episode.anime_title_english} EP${episode.episode_number} - Already exists in database`);
+          } else {
+            // Real error - log with ❌
+            console.error(`❌ Insert error for ${episode.anime_title_english} EP${episode.episode_number}:`, error);
+          }
         } else {
           console.log(`✅ Inserted: ${episode.anime_title_english} EP${episode.episode_number}`);
           itemsCreated++;

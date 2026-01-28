@@ -9,6 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
+const MAX_EXECUTION_TIME = 140000; // 140 seconds (leave 10s buffer before 150s timeout)
 
 // Helper: Delay function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -90,8 +91,18 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // Update each anime's episodes
     let processedAnimeCount = 0;
+    let timeoutReached = false;
     
     for (const [animeId, episodes] of episodesByAnime) {
+      // ⏱️ TIMEOUT PROTECTION: Stop before 150s limit
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime > MAX_EXECUTION_TIME) {
+        console.log(`\n⏱️ TIMEOUT PROTECTION: Stopping at ${processedAnimeCount}/${episodesByAnime.size} animes (${elapsedTime}ms elapsed)`);
+        console.log(`⚠️ Remaining ${episodesByAnime.size - processedAnimeCount} animes will be updated in next run`);
+        timeoutReached = true;
+        break;
+      }
+      
       try {
         processedAnimeCount++;
         console.log(`[${processedAnimeCount}/${episodesByAnime.size}] Updating anime ${animeId} (${episodes.length} episodes)...`);

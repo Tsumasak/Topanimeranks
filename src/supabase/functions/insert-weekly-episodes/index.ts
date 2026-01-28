@@ -304,12 +304,15 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     // Process each anime
     const newEpisodes: any[] = [];
     let processedAnimeCount = 0;
+    let timeoutReached = false;
     
     for (const anime of airingAnimes) {
       // ⏱️ TIMEOUT PROTECTION: Stop before 150s limit
       const elapsedTime = Date.now() - startTime;
       if (elapsedTime > MAX_EXECUTION_TIME) {
         console.log(`\n⏱️ TIMEOUT PROTECTION: Stopping at ${processedAnimeCount}/${airingAnimes.length} animes (${elapsedTime}ms elapsed)`);
+        console.log(`⚠️ Remaining ${airingAnimes.length - processedAnimeCount} animes will be processed in next run`);
+        timeoutReached = true;
         break;
       }
       
@@ -502,7 +505,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`✅ Duration: ${duration}ms`);
     console.log(`✅ ============================================`);
     
-    return { success: true, itemsCreated, weekNumber };
+    return { success: true, itemsCreated, weekNumber, timeoutReached };
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`❌ Error inserting week ${weekNumber}:`, error);

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router";
+import { motion, AnimatePresence } from "motion/react";
 import BaseAnimeCard from './BaseAnimeCard';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
@@ -472,9 +472,6 @@ export function GenreRankingPage({ genre }: GenreRankingPageProps) {
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
             >
               {animes.map((anime, index) => {
-                // Format season + year for subtitle
-                const seasonStr = typeof anime.season === 'string' ? anime.season : '';
-
                 // Extract genre names
                 const genreNames = anime.genres?.map(g => 
                   typeof g === 'string' ? g : g?.name || 'Unknown'

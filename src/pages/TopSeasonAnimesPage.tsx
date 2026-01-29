@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router";
+import { motion, AnimatePresence } from "motion/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import BaseAnimeCard from '../components/BaseAnimeCard';
 import { SupabaseService } from '../services/supabase';
 import { JikanAnimeData } from '../types/anime';

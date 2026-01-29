@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
 import { AnticipatedAnime, JikanAnimeData } from '../types/anime';
+import { motion, AnimatePresence } from "framer-motion";
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");

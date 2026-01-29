@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
-import { AnimeCard } from "../components/AnimeCard";
+import React from "react";
+import { Link } from 'react-router';
+import AnimeCard from "../components/AnimeCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Carousel, CarouselContent, CarouselItem } from "../components/ui/carousel";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
@@ -22,19 +22,19 @@ interface HomeCardData {
 }
 
 export function HomePage() {
-  const [topEpisodes, setTopEpisodes] = useState<
+  const [topEpisodes, setTopEpisodes] = React.useState<
     HomeCardData[]
   >([]);
-  const [topSeasonAnimes, setTopSeasonAnimes] = useState<
+  const [topSeasonAnimes, setTopSeasonAnimes] = React.useState<
     HomeCardData[]
   >([]);
-  const [anticipated, setAnticipated] = useState<
+  const [anticipated, setAnticipated] = React.useState<
     HomeCardData[]
   >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [animationKey, setAnimationKey] = useState(0);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [animationKey, setAnimationKey] = React.useState(0);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchData = async () => {
       try {
         console.log("[HomePage] 🔄 Fetching data...");

@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router";
-import { Analytics } from "@vercel/analytics/react";
-import { Header } from "./components/Header";
-import { MigrationAlert } from "./components/MigrationAlert";
-import { HomePage } from "./pages/HomePage"; // Archived - old home page (accessible via /home-old)
-import { HomeNewPage } from "./pages/HomeNewPage";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router";
+import HomeNewPage from "./pages/HomeNewPage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";
 import MostAnticipatedPage from "./pages/MostAnticipatedPage";
@@ -15,7 +11,9 @@ import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminHeroBanners from "./pages/AdminHeroBanners";
 import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
+import { MigrationAlert } from "./components/MigrationAlert";
 import { Toaster } from "./components/ui/sonner";
+import { Header } from "./components/Header";
 
 // Genre Rankings Pages
 import FantasyRankings from "./ranks/fantasy";
@@ -226,7 +224,6 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomeNewPage />} />
-          <Route path="/home-old" element={<HomePage />} />
           <Route path="/ranks" element={<TopEpisodesPage />} />
           <Route path="/top-season-animes" element={<TopSeasonAnimesPage />} />
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
@@ -262,11 +259,10 @@ export default function App() {
   console.log("[App] Rendering App component");
   
   return (
-    <BrowserRouter>
+    <Router>
       <AppContent />
       <MigrationAlert />
       <Toaster />
-      <Analytics />
-    </BrowserRouter>
+    </Router>
   );
 }

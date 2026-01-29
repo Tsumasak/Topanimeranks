@@ -1,5 +1,7 @@
+import React from "react";
+import { Link } from "react-router";
+import { motion } from "motion/react";
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Link } from 'react-router';
 import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';
 
 interface BaseAnimeCardProps {

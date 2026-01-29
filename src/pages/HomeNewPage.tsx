@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
 import {
   projectId,
@@ -454,7 +454,7 @@ function HomeAnimeCard({
   );
 }
 
-export function HomeNewPage() {
+export default function HomeNewPage() {
   const [topEpisodes, setTopEpisodes] = useState<HomeCardData[]>([]);
   const [topSeasonAnimes, setTopSeasonAnimes] = useState<HomeCardData[]>([]);
   const [anticipated, setAnticipated] = useState<HomeCardData[]>([]);
@@ -800,8 +800,8 @@ export function HomeNewPage() {
                   color: 'var(--rank-text)',
                   overflow: 'visible',
                 }}
-                onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                 <span className="relative flex items-center gap-2 font-semibold text-sm">

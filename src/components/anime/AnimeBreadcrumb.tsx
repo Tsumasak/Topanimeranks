@@ -1,5 +1,6 @@
-import { ChevronRight } from 'lucide-react';
-import { Link } from 'react-router';
+import React from "react";
+import { Link } from "react-router";
+import { ChevronRight } from "lucide-react";
 
 interface AnimeBreadcrumbProps {
   season?: string;

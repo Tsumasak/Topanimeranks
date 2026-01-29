@@ -936,14 +936,6 @@
     height: 400px;
   }
 
-  .h-\[420px\] {
-    height: 420px;
-  }
-
-  .h-\[480px\] {
-    height: 480px;
-  }
-
   .h-\[var\(--radix-select-trigger-height\)\] {
     height: var(--radix-select-trigger-height);
   }
@@ -1337,10 +1329,6 @@
     gap: 24px;
   }
 
-  .gap-\[32px\] {
-    gap: 32px;
-  }
-
   .gap-\[48px\] {
     gap: 48px;
   }
@@ -1654,10 +1642,6 @@
     .border-red-500\/30 {
       border-color: color-mix(in oklab, var(--color-red-500) 30%, transparent);
     }
-  }
-
-  .border-transparent {
-    border-color: #0000;
   }
 
   .border-white\/20 {
@@ -4169,45 +4153,6 @@
 
   :is(.\*\:\[span\]\:last\:gap-2 > *):is(span):last-child {
     gap: calc(var(--spacing) * 2);
-  }
-
-  .\[\&\>svg\]\:pointer-events-none > svg {
-    pointer-events: none;
-  }
-
-  .\[\&\>svg\]\:size-3 > svg {
-    width: calc(var(--spacing) * 3);
-    height: calc(var(--spacing) * 3);
-  }
-
-  @media (hover: hover) {
-    a.\[a\&\]\:hover\:bg-accent:hover {
-      background-color: oklch(.97 0 0);
-    }
-  }
-
-  @media (hover: hover) {
-    a.\[a\&\]\:hover\:bg-destructive\/90:hover {
-      background-color: color-mix(in oklab, oklch(.577 .245 27.325) 90%, transparent);
-    }
-  }
-
-  @media (hover: hover) {
-    a.\[a\&\]\:hover\:bg-primary\/90:hover {
-      background-color: color-mix(in oklab, oklch(.205 0 0) 90%, transparent);
-    }
-  }
-
-  @media (hover: hover) {
-    a.\[a\&\]\:hover\:bg-secondary\/90:hover {
-      background-color: color-mix(in oklab, oklch(.97 0 0) 90%, transparent);
-    }
-  }
-
-  @media (hover: hover) {
-    a.\[a\&\]\:hover\:text-accent-foreground:hover {
-      color: oklch(.205 0 0);
-    }
   }
 
   .text-balance {

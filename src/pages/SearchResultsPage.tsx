@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router';
-import { Search } from 'lucide-react';
-import { SearchResult } from '../types/search';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
-import BaseAnimeCard from '../components/BaseAnimeCard';
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router";
+import { motion, AnimatePresence } from "motion/react";
+import { Search } from "lucide-react";
+import { SearchResult } from "../types/search";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
+import BaseAnimeCard from "../components/BaseAnimeCard";
 
 export function SearchResultsPage() {
   const [searchParams] = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const query = searchParams.get("q") || "";
 
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,21 +36,24 @@ export function SearchResultsPage() {
         );
 
         if (!response.ok) {
-          throw new Error('Search failed');
+          throw new Error("Search failed");
         }
 
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
           const text = await response.text();
-          console.error('[SearchResults] Response is not JSON:', text.substring(0, 200));
-          throw new Error('Response is not JSON');
+          console.error(
+            "[SearchResults] Response is not JSON:",
+            text.substring(0, 200)
+          );
+          throw new Error("Response is not JSON");
         }
 
         const data = await response.json();
         setResults(data.results || []);
       } catch (err) {
-        console.error('Search error:', err);
-        setError('Failed to load search results. Please try again.');
+        console.error("Search error:", err);
+        setError("Failed to load search results. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -113,31 +117,44 @@ export function SearchResultsPage() {
         {!isLoading && !error && results.length > 0 && (
           <>
             <div className="mb-4 text-[var(--text-secondary)]">
-              Found {results.length} result{results.length !== 1 ? 's' : ''} for <span className="font-medium" style={{color: 'var(--rating-yellow)'}}>"{query}"</span>
+              Found {results.length} result{results.length !== 1 ? "s" : ""} for{" "}
+              <span className="font-medium" style={{ color: "var(--rating-yellow)" }}>
+                "{query}"
+              </span>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {results.map((result, index) => {
-                return (
-                  <BaseAnimeCard
-                    key={result.id}
-                    rank={index + 1}
-                    hideRank={true}
-                    title={result.title}
-                    subtitle=""
-                    imageUrl={result.imageUrl || ''}
-                    linkUrl={`/anime/${result.id}`}
-                    bottomText={result.score ? `⭐ ${result.score.toFixed(2)}` : ''}
-                    animeType={result.type || undefined}
-                    demographics={result.demographics || []}
-                    genres={result.genres || []}
-                    themes={result.themes || []}
-                    season={result.season}
-                    year={result.year}
-                    animeId={result.id}
-                  />
-                );
-              })}
+              <AnimatePresence>
+                {results.map((result, index) => {
+                  return (
+                    <motion.div
+                      key={result.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <BaseAnimeCard
+                        key={result.id}
+                        rank={index + 1}
+                        hideRank={true}
+                        title={result.title}
+                        subtitle=""
+                        imageUrl={result.imageUrl || ""}
+                        linkUrl={`/anime/${result.id}`}
+                        bottomText={result.score ? `⭐ ${result.score.toFixed(2)}` : ""}
+                        animeType={result.type || undefined}
+                        demographics={result.demographics || []}
+                        genres={result.genres || []}
+                        themes={result.themes || []}
+                        season={result.season}
+                        year={result.year}
+                        animeId={result.id}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </>
         )}

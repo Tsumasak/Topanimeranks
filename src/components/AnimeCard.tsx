@@ -1,4 +1,7 @@
-import BaseAnimeCard from "./BaseAnimeCard";
+import React from "react";
+import { Link } from "react-router";
+import { motion } from "motion/react";
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 // Data format from HomePage
 interface HomeCardData {

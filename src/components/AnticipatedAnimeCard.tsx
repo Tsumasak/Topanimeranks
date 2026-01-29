@@ -1,5 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router';
+import React from "react";
+import { Link, useLocation } from "react-router";
+import { motion } from "motion/react";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { getTypeClass, getDemographicClass } from '../utils/tagHelpers';
 

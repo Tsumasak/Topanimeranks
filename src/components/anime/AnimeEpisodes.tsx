@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Badge } from '../ui/badge';
 import { Link } from 'react-router';
 import { getEpisodeSeasonInfo } from '../../utils/seasons';

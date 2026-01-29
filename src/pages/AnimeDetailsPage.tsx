@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { Badge } from '../components/ui/badge';
 import { supabase } from "../utils/supabase/client";
 import { AnimeHero } from "../components/anime/AnimeHero";
 import { AnimeStats } from "../components/anime/AnimeStats";

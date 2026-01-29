@@ -182,7 +182,7 @@ export default function BaseAnimeCard({
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (
             <div className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(demographics[0])}`}>
-              {typeof demographics[0] === 'string' ? demographics[0] : demographics[0]?.name || 'Unknown'}
+              {demographics[0]}
             </div>
           )}
         </div>

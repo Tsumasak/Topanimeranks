@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { AnimeCard } from "../components/AnimeCard";
+import { motion, AnimatePresence } from "framer-motion";
+import { Carousel, CarouselContent, CarouselItem } from "../components/ui/carousel";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 interface HomeCardData {
   rank: number;

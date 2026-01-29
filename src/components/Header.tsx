@@ -1,6 +1,6 @@
 import { Sun, Moon } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Union from "../imports/Union";
 import { SearchBar } from "./SearchBar";
 import { MobileSearchButton } from "./MobileSearchButton";
@@ -14,6 +14,8 @@ interface HeaderProps {
 
 export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChange }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
+  const [isMobileGenresOpen, setIsMobileGenresOpen] = useState(false);
   const navigate = useNavigate();
 
   const toggleMobileMenu = () => {
@@ -29,6 +31,27 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
       ? 'Switch to light theme'
       : 'Switch to dark theme';
   };
+
+  // Genre data sorted by anime count
+  const genres = [
+    { name: 'Fantasy', count: 408, path: '/ranks/fantasy' },
+    { name: 'Action', count: 369, path: '/ranks/action' },
+    { name: 'Comedy', count: 296, path: '/ranks/comedy' },
+    { name: 'Adventure', count: 226, path: '/ranks/adventure' },
+    { name: 'Romance', count: 197, path: '/ranks/romance' },
+    { name: 'Drama', count: 167, path: '/ranks/drama' },
+    { name: 'Sci-Fi', count: 117, path: '/ranks/sci-fi' },
+    { name: 'Supernatural', count: 99, path: '/ranks/supernatural' },
+    { name: 'Mystery', count: 72, path: '/ranks/mystery' },
+    { name: 'Suspense', count: 47, path: '/ranks/suspense' },
+    { name: 'Slice of Life', count: 43, path: '/ranks/slice-of-life' },
+    { name: 'Sports', count: 38, path: '/ranks/sports' },
+    { name: 'Horror', count: 19, path: '/ranks/horror' },
+  ];
+
+  // Split genres into two columns: first 7 and last 6
+  const leftColumnGenres = genres.slice(0, 7);
+  const rightColumnGenres = genres.slice(7);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -77,6 +100,70 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
               >
                 Top Animes
               </button>
+              <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
+              
+              {/* Anime Genres Dropdown */}
+              <div 
+                className="relative"
+                onMouseEnter={() => setIsGenreDropdownOpen(true)}
+                onMouseLeave={() => setIsGenreDropdownOpen(false)}
+              >
+                <button 
+                  className="theme-nav-link transition-colors flex items-center gap-1 h-full py-4"
+                >
+                  Anime Genres
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isGenreDropdownOpen && (
+                  <div 
+                    className="absolute top-full left-0 rounded-lg shadow-xl border overflow-hidden"
+                    style={{
+                      backgroundColor: 'var(--card-background)',
+                      borderColor: 'var(--card-border)',
+                      minWidth: '400px',
+                      zIndex: 9999,
+                    }}
+                  >
+                    <div className="grid grid-cols-2 gap-2 p-4">
+                      {/* Left Column (7 genres) */}
+                      <div className="space-y-1">
+                        {leftColumnGenres.map((genre) => (
+                          <button
+                            key={genre.name}
+                            onClick={() => {
+                              navigate(genre.path);
+                              setIsGenreDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm"
+                            style={{ color: 'var(--foreground)' }}
+                          >
+                            {genre.name} <span className="opacity-50">({genre.count})</span>
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Right Column (6 genres) */}
+                      <div className="space-y-1">
+                        {rightColumnGenres.map((genre) => (
+                          <button
+                            key={genre.name}
+                            onClick={() => {
+                              navigate(genre.path);
+                              setIsGenreDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm"
+                            style={{ color: 'var(--foreground)' }}
+                          >
+                            {genre.name} <span className="opacity-50">({genre.count})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 
                 onClick={() => onPageChange?.('anticipated')}
@@ -158,6 +245,34 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
           >
             🏆 Top Season Animes
           </button>
+          
+          {/* Anime Genres Section */}
+          <button 
+            onClick={() => setIsMobileGenresOpen(!isMobileGenresOpen)}
+            className="mobile-menu-link flex items-center justify-between"
+          >
+            <span>🎭 Anime Genres</span>
+          </button>
+          
+          {/* Genres Sub-menu */}
+          {isMobileGenresOpen && (
+            <div className="pl-6 space-y-1 py-2">
+              {genres.map((genre) => (
+                <button
+                  key={genre.name}
+                  onClick={() => {
+                    navigate(genre.path);
+                    closeMobileMenu();
+                  }}
+                  className="mobile-menu-link text-sm opacity-80"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {genre.name} <span className="opacity-50">({genre.count})</span>
+                </button>
+              ))}
+            </div>
+          )}
+          
           <button 
             onClick={() => {
               onPageChange?.('anticipated');

@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { getTypeClass, getDemographicClass, getSeasonClass } from '../utils/tagHelpers';
 
 interface BaseAnimeCardProps {
@@ -182,7 +182,7 @@ export default function BaseAnimeCard({
           {/* Demographics Tag - only show first demographic if available */}
           {demographics && demographics.length > 0 && (
             <div className={`px-3 py-1 rounded-full text-xs ${getDemographicClass(demographics[0])}`}>
-              {demographics[0]}
+              {typeof demographics[0] === 'string' ? demographics[0] : demographics[0]?.name || 'Unknown'}
             </div>
           )}
         </div>
@@ -216,8 +216,17 @@ export default function BaseAnimeCard({
           <div className={`relative flex flex-col ${hideRank ? '' : 'ml-4'} flex-grow`}>
             <h3 className="text-lg line-clamp-2 leading-[1.1] mb-3" style={{color: 'var(--foreground)', fontWeight: '700'}}>{title}</h3>
             
-            {/* Episode Subtitle - only show when NOT hiding rank (i.e., in Weekly Episodes page) */}
-            {!hideRank && subtitle && (
+            {/* Season Tag - show when season and year are available */}
+            {!hideRank && season && typeof season === 'string' && year && (
+              <div className="mb-2">
+                <span className={`${getSeasonClass(season)} px-3 py-1 rounded-full text-xs inline-block`}>
+                  {season.charAt(0).toUpperCase() + season.slice(1)} {year}
+                </span>
+              </div>
+            )}
+            
+            {/* Episode Subtitle - only show when NOT hiding rank and no season tag */}
+            {!hideRank && subtitle && !season && (
               <p className="text-sm mb-2" style={{color: 'var(--foreground)', opacity: 0.8}}>
                 {subtitle}
               </p>
@@ -226,22 +235,25 @@ export default function BaseAnimeCard({
             {/* Genres + Themes Tags - Combine and show first 3 total */}
             {((genres && genres.length > 0) || (themes && themes.length > 0)) && (
               <div className="flex gap-1 flex-wrap mb-2">
-                {[...genres, ...themes].slice(0, 3).map((tag, index) => (
-                  <span 
-                    key={index} 
-                    className="px-2.5 py-1 text-xs rounded-full border theme-rating"
-                    style={{
-                      borderColor: 'var(--card-border)'
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
+                {[...genres, ...themes].slice(0, 3).map((tag, index) => {
+                  const tagName = typeof tag === 'string' ? tag : tag?.name || 'Unknown';
+                  return (
+                    <span 
+                      key={index} 
+                      className="px-2.5 py-1 text-xs rounded-full border theme-rating"
+                      style={{
+                        borderColor: 'var(--card-border)'
+                      }}
+                    >
+                      {tagName}
+                    </span>
+                  );
+                })}
               </div>
             )}
             
             {/* Season Tag - show in search results when hideRank is true */}
-            {hideRank && season && (
+            {hideRank && season && typeof season === 'string' && (
               <div className="flex gap-1">
                 <span className={`px-2.5 py-1 text-xs rounded-full ${getSeasonClass(season)}`}>
                   {season.toLowerCase() === 'upcoming' && year === 9999 

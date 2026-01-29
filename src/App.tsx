@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router";
 import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { MigrationAlert } from "./components/MigrationAlert";
@@ -13,8 +13,24 @@ import AnimeDetailsPage from "./pages/AnimeDetailsPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminHeroBanners from "./pages/AdminHeroBanners";
+import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { Toaster } from "./components/ui/sonner";
+
+// Genre Rankings Pages
+import FantasyRankings from "./ranks/fantasy";
+import ActionRankings from "./ranks/action";
+import ComedyRankings from "./ranks/comedy";
+import AdventureRankings from "./ranks/adventure";
+import RomanceRankings from "./ranks/romance";
+import DramaRankings from "./ranks/drama";
+import SciFiRankings from "./ranks/sci-fi";
+import SupernaturalRankings from "./ranks/supernatural";
+import MysteryRankings from "./ranks/mystery";
+import SuspenseRankings from "./ranks/suspense";
+import SliceOfLifeRankings from "./ranks/slice-of-life";
+import SportsRankings from "./ranks/sports";
+import HorrorRankings from "./ranks/horror";
 
 function AppContent() {
   const [theme, setTheme] = useState("dark");
@@ -219,6 +235,20 @@ function AppContent() {
           <Route path="/search" element={<SearchResultsPage />} />
           <Route path="/admin-sync" element={<AdminSyncPage />} />
           <Route path="/admin-hero-banners" element={<AdminHeroBanners />} />
+          <Route path="/admin-panel" element={<AdminPanel />} />
+          <Route path="/ranks/fantasy" element={<FantasyRankings />} />
+          <Route path="/ranks/action" element={<ActionRankings />} />
+          <Route path="/ranks/comedy" element={<ComedyRankings />} />
+          <Route path="/ranks/adventure" element={<AdventureRankings />} />
+          <Route path="/ranks/romance" element={<RomanceRankings />} />
+          <Route path="/ranks/drama" element={<DramaRankings />} />
+          <Route path="/ranks/sci-fi" element={<SciFiRankings />} />
+          <Route path="/ranks/supernatural" element={<SupernaturalRankings />} />
+          <Route path="/ranks/mystery" element={<MysteryRankings />} />
+          <Route path="/ranks/suspense" element={<SuspenseRankings />} />
+          <Route path="/ranks/slice-of-life" element={<SliceOfLifeRankings />} />
+          <Route path="/ranks/sports" element={<SportsRankings />} />
+          <Route path="/ranks/horror" element={<HorrorRankings />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>

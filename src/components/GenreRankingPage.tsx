@@ -348,22 +348,22 @@ export function GenreRankingPage({ genre }: GenreRankingPageProps) {
   // Dynamic background based on genre
   const getGenreGradient = (genreName: string) => {
     const genreColors: { [key: string]: string } = {
-      Action: 'from-red-500/20 via-orange-500/10 to-transparent',
-      Adventure: 'from-green-500/20 via-emerald-500/10 to-transparent',
-      Comedy: 'from-yellow-500/20 via-amber-500/10 to-transparent',
-      Drama: 'from-purple-500/20 via-violet-500/10 to-transparent',
-      Fantasy: 'from-pink-500/20 via-fuchsia-500/10 to-transparent',
-      Horror: 'from-gray-800/20 via-gray-700/10 to-transparent',
-      Mystery: 'from-indigo-500/20 via-blue-500/10 to-transparent',
-      Romance: 'from-rose-500/20 via-pink-500/10 to-transparent',
-      'Sci-Fi': 'from-cyan-500/20 via-blue-500/10 to-transparent',
-      'Slice of Life': 'from-teal-500/20 via-green-500/10 to-transparent',
-      Sports: 'from-orange-500/20 via-red-500/10 to-transparent',
-      Supernatural: 'from-violet-500/20 via-purple-500/10 to-transparent',
-      Thriller: 'from-red-800/20 via-orange-800/10 to-transparent',
+      Action: 'from-red-500/14 via-orange-500/7 to-transparent',
+      Adventure: 'from-green-500/14 via-emerald-500/7 to-transparent',
+      Comedy: 'from-yellow-500/14 via-amber-500/7 to-transparent',
+      Drama: 'from-purple-500/14 via-violet-500/7 to-transparent',
+      Fantasy: 'from-pink-500/14 via-fuchsia-500/7 to-transparent',
+      Horror: 'from-gray-800/14 via-gray-700/7 to-transparent',
+      Mystery: 'from-indigo-500/14 via-blue-500/7 to-transparent',
+      Romance: 'from-rose-500/14 via-pink-500/7 to-transparent',
+      'Sci-Fi': 'from-cyan-500/14 via-blue-500/7 to-transparent',
+      'Slice of Life': 'from-teal-500/14 via-green-500/7 to-transparent',
+      Sports: 'from-orange-500/14 via-red-500/7 to-transparent',
+      Supernatural: 'from-violet-500/14 via-purple-500/7 to-transparent',
+      Thriller: 'from-red-800/14 via-orange-800/7 to-transparent',
     };
 
-    return genreColors[genreName] || 'from-blue-500/20 via-indigo-500/10 to-transparent';
+    return genreColors[genreName] || 'from-blue-500/14 via-indigo-500/7 to-transparent';
   };
 
   return (
@@ -474,9 +474,6 @@ export function GenreRankingPage({ genre }: GenreRankingPageProps) {
               {animes.map((anime, index) => {
                 // Format season + year for subtitle
                 const seasonStr = typeof anime.season === 'string' ? anime.season : '';
-                const seasonLabel = seasonStr && anime.year 
-                  ? `${seasonStr.charAt(0).toUpperCase() + seasonStr.slice(1).toLowerCase()} ${anime.year}`
-                  : '';
 
                 // Extract genre names
                 const genreNames = anime.genres?.map(g => 

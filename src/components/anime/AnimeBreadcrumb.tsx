@@ -1,7 +1,6 @@
-"use client";
-
-import { Link } from "react-router";
-import { ChevronRight } from "lucide-react";
+import React from 'react';
+import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router';
 
 interface AnimeBreadcrumbProps {
   season?: string;

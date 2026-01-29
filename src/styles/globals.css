@@ -551,11 +551,13 @@ b, strong, .font-bold {
   }
 }
 
-/* Accessibility improvements */
-.theme-nav-link:focus,
-button:focus {
-  outline: 2px solid var(--nav-hover);
-  outline-offset: 2px;
+/* Accessibility improvements - Remove focus outline */
+button:focus,
+button:focus-visible,
+a:focus,
+a:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Mobile hamburger icon styling */

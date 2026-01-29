@@ -77,7 +77,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
         <nav className="container mx-auto flex justify-between items-center px-[24px] py-[16px]">
           <button 
             onClick={() => navigate('/home')}
-            className="flex items-center justify-start logo-button hover:opacity-80 transition-opacity"
+            className="flex items-center justify-start logo-button hover:opacity-80 transition-opacity outline-none focus:outline-none"
           >
             <div className="h-[40px] md:h-[50px]">
               <Union />
@@ -89,14 +89,14 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => onPageChange?.('ranks')}
-                className="theme-nav-link transition-colors"
+                className="theme-nav-link transition-colors outline-none focus:outline-none"
               >
                 Weekly Anime Episodes
               </button>
               <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 
                 onClick={() => onPageChange?.('season')}
-                className="theme-nav-link transition-colors"
+                className="theme-nav-link transition-colors outline-none focus:outline-none"
               >
                 Top Animes
               </button>
@@ -109,7 +109,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                 onMouseLeave={() => setIsGenreDropdownOpen(false)}
               >
                 <button 
-                  className="theme-nav-link transition-colors flex items-center gap-1 h-full py-4"
+                  className="theme-nav-link transition-colors flex items-center gap-1 h-full py-4 outline-none focus:outline-none"
                 >
                   Anime Genres
                 </button>
@@ -135,7 +135,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                               navigate(genre.path);
                               setIsGenreDropdownOpen(false);
                             }}
-                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm"
+                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm outline-none focus:outline-none"
                             style={{ color: 'var(--foreground)' }}
                           >
                             {genre.name} <span className="opacity-50">({genre.count})</span>
@@ -152,7 +152,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
                               navigate(genre.path);
                               setIsGenreDropdownOpen(false);
                             }}
-                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm"
+                            className="w-full text-left px-3 py-2 rounded transition-colors hover:bg-yellow-500/20 text-sm outline-none focus:outline-none"
                             style={{ color: 'var(--foreground)' }}
                           >
                             {genre.name} <span className="opacity-50">({genre.count})</span>
@@ -167,7 +167,7 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
               <div className="h-5 w-px opacity-30" style={{ backgroundColor: 'var(--foreground)' }} />
               <button 
                 onClick={() => onPageChange?.('anticipated')}
-                className="theme-nav-link transition-colors"
+                className="theme-nav-link transition-colors outline-none focus:outline-none"
               >
                 Most Anticipated Animes
               </button>

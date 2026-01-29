@@ -1,6 +1,7 @@
-import { Sun, Moon } from "lucide-react";
+import React from "react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { Sun, Moon } from "lucide-react";
 import Union from "../imports/Union";
 import { SearchBar } from "./SearchBar";
 import { MobileSearchButton } from "./MobileSearchButton";

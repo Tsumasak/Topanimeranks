@@ -50,6 +50,7 @@
           "react-hook-form": "*",
           "react-resizable-panels": "*",
           "react-router": "*",
+          "react-router-dom": "*",
           "recharts": "*",
           "sonner": "*",
           "tailwind-merge": "*",

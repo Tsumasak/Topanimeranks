@@ -4,6 +4,34 @@
 
 ## 🚨 **CRITICAL PATTERNS - READ FIRST**
 
+### **⚠️ 0. REACT ROUTER - MANDATORY RULE (READ THIS FIRST!)**
+**❌ NEVER EVER use `react-router` package**  
+**✅ ALWAYS use `react-router-dom` package**
+
+```tsx
+// ✅ CORRECT - Use react-router-dom
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+
+// ❌ WRONG - NEVER use react-router
+import { Link } from "react-router"; // THIS WILL BREAK IN PRODUCTION
+```
+
+**CRITICAL RULES:**
+1. `react-router` is ONLY the core library - it does NOT work in web browsers alone
+2. `react-router-dom` is the CORRECT package for ALL web applications
+3. Using `react-router` causes deployment errors on Vercel and production builds
+4. **IF YOU SEE ROUTER ERRORS:** DO NOT switch to `react-router` - debug the actual root cause instead
+5. **NEVER suggest using `react-router` when fixing errors - investigate the real issue**
+
+**Common error scenarios:**
+- ❌ "useNavigate() may be used only in context of Router" → Check Router wrapper, NOT the import
+- ❌ "Module has no export" → Verify component structure, NOT the package name
+- ❌ Build fails with router errors → Check for typos/missing components, NOT the package
+
+**This rule is NON-NEGOTIABLE and must NEVER be violated!**
+
+---
+
 ### **1. Carousel Cards MUST Have Uniform Heights**
 **📄 Full Documentation:** [CAROUSEL_UNIFORM_CARDS.md](./CAROUSEL_UNIFORM_CARDS.md)
 

@@ -237,7 +237,7 @@ export default function BaseAnimeCard({
             {((genres && genres.length > 0) || (themes && themes.length > 0)) && (
               <div className="flex gap-1 flex-wrap mb-2">
                 {[...genres, ...themes].slice(0, 3).map((tag, index) => {
-                  const tagName = typeof tag === 'string' ? tag : tag?.name || 'Unknown';
+                  const tagName = typeof tag === 'string' ? tag : (tag as any)?.name || 'Unknown';
                   return (
                     <span 
                       key={index} 

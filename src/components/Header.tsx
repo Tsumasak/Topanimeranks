@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Sun, Moon, ChevronDown } from "lucide-react";
-import Union from "../imports/Union";
+import { Sun, Moon } from "lucide-react";
+import { Union } from "../imports/union";
 import { SearchBar } from "./SearchBar";
 import { MobileSearchButton } from "./MobileSearchButton";
 

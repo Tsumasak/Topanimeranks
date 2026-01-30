@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { getEpisodeSeasonInfo } from '../../utils/seasons';
 
-interface Episode {
+interface AnimeEpisode {
   id: number;
   anime_id: number;
   episode_id?: string;
@@ -17,7 +16,7 @@ interface Episode {
 }
 
 interface AnimeEpisodesProps {
-  episodes: Episode[];
+  episodes: AnimeEpisode[];
   animeId?: number;
   weeklyData?: Record<number, any[]>;
 }
@@ -26,7 +25,7 @@ interface SeasonGroup {
   season: string;
   year: number;
   seasonDisplay: string;
-  episodes: Episode[];
+  episodes: AnimeEpisode[];
 }
 
 export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps) {
@@ -54,7 +53,7 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
     }
   };
 
-  const calculateRank = (episode: Episode): number | null => {
+  const calculateRank = (episode: AnimeEpisode): number | null => {
     // ✅ FIXED: Use position_in_week from database instead of recalculating
     // The database already has the correct rank calculated
     if (episode.position_in_week && episode.position_in_week > 0) {
@@ -77,7 +76,7 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
     return rank > 0 ? rank : null;
   };
 
-  const calculateTrend = (episode: Episode, currentRank: number | null): { change: number | null; showTrend: boolean } => {
+  const calculateTrend = (episode: AnimeEpisode, currentRank: number | null): { change: number | null; showTrend: boolean } => {
     // If no rank or week 1, no trend to show
     if (!currentRank || !episode.week_number || episode.week_number === 1 || !weeklyData) {
       return { change: null, showTrend: false };
@@ -238,9 +237,13 @@ export function AnimeEpisodes({ episodes, weeklyData = {} }: AnimeEpisodesProps)
                             <span className="font-bold text-[20px]">{episode.episode_score.toFixed(2)}</span>
                           </div>
                         ) : (
-                          <Badge variant="outline" className="text-xs">
+                          <span className="px-2 py-1 text-xs border rounded" style={{
+                            borderColor: 'var(--card-border)',
+                            color: 'var(--foreground)',
+                            opacity: 0.5
+                          }}>
                             N/A
-                          </Badge>
+                          </span>
                         )}
                       </div>
 

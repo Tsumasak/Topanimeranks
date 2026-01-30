@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { getTypeClass, getDemographicClass } from '../utils/tagHelpers';
 

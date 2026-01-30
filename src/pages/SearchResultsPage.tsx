@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search } from "lucide-react";
 import { SearchResult } from "../types/search";
 import { projectId, publicAnonKey } from "../utils/supabase/info";

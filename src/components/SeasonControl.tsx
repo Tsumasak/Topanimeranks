@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';

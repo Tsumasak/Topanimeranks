@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import BaseAnimeCard from './BaseAnimeCard';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 

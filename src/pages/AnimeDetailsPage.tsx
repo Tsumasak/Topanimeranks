@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../utils/supabase/client";
 import { AnimeHero } from "../components/anime/AnimeHero";
 import { AnimeStats } from "../components/anime/AnimeStats";

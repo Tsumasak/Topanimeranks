@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Sun, Moon, ChevronDown } from "lucide-react";
 import Union from "../imports/Union";
 import { SearchBar } from "./SearchBar";
@@ -16,7 +16,8 @@ export function Header({ onThemeToggle, theme, currentPage = 'ranks', onPageChan
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
   const [isMobileGenresOpen, setIsMobileGenresOpen] = useState(false);
-  const navigate = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);

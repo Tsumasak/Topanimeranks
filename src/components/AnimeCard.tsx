@@ -1,6 +1,3 @@
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ImageWithFallback } from './figma/ImageWithFallback';
 import BaseAnimeCard from './BaseAnimeCard';
 
 // Data format from HomePage

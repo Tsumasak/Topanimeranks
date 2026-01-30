@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import HomeNewPage from "./pages/HomeNewPage";
 import TopEpisodesPage from "./pages/TopEpisodesPage";
 import TopSeasonAnimesPage from "./pages/TopSeasonAnimesPage";

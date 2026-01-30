@@ -1,5 +1,4 @@
-import React from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 

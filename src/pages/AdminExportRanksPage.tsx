@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Label } from "../components/ui/label";
-import { Download, FileDown, Loader2, ArrowLeft } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { Download, FileDown, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 type RankType = "weekly-episodes" | "top-animes" | "anime-genres" | "most-anticipated" | "";

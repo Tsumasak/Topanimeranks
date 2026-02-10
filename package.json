@@ -50,7 +50,7 @@
           "react-resizable-panels": "*",
           "react-router-dom": "*",
           "recharts": "*",
-          "sonner": "^2.0.3",
+          "sonner": "*",
           "tailwind-merge": "*",
           "tailwindcss": "*",
           "vaul": "*",

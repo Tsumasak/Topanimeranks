@@ -30,14 +30,14 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
   // Get all available pictures (including main image)
   const allPictures = anime.pictures && Array.isArray(anime.pictures) && anime.pictures.length > 0
     ? [
-        // ALWAYS start with the main image (default poster)
-        { large: anime.image_url, small: anime.image_url },
-        // Then add the rest of the pictures
-        ...anime.pictures.map((pic: any) => ({
-          large: pic.jpg?.large_image_url || pic.webp?.large_image_url || pic.jpg?.image_url || pic.webp?.image_url,
-          small: pic.jpg?.image_url || pic.webp?.image_url || pic.jpg?.large_image_url || pic.webp?.large_image_url, // Use full image, not thumbnail
-        }))
-      ]
+      // ALWAYS start with the main image (default poster)
+      { large: anime.image_url, small: anime.image_url },
+      // Then add the rest of the pictures
+      ...anime.pictures.map((pic: any) => ({
+        large: pic.jpg?.large_image_url || pic.webp?.large_image_url || pic.jpg?.image_url || pic.webp?.image_url,
+        small: pic.jpg?.image_url || pic.webp?.image_url || pic.jpg?.large_image_url || pic.webp?.large_image_url, // Use full image, not thumbnail
+      }))
+    ]
     : [{ large: anime.image_url, small: anime.image_url }];
 
   // Navigate to previous image
@@ -185,12 +185,12 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 alt={anime.title_english || anime.title}
                 className="w-full h-[400px] object-cover"
               />
-              
+
               {/* Image Count Badge - Only show if multiple images */}
               {allPictures.length > 1 && (
-                <div 
+                <div
                   className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-md flex items-center gap-1.5 backdrop-blur-sm border border-white/20 shadow-lg"
-                  style={{ 
+                  style={{
                     backgroundColor: "rgba(0, 0, 0, 0.6)",
                   }}
                 >
@@ -215,12 +215,12 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 >
                   {anime.title_english || anime.title}
                 </h1>
-                {anime.title_japanese && (
+                {anime.title_english && anime.title && (
                   <p
-                    className="text-lg md:text-xl"
+                    className="text-lg md:text-xl mb-2"
                     style={{ color: "var(--rating-text)" }}
                   >
-                    {anime.title_japanese}
+                    {anime.title}
                   </p>
                 )}
               </div>
@@ -295,9 +295,8 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 {/* Season & Year */}
                 {anime.season && anime.year && (
                   <span
-                    className={`px-3 py-1 rounded-full text-xs ${
-                      getSeasonClass(anime.season)
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs ${getSeasonClass(anime.season)
+                      }`}
                   >
                     {anime.season.charAt(0).toUpperCase() +
                       anime.season.slice(1)}{" "}
@@ -308,11 +307,10 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 {/* Status */}
                 {anime.status && (
                   <span
-                    className={`px-3 py-1 rounded-full text-xs ${
-                      anime.status === "Currently Airing"
+                    className={`px-3 py-1 rounded-full text-xs ${anime.status === "Currently Airing"
                         ? "tag-ona"
                         : "tag-default"
-                    }`}
+                      }`}
                   >
                     {anime.status}
                   </span>
@@ -439,7 +437,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 pt-24 gap-4"
-          style={{ 
+          style={{
             backgroundColor: "rgba(0, 0, 0, 0.9)",
             animation: "fadeIn 0.3s ease-in-out"
           }}
@@ -451,7 +449,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           }}
         >
           {/* Main Image Container with Navigation Arrows */}
-          <div 
+          <div
             className="flex flex-col items-center gap-4 max-w-[90vw]"
             style={{ animation: "zoomIn 0.3s ease-in-out" }}
           >
@@ -486,7 +484,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                   </button>
                 </>
               )}
-              
+
               <img
                 src={allPictures[selectedImageIndex].large}
                 alt={anime.title_english || anime.title}
@@ -508,8 +506,8 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                 >
                   <CarouselContent className="-ml-2">
                     {allPictures.map((pic: { large: string; small: string }, index: number) => (
-                      <CarouselItem 
-                        key={index} 
+                      <CarouselItem
+                        key={index}
                         className="pl-2 basis-[80px] md:basis-[100px]"
                       >
                         <div
@@ -538,7 +536,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                             className="w-full aspect-square object-cover"
                           />
                           {/* Stroke overlay - por cima da imagem */}
-                          <div 
+                          <div
                             className="absolute inset-0 pointer-events-none rounded-lg"
                             style={{
                               boxShadow: index === selectedImageIndex
@@ -550,12 +548,12 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  
+
                   {/* Desktop Navigation Arrows */}
-                  <CarouselPrevious 
+                  <CarouselPrevious
                     className="hidden md:flex -left-12 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-30"
                   />
-                  <CarouselNext 
+                  <CarouselNext
                     className="hidden md:flex -right-12 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-30"
                   />
                 </Carousel>
@@ -575,7 +573,7 @@ export function AnimeHero({ anime }: AnimeHeroProps) {
           </button>
         </div>
       )}
-      
+
     </div>
   );
 }

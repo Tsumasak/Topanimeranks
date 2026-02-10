@@ -25,7 +25,7 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
   };
 
   return (
-    <div 
+    <div
       className="rounded-lg p-6 border shadow-md"
       style={{
         background: "var(--card-background)",
@@ -38,6 +38,15 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
       </h2>
 
       <div className="space-y-4">
+        {/* Japanese Title */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1 text-sm" style={{ color: 'var(--rating-text)' }}>
+            Japanese Title
+          </div>
+          <div className="col-span-2 text-sm" style={{ color: 'var(--foreground)' }}>
+            {anime.title || 'N/A'}
+          </div>
+        </div>
         {/* Type with Tag */}
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-1 text-sm" style={{ color: 'var(--rating-text)' }}>
@@ -154,10 +163,10 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
             </div>
             <div className="col-span-2 flex flex-wrap gap-2">
               {anime.genres.map((genre: any, index: number) => (
-                <span 
-                  key={index} 
+                <span
+                  key={index}
                   className="px-3 py-1 theme-rating text-xs rounded-full border"
-                  style={{ 
+                  style={{
                     borderColor: 'var(--card-border)'
                   }}
                 >
@@ -176,10 +185,10 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
             </div>
             <div className="col-span-2 flex flex-wrap gap-2">
               {anime.themes.map((theme: any, index: number) => (
-                <span 
-                  key={index} 
+                <span
+                  key={index}
                   className="px-3 py-1 theme-rating text-xs rounded-full border"
-                  style={{ 
+                  style={{
                     borderColor: 'var(--card-border)'
                   }}
                 >
@@ -200,8 +209,8 @@ export function AnimeInfo({ anime }: AnimeInfoProps) {
               {anime.demographics.map((demo: any, index: number) => {
                 const demoName = typeof demo === 'string' ? demo : demo.name;
                 return (
-                  <span 
-                    key={index} 
+                  <span
+                    key={index}
                     className={`${getDemographicClass(demoName)} px-3 py-1 rounded-full text-xs`}
                   >
                     {demoName}

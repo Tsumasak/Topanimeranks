@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../utils/supabase/client";
 import { AnimeHero } from "../components/anime/AnimeHero";
@@ -30,7 +31,7 @@ export default function AnimeDetailsPage() {
 
       try {
         const animeId = parseInt(id);
-        
+
         // Declare variables at function scope so they can be accessed later
         let seasonData: any = null;
         let anticipatedData: any = null;
@@ -154,7 +155,7 @@ export default function AnimeDetailsPage() {
                 const jikanResponse = await fetch(
                   `https://api.jikan.moe/v4/anime/${animeId}/full`
                 );
-                
+
                 if (!jikanResponse.ok) {
                   throw new Error(`HTTP ${jikanResponse.status}`);
                 }
@@ -166,9 +167,9 @@ export default function AnimeDetailsPage() {
 
                 const jikanData = await jikanResponse.json();
                 const jikanAnime = jikanData.data;
-                  
+
                 console.log("[AnimeDetails] ✅ Found in Jikan API (fallback)");
-                  
+
                 // Transform Jikan data to match expected format
                 setAnime({
                   anime_id: jikanAnime.mal_id,
@@ -198,7 +199,7 @@ export default function AnimeDetailsPage() {
                   source: jikanAnime.source,
                   mal_id: jikanAnime.mal_id,
                 });
-                  
+
                 // Set dynamic background
                 if (jikanAnime.images?.jpg?.large_image_url) {
                   document.documentElement.style.setProperty(
@@ -227,10 +228,10 @@ export default function AnimeDetailsPage() {
 
         if (episodesData) {
           // Additional client-side filter to remove empty aired_at strings
-          const validEpisodes = episodesData.filter((ep: any) => 
+          const validEpisodes = episodesData.filter((ep: any) =>
             ep.aired_at && ep.aired_at.trim() !== ''
           );
-          
+
           console.log(
             `[AnimeDetails] ✅ Found ${validEpisodes.length} episodes (${episodesData.length - validEpisodes.length} filtered out)`,
           );
@@ -251,9 +252,9 @@ export default function AnimeDetailsPage() {
           });
 
           console.log("[AnimeDetails] 📊 Fetching weekly data for season/year/weeks:", Array.from(seasonWeekGroups.values()));
-          
+
           const weeklyDataMap: Record<number, any[]> = {};
-          
+
           for (const { season, year, weekNum } of seasonWeekGroups.values()) {
             // Fetch episodes for this specific season/year/week combination
             const { data: weekEpisodes } = await supabase
@@ -289,56 +290,37 @@ export default function AnimeDetailsPage() {
           setWeeklyData(weeklyDataMap);
         }
 
-        // Fetch videos from Jikan API for Movie/Special/OVA types
-        // Check after anime is set
-        let currentAnimeType = anime?.type;
-        
-        // If anime is not yet set (from state), get it from the data we just fetched
-        if (!currentAnimeType) {
-          if (anticipatedData) {
-            currentAnimeType = (anticipatedData as any).type;
-          } else if (seasonData) {
-            currentAnimeType = (seasonData as any).type;
-          } else if (firstWeeklyEpisode) {
-            currentAnimeType = (firstWeeklyEpisode as any).type;
-          }
-        }
-        
-        const isMovieType = ['Movie', 'Special', 'OVA'].includes(currentAnimeType || '');
-        
-        console.log(`[AnimeDetails] 🎬 Anime type: ${currentAnimeType}, isMovieType: ${isMovieType}`);
-        
-        if (isMovieType) {
-          console.log(`[AnimeDetails] 🎥 Fetching videos from Jikan API (${currentAnimeType} type detected)...`);
-          try {
-            const videosResponse = await fetch(
-              `https://api.jikan.moe/v4/anime/${animeId}/videos`
-            );
-            
-            if (videosResponse.ok) {
-              // Check if response is actually JSON
-              const contentType = videosResponse.headers.get('content-type');
-              if (!contentType || !contentType.includes('application/json')) {
-                console.error(`[AnimeDetails] ❌ Videos API returned non-JSON response. Content-Type: ${contentType}`);
-                throw new Error('Response is not JSON');
-              }
-              
-              const videosData = await videosResponse.json();
-              console.log(`[AnimeDetails] ✅ Videos response:`, videosData);
-              console.log(`[AnimeDetails] ✅ Videos data structure:`, videosData.data);
-              
-              // Check if promo videos exist and log their structure
-              if (videosData.data?.promo && videosData.data.promo.length > 0) {
-                console.log(`[AnimeDetails] ✅ First promo video:`, videosData.data.promo[0]);
-              }
-              
-              setVideos(videosData.data);
-            } else {
-              console.error(`[AnimeDetails] ❌ Videos API returned status ${videosResponse.status}`);
+        // Fetch videos from Jikan API for ALL types (TV, Movie, Special, OVA, etc.)
+        // We want to show videos in a separate tab if available
+
+        console.log(`[AnimeDetails] 🎥 Fetching videos from Jikan API for anime ID ${animeId}...`);
+        try {
+          const videosResponse = await fetch(
+            `https://api.jikan.moe/v4/anime/${animeId}/videos`
+          );
+
+          if (videosResponse.ok) {
+            // Check if response is actually JSON
+            const contentType = videosResponse.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error(`[AnimeDetails] ❌ Videos API returned non-JSON response. Content-Type: ${contentType}`);
+              throw new Error('Response is not JSON');
             }
-          } catch (videoError) {
-            console.error("[AnimeDetails] ❌ Error fetching videos from Jikan:", videoError);
+
+            const videosData = await videosResponse.json();
+            console.log(`[AnimeDetails] ✅ Videos response for ID ${animeId}:`, videosData);
+
+            // Check if promo videos exist and log their structure
+            if (videosData.data?.promo && videosData.data.promo.length > 0) {
+              console.log(`[AnimeDetails] ✅ First promo video:`, videosData.data.promo[0]);
+            }
+
+            setVideos(videosData.data);
+          } else {
+            console.error(`[AnimeDetails] ❌ Videos API returned status ${videosResponse.status}`);
           }
+        } catch (videoError) {
+          console.error("[AnimeDetails] ❌ Error fetching videos from Jikan:", videoError);
         }
 
         setLoading(false);
@@ -438,29 +420,94 @@ export default function AnimeDetailsPage() {
           </div>
 
           <div className="lg:col-span-2">
-            {/* Show Videos for Movie/Special/OVA types, Episodes for TV/ONA */}
-            {videos ? (
-              <AnimeVideos 
-                videos={videos} 
-                animeTitle={anime.title_english || anime.title}
-              />
-            ) : (
+            {episodes && episodes.length > 0 ? (
               <>
-                {/* Rank Evolution Chart - Only for TV/ONA with episodes */}
-                {anime.anime_id && episodes.length > 0 && (
-                  <RankEvolutionChart animeId={anime.anime_id} />
-                )}
-                
-                <AnimeEpisodes
-                  episodes={episodes}
-                  animeId={anime.anime_id}
-                  weeklyData={weeklyData}
-                />
+                <style>{`
+                  .custom-tab-trigger {
+                    position: relative;
+                    padding: 1rem 0.5rem;
+                    background: transparent !important;
+                    border: none !important;
+                    font-size: 1.125rem;
+                    font-weight: 500;
+                    color: #9ca3af;
+                    cursor: pointer;
+                    transition: color 0.2s;
+                    outline: none !important;
+                    box-shadow: none !important;
+                  }
+                  .custom-tab-trigger:hover {
+                    color:Var(--foreground);
+                  }
+                  .custom-tab-trigger[data-state="active"] {
+                    color: var(--rating-yellow) !important;
+                  }
+                  .custom-tab-trigger::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -1px;
+                    left: 0;
+                    right: 0;
+                    height: 3px;
+                    background-color: var(--rating-yellow);
+                    border-top-left-radius: 9999px;
+                    border-top-right-radius: 9999px;
+                    transform: scaleX(0);
+                    transition: transform 0.3s;
+                    transform-origin: center;
+                  }
+                  .custom-tab-trigger[data-state="active"]::after {
+                    transform: scaleX(1);
+                  }
+                `}</style>
+                <Tabs defaultValue="episodes" className="w-full">
+                  <div className="border-b mb-8" style={{ borderColor: "var(--card-border)" }}>
+                    <TabsList className="flex w-full justify-start gap-8 bg-transparent p-0 h-auto">
+                      <TabsTrigger
+                        value="episodes"
+                        className="custom-tab-trigger"
+                      >
+                        Episodes
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="videos"
+                        className="custom-tab-trigger"
+                      >
+                        Videos
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <TabsContent value="episodes" className="mt-0 space-y-8">
+                    {anime.anime_id && episodes.length > 0 && (
+                      <RankEvolutionChart animeId={anime.anime_id} />
+                    )}
+                    <AnimeEpisodes
+                      episodes={episodes}
+                      animeId={anime.anime_id}
+                      weeklyData={weeklyData}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="videos" className="mt-0">
+                    <AnimeVideos
+                      videos={videos}
+                      animeTitle={anime.title_english || anime.title}
+                    />
+                  </TabsContent>
+                </Tabs>
               </>
+            ) : (
+              <div className="w-full">
+                <AnimeVideos
+                  videos={videos}
+                  animeTitle={anime.title_english || anime.title}
+                />
+              </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

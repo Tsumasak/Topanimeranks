@@ -6,6 +6,7 @@ import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
 import { syncUpcoming } from "./sync-upcoming.tsx";
 import { syncSeason } from "./sync-season.tsx";
 import { getEpisodeWeekNumber } from "./season-utils.tsx";
+import { generateExport } from "./export-ranks.tsx";
 
 const app = new Hono();
 
@@ -2004,6 +2005,35 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// ============================================
+// EXPORT RANKS - CSV/XLSX Export
+// ============================================
+app.post("/make-server-c1d1bfd8/export-ranks", async (c) => {
+  try {
+    const body = await c.req.json();
+    console.log("[Export] 📥 Export request received:", body);
+
+    const { buffer, contentType } = await generateExport(body);
+
+    console.log("[Export] ✅ Export generated successfully");
+
+    // Return the file as a downloadable response
+    return new Response(buffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="export.${body.format}"`,
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  } catch (error) {
+    console.error("❌ Export error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Export failed",
     }, 500);
   }
 });

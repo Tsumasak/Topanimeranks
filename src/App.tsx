@@ -9,6 +9,7 @@ import AnimeDetailsPage from "./pages/AnimeDetailsPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminHeroBanners from "./pages/AdminHeroBanners";
+import AdminExportRanksPage from "./pages/AdminExportRanksPage";
 import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { MigrationAlert } from "./components/MigrationAlert";
@@ -232,6 +233,7 @@ function AppContent() {
           <Route path="/search" element={<SearchResultsPage />} />
           <Route path="/admin-sync" element={<AdminSyncPage />} />
           <Route path="/admin-hero-banners" element={<AdminHeroBanners />} />
+          <Route path="/admin-export-ranks" element={<AdminExportRanksPage />} />
           <Route path="/admin-panel" element={<AdminPanel />} />
           <Route path="/ranks/fantasy" element={<FantasyRankings />} />
           <Route path="/ranks/action" element={<ActionRankings />} />

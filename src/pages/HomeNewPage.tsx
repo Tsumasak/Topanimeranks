@@ -1472,6 +1472,14 @@ export default function HomeNewPage() {
             <p className="text-sm text-gray-400">
               © {new Date().getFullYear()} Top Anime Ranks. All rights reserved.
             </p>
+            {/* Discrete Admin Export Link */}
+            <a
+              href="/admin-export-ranks"
+              className="inline-block mt-2 text-xs opacity-30 hover:opacity-60 transition-opacity"
+              style={{ color: 'var(--foreground)' }}
+            >
+              •
+            </a>
           </div>
         </div>
       </footer>

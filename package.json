@@ -50,11 +50,12 @@
           "react-resizable-panels": "*",
           "react-router-dom": "*",
           "recharts": "*",
-          "sonner": "*",
+          "sonner": "^2.0.3",
           "tailwind-merge": "*",
           "tailwindcss": "*",
           "vaul": "*",
-          "vite": "*"
+          "vite": "*",
+          "xlsx": "^0.18.5"
       },
       "devDependencies": {
           "@types/node": "^20.10.0",

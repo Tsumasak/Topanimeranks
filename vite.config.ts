@@ -8,6 +8,8 @@
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
+        'xlsx@0.18.5': 'xlsx',
+        'sonner@2.0.3': 'sonner',
         'hono@4': 'hono',
         'figma:asset/fe8a29349e223eac688d543a304b6373974fba28.png': path.resolve(__dirname, './src/assets/fe8a29349e223eac688d543a304b6373974fba28.png'),
         'figma:asset/fb96d0327370df29ef4df94c21d7ce51117524c4.png': path.resolve(__dirname, './src/assets/fb96d0327370df29ef4df94c21d7ce51117524c4.png'),

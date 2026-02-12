@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "../utils/supabase/client";
 import { AnimeHero } from "../components/anime/AnimeHero";
 import { AnimeStats } from "../components/anime/AnimeStats";
@@ -18,6 +18,7 @@ export default function AnimeDetailsPage() {
   const [weeklyData, setWeeklyData] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [activeTab, setActiveTab] = useState("episodes");
 
   useEffect(() => {
     async function fetchAnimeData() {
@@ -421,64 +422,68 @@ export default function AnimeDetailsPage() {
 
           <div className="lg:col-span-2">
             {episodes && episodes.length > 0 ? (
-              <>
-                <style>{`
-                  .custom-tab-trigger {
-                    position: relative;
-                    padding: 1rem 0.5rem;
-                    background: transparent !important;
-                    border: none !important;
-                    font-size: 1.125rem;
-                    font-weight: 500;
-                    color: #9ca3af;
-                    cursor: pointer;
-                    transition: color 0.2s;
-                    outline: none !important;
-                    box-shadow: none !important;
-                  }
-                  .custom-tab-trigger:hover {
-                    color:Var(--foreground);
-                  }
-                  .custom-tab-trigger[data-state="active"] {
-                    color: var(--rating-yellow) !important;
-                  }
-                  .custom-tab-trigger::after {
-                    content: '';
-                    position: absolute;
-                    bottom: -1px;
-                    left: 0;
-                    right: 0;
-                    height: 3px;
-                    background-color: var(--rating-yellow);
-                    border-top-left-radius: 9999px;
-                    border-top-right-radius: 9999px;
-                    transform: scaleX(0);
-                    transition: transform 0.3s;
-                    transform-origin: center;
-                  }
-                  .custom-tab-trigger[data-state="active"]::after {
-                    transform: scaleX(1);
-                  }
-                `}</style>
-                <Tabs defaultValue="episodes" className="w-full">
-                  <div className="border-b mb-8" style={{ borderColor: "var(--card-border)" }}>
-                    <TabsList className="flex w-full justify-start gap-8 bg-transparent p-0 h-auto">
-                      <TabsTrigger
-                        value="episodes"
-                        className="custom-tab-trigger"
-                      >
-                        Episodes
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="videos"
-                        className="custom-tab-trigger"
-                      >
-                        Videos
-                      </TabsTrigger>
-                    </TabsList>
+              <div className="w-full">
+                {/* Tabs - Mobile centered, Desktop with line */}
+                <div className="flex justify-center md:justify-start items-center gap-8 mb-8">
+                  <div className="flex items-center theme-controller relative border border-[#334155]" style={{ borderRadius: '10px', padding: '6px', gap: '24px' }}>
+                    <button
+                      onClick={() => setActiveTab("episodes")}
+                      className={`relative px-4 py-2.5 font-bold transition-all duration-200 cursor-pointer border-none bg-transparent overflow-hidden whitespace-nowrap ${activeTab === "episodes" ? '' : 'theme-nav-link'
+                        }`}
+                      style={{
+                        borderRadius: '6.8px',
+                        color: activeTab === "episodes" ? '#ffffff' : '#94a3b8',
+                        fontSize: '16px'
+                      }}
+                    >
+                      {activeTab === "episodes" && (
+                        <motion.div
+                          layoutId="animeTabIndicator"
+                          className="absolute inset-0 z-0"
+                          style={{
+                            backgroundColor: '#3b82f6',
+                            borderRadius: '6.8px'
+                          }}
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10">Aired Episodes</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("videos")}
+                      className={`relative px-4 py-2.5 font-bold transition-all duration-200 cursor-pointer border-none bg-transparent overflow-hidden whitespace-nowrap ${activeTab === "videos" ? '' : 'theme-nav-link'
+                        }`}
+                      style={{
+                        borderRadius: '6.8px',
+                        color: activeTab === "videos" ? '#ffffff' : '#94a3b8',
+                        fontSize: '16px'
+                      }}
+                    >
+                      {activeTab === "videos" && (
+                        <motion.div
+                          layoutId="animeTabIndicator"
+                          className="absolute inset-0 z-0"
+                          style={{
+                            backgroundColor: '#3b82f6',
+                            borderRadius: '6.8px'
+                          }}
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10">Videos & Promos</span>
+                    </button>
                   </div>
 
-                  <TabsContent value="episodes" className="mt-0 space-y-8">
+                  {/* Vertical line - Desktop only */}
+                  <div className="hidden md:block flex-1 h-px relative">
+                    <div className="w-full h-full bg-[#334155] opacity-20"></div>
+                  </div>
+                </div>
+
+
+                {/* Tab Content */}
+                {activeTab === "episodes" ? (
+                  <div className="space-y-8">
                     {anime.anime_id && episodes.length > 0 && (
                       <RankEvolutionChart animeId={anime.anime_id} />
                     )}
@@ -487,16 +492,16 @@ export default function AnimeDetailsPage() {
                       animeId={anime.anime_id}
                       weeklyData={weeklyData}
                     />
-                  </TabsContent>
-
-                  <TabsContent value="videos" className="mt-0">
+                  </div>
+                ) : (
+                  <div>
                     <AnimeVideos
                       videos={videos}
                       animeTitle={anime.title_english || anime.title}
                     />
-                  </TabsContent>
-                </Tabs>
-              </>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="w-full">
                 <AnimeVideos

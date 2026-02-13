@@ -20,7 +20,8 @@ export class SupabaseDataService {
       demographics: Array.isArray(dbEpisode.demographics) ? dbEpisode.demographics.map((d: any) => d.name || d) : [],
       genres: Array.isArray(dbEpisode.genres) ? dbEpisode.genres.map((g: any) => g.name || g) : [],
       themes: Array.isArray(dbEpisode.themes) ? dbEpisode.themes.map((t: any) => t.name || t) : [],
-      url: dbEpisode.forum_url || `https://myanimelist.net/anime/${dbEpisode.anime_id}`,
+      url: dbEpisode.from_url || `https://myanimelist.net/anime/${dbEpisode.anime_id}`,
+      forumUrl: dbEpisode.forum_url || null,
       trend: dbEpisode.trend || 'NEW',
       positionInWeek: dbEpisode.position_in_week,
       isManual: dbEpisode.is_manual || false,
@@ -51,7 +52,7 @@ export class SupabaseDataService {
   static async getWeeklyEpisodes(weekNumber: number): Promise<{ success: boolean; data: Episode[]; needsData?: boolean }> {
     try {
       console.log(`[SupabaseData] Fetching week ${weekNumber} from Supabase...`);
-      
+
       const response = await fetch(
         `${SERVER_URL}/weekly-episodes/${weekNumber}`,
         {
@@ -74,7 +75,7 @@ export class SupabaseDataService {
       }
 
       const episodes = result.data.map((dbEp: any) => this.convertDbEpisodeToEpisode(dbEp));
-      
+
       // Triple safety: Sort by score DESC as final safeguard
       // This ensures correct order even if position_in_week is incorrect
       episodes.sort((a: Episode, b: Episode) => {
@@ -82,7 +83,7 @@ export class SupabaseDataService {
         const scoreB = b.episodeScore !== null ? b.episodeScore : -1;
         return scoreB - scoreA;
       });
-      
+
       console.log(`[SupabaseData] ✓ Found ${episodes.length} episodes in Supabase for week ${weekNumber}`);
 
       return { success: true, data: episodes };
@@ -96,7 +97,7 @@ export class SupabaseDataService {
   static async getSeasonRankings(season: string, year: number): Promise<{ success: boolean; data: any[]; needsData?: boolean }> {
     try {
       console.log(`[SupabaseData] Fetching ${season} ${year} from Supabase...`);
-      
+
       const response = await fetch(
         `${SERVER_URL}/season-rankings/${season}/${year}`,
         {
@@ -131,7 +132,7 @@ export class SupabaseDataService {
   static async getAnticipatedAnimes(): Promise<{ success: boolean; data: AnticipatedAnime[]; needsData?: boolean }> {
     try {
       console.log(`[SupabaseData] Fetching anticipated animes from Supabase...`);
-      
+
       const response = await fetch(
         `${SERVER_URL}/anticipated-animes`,
         {

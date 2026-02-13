@@ -89,7 +89,8 @@ export interface Episode {
   demographics: string[];
   genres: string[];
   themes: string[];
-  url: string; // Link to anime page (forum_url)
+  url: string; // Link to anime page (from_url)
+  forumUrl?: string | null; // Link to MAL episode discussion forum (forum_url from Jikan API)
   trend?: string; // Position change: 'NEW', '+1', '-2', '='
   positionInWeek?: number; // Current ranking position
   isManual?: boolean; // True if episode was added manually (not from API)

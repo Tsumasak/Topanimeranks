@@ -26,6 +26,7 @@ interface JikanEpisode {
   title: string;
   score?: number;
   aired?: string;
+  forum_url?: string;
 }
 
 // Rate limit helper
@@ -33,49 +34,49 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function enrichEpisodes(supabase: any, season: string, year: number) {
   console.log(`🔄 Iniciando enriquecimento de episódios para ${season} ${year}...`);
-  
+
   let enriched = 0;
   let inserted = 0;
   let errors = 0;
-  
+
   try {
     // ✅ STEP 1: Buscar TODOS os animes da season_rankings para essa season
     console.log(`📊 Buscando animes de ${season} ${year} da tabela season_rankings...`);
-    
+
     const { data: seasonAnimes, error: fetchError } = await supabase
       .from('season_rankings')
       .select('anime_id, title, title_english, image_url, status')
       .eq('season', season)
       .eq('year', year)
       .order('popularity', { ascending: true }); // Mais populares primeiro
-    
+
     if (fetchError) {
       console.error("❌ Erro ao buscar animes da season_rankings:", fetchError);
       return { enriched: 0, inserted: 0, errors: 1, message: fetchError.message };
     }
-    
+
     if (!seasonAnimes || seasonAnimes.length === 0) {
       console.log("⚠️  Nenhum anime encontrado na season_rankings para essa season!");
       return { enriched: 0, inserted: 0, errors: 0, message: "Nenhum anime encontrado" };
     }
-    
+
     console.log(`✅ Encontrados ${seasonAnimes.length} animes em ${season} ${year}`);
-    
+
     // ✅ STEP 2: Para cada anime, buscar seus episódios e popular weekly_episodes
     for (const seasonAnime of seasonAnimes) {
       try {
         console.log(`\n🔍 Processando anime ${seasonAnime.anime_id}: ${seasonAnime.title_english}...`);
-        
+
         // Buscar dados completos do anime do Jikan
         await sleep(1000); // ✅ FIXED: Aumentado para 1 segundo para evitar 429
         const animeResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}`);
-        
+
         if (!animeResponse.ok) {
           console.error(`❌ Erro ao buscar anime ${seasonAnime.anime_id}: ${animeResponse.status}`);
           errors++;
           continue;
         }
-        
+
         const contentType = animeResponse.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           console.error(`❌ Resposta não é JSON para anime ${seasonAnime.anime_id}`);
@@ -85,17 +86,17 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
 
         const animeData = await animeResponse.json();
         const anime: JikanAnime = animeData.data;
-        
+
         // Extrair título em inglês
-        const englishTitle = anime.titles.find(t => t.type === "English")?.title || 
-                           anime.titles.find(t => t.type === "Default")?.title || 
-                           "Unknown";
-        
+        const englishTitle = anime.titles.find(t => t.type === "English")?.title ||
+          anime.titles.find(t => t.type === "Default")?.title ||
+          "Unknown";
+
         // Buscar dados dos episódios
         await sleep(1000); // ✅ FIXED: Aumentado para 1 segundo para evitar 429
-        
+
         const episodesResponse = await fetch(`https://api.jikan.moe/v4/anime/${seasonAnime.anime_id}/episodes`);
-        
+
         if (!episodesResponse.ok) {
           console.error(`❌ Erro ao buscar episódios de ${seasonAnime.anime_id}: ${episodesResponse.status}`);
           errors++;
@@ -111,9 +112,9 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
 
         const episodesData = await episodesResponse.json();
         const episodesList: JikanEpisode[] = episodesData.data || [];
-        
+
         console.log(`✅ Encontrados ${episodesList.length} episódios para ${englishTitle}`);
-        
+
         // ✅ STEP 3: Para cada episódio, criar/atualizar na weekly_episodes
         for (const episode of episodesList) {
           try {
@@ -122,17 +123,17 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               console.log(`⏭️  Pulando episódio ${episode.mal_id} (${episode.title}) - sem data de aired`);
               continue;
             }
-            
+
             // Calcular week_number baseado na data de exibição
             const { season: epSeason, year: epYear, weekNumber } = getEpisodeWeekNumber(episode.aired);
-            
+
             // ✅ REMOVED: Não pular episódios de outras seasons
             // Um anime pode ter episódios em múltiplas seasons (ex: Spring + Summer)
             // Apenas log para debug
             if (epSeason !== season || epYear !== year) {
               console.log(`📝 Episódio ${episode.mal_id} pertence a ${epSeason} ${epYear} (processando ${season} ${year})`);
             }
-            
+
             // Verificar se já existe
             const { data: existingEpisode } = await supabase
               .from('weekly_episodes')
@@ -142,13 +143,14 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               .eq('season', epSeason)
               .eq('year', epYear)
               .maybeSingle();
-            
+
             const episodeData = {
               anime_id: seasonAnime.anime_id,
               episode_number: episode.mal_id,
               anime_title_english: englishTitle,
               anime_image_url: anime.images.jpg.large_image_url,
               from_url: anime.url,
+              forum_url: episode.forum_url || null,
               episode_name: episode.title || `Episode ${episode.mal_id}`,
               episode_score: episode.score || null,
               type: anime.type,
@@ -162,14 +164,14 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               year: epYear,
               updated_at: new Date().toISOString(),
             };
-            
+
             if (existingEpisode) {
               // Atualizar episódio existente
               const { error: updateError } = await supabase
                 .from('weekly_episodes')
                 .update(episodeData)
                 .eq('id', existingEpisode.id);
-              
+
               if (updateError) {
                 console.error(`❌ Erro ao atualizar episódio ${existingEpisode.id}:`, updateError);
                 errors++;
@@ -185,7 +187,7 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
                   ...episodeData,
                   created_at: new Date().toISOString(),
                 });
-              
+
               if (insertError) {
                 console.error(`❌ Erro ao inserir episódio:`, insertError);
                 errors++;
@@ -194,35 +196,35 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
                 console.log(`✅ Novo episódio inserido: ${englishTitle} EP${episode.mal_id} - Week ${weekNumber}`);
               }
             }
-            
+
           } catch (error) {
             console.error(`❌ Erro ao processar episódio ${episode.mal_id}:`, error);
             errors++;
           }
         }
-        
+
       } catch (error) {
         console.error(`❌ Erro ao processar anime ${seasonAnime.anime_id}:`, error);
         errors++;
       }
     }
-    
+
     console.log(`\n🎉 Enriquecimento concluído:`);
     console.log(`   ✅ Episódios atualizados: ${enriched}`);
     console.log(`   ➕ Episódios inseridos: ${inserted}`);
     console.log(`   ❌ Erros: ${errors}`);
-    
+
     // IMPORTANTE: Recalcular posições após enriquecimento
     console.log(`\n🔢 Recalculando posições de ranking...`);
     await recalculatePositions(supabase, season, year);
-    
+
     return {
       enriched,
       inserted,
       errors,
       message: `${enriched} episódios atualizados e ${inserted} inseridos com sucesso`
     };
-    
+
   } catch (error) {
     console.error("❌ Erro geral no enriquecimento:", error);
     return {
@@ -241,7 +243,7 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
 // baseado no episode_score (maior score = posição 1)
 export async function recalculatePositions(supabase: any, season: string, year: number) {
   console.log(`🔢 Iniciando recálculo de posições para ${season} ${year}...`);
-  
+
   try {
     // 1. Buscar TODAS as weeks da season especificada
     const { data: allEpisodes, error: fetchError } = await supabase
@@ -252,17 +254,17 @@ export async function recalculatePositions(supabase: any, season: string, year: 
       .not('episode_score', 'is', null)
       .order('week_number', { ascending: true })
       .order('episode_score', { ascending: false });
-    
+
     if (fetchError) {
       console.error("❌ Erro ao buscar episódios:", fetchError);
       return;
     }
-    
+
     if (!allEpisodes || allEpisodes.length === 0) {
       console.log("⚠️ Nenhum episódio com score encontrado");
       return;
     }
-    
+
     // 2. Agrupar por week_number
     const weekMap = new Map<number, any[]>();
     allEpisodes.forEach((ep: any) => {
@@ -271,9 +273,9 @@ export async function recalculatePositions(supabase: any, season: string, year: 
       }
       weekMap.get(ep.week_number)!.push(ep);
     });
-    
+
     console.log(`📊 Encontradas ${weekMap.size} weeks com episódios`);
-    
+
     // 3. Para cada week, recalcular posições
     let updatedCount = 0;
     for (const [weekNumber, episodes] of weekMap.entries()) {
@@ -283,29 +285,29 @@ export async function recalculatePositions(supabase: any, season: string, year: 
         const scoreB = parseFloat(b.episode_score) || 0;
         return scoreB - scoreA; // DESC
       });
-      
+
       // Atualizar posições
       for (let i = 0; i < sortedEpisodes.length; i++) {
         const episode = sortedEpisodes[i];
         const newPosition = i + 1; // Posição começa em 1
-        
+
         const { error: updateError } = await supabase
           .from('weekly_episodes')
           .update({ position_in_week: newPosition })
           .eq('id', episode.id);
-        
+
         if (updateError) {
           console.error(`❌ Erro ao atualizar posição do episódio ${episode.id}:`, updateError);
         } else {
           updatedCount++;
         }
       }
-      
+
       console.log(`✅ Week ${weekNumber}: ${sortedEpisodes.length} posições recalculadas`);
     }
-    
+
     console.log(`🎉 Recálculo concluído: ${updatedCount} episódios atualizados em ${weekMap.size} weeks`);
-    
+
   } catch (error) {
     console.error("❌ Erro ao recalcular posições:", error);
   }

@@ -20,7 +20,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
     try {
       console.log(`🔄 Fetching (attempt ${i + 1}/${retries}): ${url}`);
       const response = await fetch(url);
-      
+
       if (response.status === 429) {
         console.log(`⏳ Rate limited, waiting 3 seconds...`);
         await delay(3000);
@@ -29,7 +29,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -52,7 +52,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
   console.log(`\n🔄 ============================================`);
   console.log(`🔄 UPDATING SCORES FOR WEEK ${weekNumber}`);
   console.log(`🔄 ============================================\n`);
-  
+
   const startTime = Date.now();
   let itemsUpdated = 0;
 
@@ -92,7 +92,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
     // Update each anime's episodes
     let processedAnimeCount = 0;
     let timeoutReached = false;
-    
+
     for (const [animeId, episodes] of episodesByAnime) {
       // ⏱️ TIMEOUT PROTECTION: Stop before 150s limit
       const elapsedTime = Date.now() - startTime;
@@ -102,36 +102,36 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
         timeoutReached = true;
         break;
       }
-      
+
       try {
         processedAnimeCount++;
         console.log(`[${processedAnimeCount}/${episodesByAnime.size}] Updating anime ${animeId} (${episodes.length} episodes)...`);
-        
+
         await delay(RATE_LIMIT_DELAY);
 
         // Fetch ALL episode pages from API
         let allApiEpisodes: any[] = [];
         let episodePage = 1;
         let hasNextPage = true;
-        
+
         while (hasNextPage) {
           // ✅ FIXED: Use /episodes for page 1, /episodes?page=N for page 2+
           const episodesUrl = episodePage === 1
             ? `${JIKAN_BASE_URL}/anime/${animeId}/episodes`
             : `${JIKAN_BASE_URL}/anime/${animeId}/episodes?page=${episodePage}`;
-          
+
           console.log(`  📄 Fetching episodes page ${episodePage}: ${episodesUrl}`);
           const episodesData = await fetchWithRetry(episodesUrl);
-          
+
           if (!episodesData?.data || episodesData.data.length === 0) {
             hasNextPage = false;
             break;
           }
-          
+
           allApiEpisodes.push(...episodesData.data);
           hasNextPage = episodesData.pagination?.has_next_page || false;
           episodePage++;
-          
+
           if (hasNextPage) {
             await delay(RATE_LIMIT_DELAY);
           }
@@ -145,7 +145,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
         // Update each episode's score
         for (const dbEpisode of episodes) {
           const apiEpisode = allApiEpisodes.find(ep => ep.mal_id === dbEpisode.episode_number);
-          
+
           if (!apiEpisode) {
             console.log(`  ⚠️ Episode ${dbEpisode.episode_number} not found in API`);
             continue;
@@ -153,18 +153,28 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
 
           const newScore = apiEpisode.score || null;
           const oldScore = dbEpisode.episode_score;
+          const newForumUrl = apiEpisode.forum_url || null;
+          const oldForumUrl = dbEpisode.forum_url || null;
 
-          // Only update if score changed
-          if (newScore !== oldScore) {
+          // Update if score or forum_url changed
+          if (newScore !== oldScore || newForumUrl !== oldForumUrl) {
             const { error: updateError } = await supabase
               .from('weekly_episodes')
-              .update({ episode_score: newScore })
+              .update({
+                episode_score: newScore,
+                forum_url: newForumUrl,
+              })
               .eq('id', dbEpisode.id);
 
             if (updateError) {
               console.error(`  ❌ Error updating episode ${dbEpisode.episode_number}:`, updateError);
             } else {
-              console.log(`  ✅ Updated EP${dbEpisode.episode_number}: ${oldScore} → ${newScore}`);
+              if (newScore !== oldScore) {
+                console.log(`  ✅ Updated EP${dbEpisode.episode_number}: score ${oldScore} → ${newScore}`);
+              }
+              if (newForumUrl !== oldForumUrl) {
+                console.log(`  ✅ Updated EP${dbEpisode.episode_number}: forum_url updated`);
+              }
               itemsUpdated++;
             }
           } else {
@@ -178,7 +188,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     // RECALCULATE POSITIONS AND TRENDS
     console.log(`\n🔄 Recalculating positions and trends for week ${weekNumber}...`);
-    
+
     // Fetch updated episodes - ✅ FIXED: Filter by season and year too!
     const { data: updatedEpisodes, error: refetchError } = await supabase
       .from('weekly_episodes')
@@ -237,7 +247,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
         if (newPosition !== oldPosition || newTrend !== episode.trend) {
           const { error: posError } = await supabase
             .from('weekly_episodes')
-            .update({ 
+            .update({
               position_in_week: newPosition,
               trend: newTrend
             })
@@ -248,7 +258,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
           }
         }
       }
-      
+
       console.log(`✅ Position recalculation complete`);
     }
 
@@ -271,7 +281,7 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`✅ Scores updated: ${itemsUpdated}`);
     console.log(`✅ Duration: ${duration}ms`);
     console.log(`✅ ============================================`);
-    
+
     return { success: true, itemsUpdated, weekNumber };
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -316,7 +326,7 @@ serve(async (req) => {
     const { week_number } = body ? JSON.parse(body) : {};
 
     let weekToProcess: number;
-    
+
     // Auto-detect current week if not provided
     if (week_number) {
       // Support dynamic week values: "current", "current-1", "current-2", or numeric
@@ -325,15 +335,15 @@ serve(async (req) => {
       // Week 2+: Monday-Sunday (full weeks)
       const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
       const today = new Date();
-      
+
       // Find the first Sunday of the season
       const firstSunday = new Date(seasonStartDate);
       const dayOfWeek = firstSunday.getUTCDay();
       const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
       firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
-      
+
       let currentWeek: number;
-      
+
       // Check if today is in Week 1
       if (today >= seasonStartDate && today <= firstSunday) {
         currentWeek = 1;
@@ -341,13 +351,13 @@ serve(async (req) => {
         // Week 2+ starts on Monday after first Sunday
         const firstMonday = new Date(firstSunday);
         firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
-        
+
         const diffTime = today.getTime() - firstMonday.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
         currentWeek = Math.max(1, Math.min(13, currentWeek));
       }
-      
+
       if (week_number === "current") {
         weekToProcess = currentWeek;
         console.log(`📅 Using current week: ${weekToProcess}`);
@@ -372,15 +382,15 @@ serve(async (req) => {
       // Week 2+: Monday-Sunday (full weeks)
       const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
       const today = new Date();
-      
+
       // Find the first Sunday of the season
       const firstSunday = new Date(seasonStartDate);
       const dayOfWeek = firstSunday.getUTCDay();
       const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
       firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
-      
+
       let currentWeek: number;
-      
+
       // Check if today is in Week 1
       if (today >= seasonStartDate && today <= firstSunday) {
         currentWeek = 1;
@@ -388,13 +398,13 @@ serve(async (req) => {
         // Week 2+ starts on Monday after first Sunday
         const firstMonday = new Date(firstSunday);
         firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
-        
+
         const diffTime = today.getTime() - firstMonday.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
         currentWeek = Math.max(1, Math.min(13, currentWeek));
       }
-      
+
       weekToProcess = currentWeek;
       console.log(`📅 Auto-detected current week: ${weekToProcess} (Date: ${today.toISOString().split('T')[0]})`);
     }
@@ -405,8 +415,8 @@ serve(async (req) => {
     const result = await updateWeeklyEpisodes(supabase, weekToProcess);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         week_updated: weekToProcess,
         itemsUpdated: result.itemsUpdated
       }),

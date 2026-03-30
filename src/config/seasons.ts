@@ -1,3 +1,5 @@
+import { getCurrentSeason, SeasonName, getNextSeason } from '../utils/seasons';
+
 export interface SeasonData {
   id: string;
   label: string;
@@ -6,26 +8,42 @@ export interface SeasonData {
   year: number;
 }
 
-export const SEASONS_DATA: SeasonData[] = [
-  {
-    id: 'spring2026',
-    label: 'Spring 2026',
-    title: 'Spring 2026',
-    period: 'April - June 2026',
-    year: 2026,
-  },
-  {
-    id: 'summer2026',
-    label: 'Summer 2026',
-    title: 'Summer 2026',
-    period: 'July - September 2026',
-    year: 2026,
-  },
-  {
+function getSeasonPeriod(season: SeasonName, year: number): string {
+  switch (season) {
+    case 'Winter': return `January - March ${year}`;
+    case 'Spring': return `April - June ${year}`;
+    case 'Summer': return `July - September ${year}`;
+    case 'Fall': return `October - December ${year}`;
+  }
+  return '';
+}
+
+function generateAnticipatedSeasons(): SeasonData[] {
+  const seasons: SeasonData[] = [];
+  const currentSeason = getCurrentSeason();
+  
+  let iter = getNextSeason(currentSeason.name, currentSeason.year);
+  
+  for (let i = 0; i < 3; i++) {
+    seasons.push({
+      id: `${iter.season.toLowerCase()}${iter.year}`,
+      label: `${iter.season} ${iter.year}`,
+      title: `${iter.season} ${iter.year}`,
+      period: getSeasonPeriod(iter.season, iter.year),
+      year: iter.year,
+    });
+    iter = getNextSeason(iter.season, iter.year);
+  }
+  
+  seasons.push({
     id: 'later',
     label: 'Later',
     title: 'Later',
-    period: 'Fall 2026 and Beyond',
-    year: 2026,
-  },
-];
+    period: `${iter.season} ${iter.year} and Beyond`,
+    year: iter.year,
+  });
+  
+  return seasons;
+}
+
+export const SEASONS_DATA: SeasonData[] = generateAnticipatedSeasons();

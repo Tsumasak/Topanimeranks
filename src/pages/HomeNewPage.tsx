@@ -16,6 +16,7 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { SupabaseService } from "../services/supabase";
 import type { HeroBanner } from "../services/supabase";
 import Union from "../imports/Union";
+import { getCurrentSeason, getNextSeason } from "../utils/seasons";
 
 interface HomeCardData {
   rank: number;
@@ -474,11 +475,14 @@ export default function HomeNewPage() {
       try {
         setIsLoading(true);
 
-        // Load Top Season Animes from Supabase (Winter 2026)
-        // Winter 2026 - Order by SCORE (rating-based ranking)
+        const currentSeasonInfo = getCurrentSeason();
+        const nextSeasonInfo = getNextSeason(currentSeasonInfo.name, currentSeasonInfo.year);
+
+        // Load Top Season Animes from Supabase (Dynamic Current Season)
+        // Order by SCORE (rating-based ranking)
         const seasonAnimes = await SupabaseService.getSeasonRankings(
-          "winter",
-          2026,
+          currentSeasonInfo.name.toLowerCase(),
+          currentSeasonInfo.year,
           "score",
         );
 
@@ -500,8 +504,8 @@ export default function HomeNewPage() {
               genres: anime.genres?.map((g) => g.name) || [],
               themes: anime.themes?.map((t) => t.name) || [],
               url: `/anime/${anime.mal_id}`,
-              season: anime.season || "winter",
-              year: anime.year || 2026,
+              season: anime.season || currentSeasonInfo.name.toLowerCase(),
+              year: anime.year || currentSeasonInfo.year,
             }));
           setTopSeasonAnimes(topSeason);
 
@@ -514,11 +518,11 @@ export default function HomeNewPage() {
           }
         }
 
-        // Spring 2026 - Order by MEMBERS (popularity-based ranking)
+        // Drop hardcoded Spring 2026 - Order dynamically by MEMBERS (popularity-based ranking)
         const spring2026Animes =
           await SupabaseService.getAnticipatedAnimesBySeason(
-            "spring",
-            2026,
+            nextSeasonInfo.season.toLowerCase(),
+            nextSeasonInfo.year,
           );
 
         if (spring2026Animes.length > 0) {
@@ -546,8 +550,8 @@ export default function HomeNewPage() {
                   )
                 : [],
               url: anime.url,
-              season: anime.season || "spring",
-              year: anime.year || 2026,
+              season: anime.season || nextSeasonInfo.season.toLowerCase(),
+              year: anime.year || nextSeasonInfo.year,
             }));
           setAnticipated(topAnticipated);
         }

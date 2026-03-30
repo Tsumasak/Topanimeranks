@@ -10,8 +10,8 @@ import { PAST_SEASONS_DATA } from '../config/pastSeasons';
 export default function TopSeasonAnimesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read initial season from URL query param, fallback to winter2026
-  const initialSeason = searchParams.get('season') || 'winter2026';
+  // Read initial season from URL query param, fallback to the latest (current) season
+  const initialSeason = searchParams.get('season') || PAST_SEASONS_DATA[PAST_SEASONS_DATA.length - 1].id;
   const [activeSeason, setActiveSeason] = useState<string>(initialSeason);
   const [animes, setAnimes] = useState<JikanAnimeData[]>([]);
   const [loading, setLoading] = useState(true);

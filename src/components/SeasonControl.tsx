@@ -12,8 +12,8 @@ const SeasonControl = () => {
   
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read initial season from URL query param, fallback to spring2026
-  const initialSeason = searchParams.get('season') || 'spring2026';
+  // Read initial season from URL query param, fallback to the first anticipated season
+  const initialSeason = searchParams.get('season') || (SEASONS_DATA.length > 0 ? SEASONS_DATA[0].id : 'spring2026');
   const [activeSeason, setActiveSeason] = useState<string>(initialSeason);
   const [animes, setAnimes] = useState<AnticipatedAnime[]>([]);
   const [displayedAnimes, setDisplayedAnimes] = useState<AnticipatedAnime[]>([]);

@@ -168,3 +168,27 @@ export function getCurrentSeason(): SeasonInfo {
 export function formatSeasonDisplay(season: SeasonName, year: number): string {
   return `${season} ${year}`;
 }
+
+/**
+ * Get the next season in chronological order
+ */
+export function getNextSeason(season: SeasonName, year: number): { season: SeasonName; year: number } {
+  const seasons: SeasonName[] = ['Winter', 'Spring', 'Summer', 'Fall'];
+  const currentIndex = seasons.indexOf(season);
+  if (currentIndex === 3) {
+    return { season: 'Winter', year: year + 1 };
+  }
+  return { season: seasons[currentIndex + 1], year };
+}
+
+/**
+ * Get the previous season in chronological order
+ */
+export function getPreviousSeason(season: SeasonName, year: number): { season: SeasonName; year: number } {
+  const seasons: SeasonName[] = ['Winter', 'Spring', 'Summer', 'Fall'];
+  const currentIndex = seasons.indexOf(season);
+  if (currentIndex === 0) {
+    return { season: 'Fall', year: year - 1 };
+  }
+  return { season: seasons[currentIndex - 1], year };
+}

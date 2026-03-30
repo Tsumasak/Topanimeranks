@@ -1,3 +1,5 @@
+import { getCurrentSeason, SeasonName, getNextSeason } from '../utils/seasons';
+
 export interface PastSeasonData {
   id: string;
   label: string;
@@ -7,45 +9,44 @@ export interface PastSeasonData {
   season: string;
 }
 
-export const PAST_SEASONS_DATA: PastSeasonData[] = [
-  {
-    id: 'winter2025',
-    label: 'Winter 2025',
-    title: 'Winter 2025',
-    period: 'January - March 2025',
-    year: 2025,
-    season: 'winter',
-  },
-  {
-    id: 'spring2025',
-    label: 'Spring 2025',
-    title: 'Spring 2025',
-    period: 'April - June 2025',
-    year: 2025,
-    season: 'spring',
-  },
-  {
-    id: 'summer2025',
-    label: 'Summer 2025',
-    title: 'Summer 2025',
-    period: 'July - September 2025',
-    year: 2025,
-    season: 'summer',
-  },
-  {
-    id: 'fall2025',
-    label: 'Fall 2025',
-    title: 'Fall 2025',
-    period: 'October - December 2025',
-    year: 2025,
-    season: 'fall',
-  },
-  {
-    id: 'winter2026',
-    label: 'Winter 2026',
-    title: 'Winter 2026',
-    period: 'January - March 2026',
-    year: 2026,
-    season: 'winter',
-  },
-];
+function getSeasonPeriod(season: SeasonName, year: number): string {
+  switch (season) {
+    case 'Winter': return `January - March ${year}`;
+    case 'Spring': return `April - June ${year}`;
+    case 'Summer': return `July - September ${year}`;
+    case 'Fall': return `October - December ${year}`;
+  }
+  return '';
+}
+
+function generatePastSeasons(): PastSeasonData[] {
+  const seasons: PastSeasonData[] = [];
+  const currentSeason = getCurrentSeason();
+  
+  let iterSeason: SeasonName = 'Winter';
+  let iterYear = 2025;
+  let maxIters = 50; 
+  
+  while (maxIters-- > 0) {
+    seasons.push({
+      id: `${iterSeason.toLowerCase()}${iterYear}`,
+      label: `${iterSeason} ${iterYear}`,
+      title: `${iterSeason} ${iterYear}`,
+      period: getSeasonPeriod(iterSeason, iterYear),
+      year: iterYear,
+      season: iterSeason.toLowerCase(),
+    });
+    
+    if (iterSeason === currentSeason.name && iterYear === currentSeason.year) {
+      break;
+    }
+    
+    const next = getNextSeason(iterSeason, iterYear);
+    iterSeason = next.season;
+    iterYear = next.year;
+  }
+  
+  return seasons;
+}
+
+export const PAST_SEASONS_DATA: PastSeasonData[] = generatePastSeasons();

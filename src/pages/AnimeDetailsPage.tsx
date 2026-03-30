@@ -37,70 +37,89 @@ export default function AnimeDetailsPage() {
         let seasonData: any = null;
         let anticipatedData: any = null;
         let firstWeeklyEpisode: any = null;
+        let bestSourceData: any = null;
 
-        // ✅ PRIORITY CHANGED: season_rankings FIRST (has complete data)
-        console.log("[AnimeDetails] 📊 Searching in season_rankings (highest priority - complete data)...");
-        let { data: seasonResult, error: seasonError } = await supabase
-          .from("season_rankings")
-          .select("*")
-          .eq("anime_id", animeId)
-          .order("year", { ascending: false }) // Get most recent season first
-          .limit(1);
+        // ✅ PRIORITY: Smart conflict resolution between season_rankings and anticipated_animes
+        console.log("[AnimeDetails] 📊 Searching in both season_rankings and anticipated_animes concurrently...");
+        const [
+          { data: seasonResult, error: seasonError },
+          { data: anticipatedResult, error: anticipatedError }
+        ] = await Promise.all([
+          supabase.from("season_rankings").select("*").eq("anime_id", animeId).order("year", { ascending: false }).limit(1),
+          supabase.from("anticipated_animes").select("*").eq("anime_id", animeId).maybeSingle()
+        ]);
 
-        if (seasonError) {
-          console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
+        if (seasonError) console.error("[AnimeDetails] ❌ Error querying season_rankings:", seasonError);
+        if (anticipatedError) console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
+
+        seasonData = seasonResult && seasonResult.length > 0 ? seasonResult[0] : null;
+        anticipatedData = anticipatedResult;
+
+        if (seasonData && anticipatedData) {
+          // Conflict Resolution
+          const seasonStatus = seasonData.status?.toLowerCase() || "";
+          const anticipatedStatus = anticipatedData.status?.toLowerCase() || "";
+          
+          const isSeasonAiringOrFinished = seasonStatus.includes("currently airing") || seasonStatus.includes("finished airing");
+          const isAnticipatedAiringOrFinished = anticipatedStatus.includes("currently airing") || anticipatedStatus.includes("finished airing");
+
+          if (isSeasonAiringOrFinished && !isAnticipatedAiringOrFinished) {
+            console.log("[AnimeDetails] ⚖️ Choosing season_rankings because it indicates the anime has aired/is airing.");
+            bestSourceData = seasonData;
+          } else if (isAnticipatedAiringOrFinished && !isSeasonAiringOrFinished) {
+            console.log("[AnimeDetails] ⚖️ Choosing anticipated_animes because it indicates the anime has aired/is airing.");
+            // Keep anime_score format to avoid issues with other components reading score
+            bestSourceData = { ...anticipatedData, anime_score: anticipatedData.score };
+          } else {
+            // Both have same type of status (e.g. both Not yet aired). Use updated_at tie-breaker
+            const seasonUpdated = seasonData.updated_at ? new Date(seasonData.updated_at).getTime() : 0;
+            const anticipatedUpdated = anticipatedData.updated_at ? new Date(anticipatedData.updated_at).getTime() : 0;
+            
+            if (anticipatedUpdated > seasonUpdated) {
+              console.log("[AnimeDetails] ⚖️ Choosing anticipated_animes because it has a newer updated_at timestamp.");
+              bestSourceData = { ...anticipatedData, anime_score: anticipatedData.score };
+            } else if (seasonUpdated > anticipatedUpdated) {
+              console.log("[AnimeDetails] ⚖️ Choosing season_rankings because it has a newer updated_at timestamp.");
+              bestSourceData = seasonData;
+            } else {
+              // Exact same or both missing -> fallback to anticipated if not aired, otherwise season
+              if (seasonStatus.includes("not yet aired")) {
+                console.log("[AnimeDetails] ⚖️ Defaulting to anticipated_animes for upcoming anime.");
+                bestSourceData = { ...anticipatedData, anime_score: anticipatedData.score };
+              } else {
+                console.log("[AnimeDetails] ⚖️ Defaulting to season_rankings for fallback.");
+                bestSourceData = seasonData;
+              }
+            }
+          }
+        } else if (seasonData) {
+          console.log("[AnimeDetails] ✅ Found ONLY in season_rankings");
+          bestSourceData = seasonData;
+        } else if (anticipatedData) {
+          console.log("[AnimeDetails] ✅ Found ONLY in anticipated_animes");
+          bestSourceData = { ...anticipatedData, anime_score: anticipatedData.score };
         }
 
-        // seasonResult is an array, get the first element
-        seasonData = seasonResult && seasonResult.length > 0 ? seasonResult[0] : null;
-
-        if (seasonData) {
-          console.log("[AnimeDetails] ✅ Found in season_rankings (complete data)");
+        if (bestSourceData) {
           console.log("[AnimeDetails] 📊 Data preview:", {
-            title: seasonData.title_english || seasonData.title,
-            score: seasonData.anime_score,
-            season: seasonData.season,
-            year: seasonData.year,
-            hasImage: !!seasonData.image_url,
-            hasSynopsis: !!seasonData.synopsis
+            title: bestSourceData.title_english || bestSourceData.title,
+            score: bestSourceData.anime_score || bestSourceData.score,
+            season: bestSourceData.season,
+            year: bestSourceData.year,
+            status: bestSourceData.status,
+            hasImage: !!bestSourceData.image_url,
+            hasSynopsis: !!bestSourceData.synopsis
           });
-          setAnime(seasonData);
+          setAnime(bestSourceData);
 
           // Set dynamic background
-          if (seasonData.image_url) {
+          if (bestSourceData.image_url) {
             document.documentElement.style.setProperty(
               "--bg-image",
-              `url(${seasonData.image_url})`,
+              `url(${bestSourceData.image_url})`,
             );
           }
         } else {
-          // Fallback 1: Check anticipated_animes
-          console.log("[AnimeDetails] 📊 Searching in anticipated_animes...");
-          let { data: anticipatedResult, error: anticipatedError } = await supabase
-            .from("anticipated_animes")
-            .select("*")
-            .eq("anime_id", animeId)
-            .maybeSingle();
-
-          anticipatedData = anticipatedResult;
-
-          if (anticipatedError) {
-            console.error("[AnimeDetails] ❌ Error querying anticipated_animes:", anticipatedError);
-          }
-
-          if (anticipatedData) {
-            console.log("[AnimeDetails] ✅ Found in anticipated_animes");
-            console.log("[AnimeDetails] 📊 Score:", anticipatedData.score);
-            setAnime(anticipatedData);
-
-            // Set dynamic background
-            if (anticipatedData.image_url) {
-              document.documentElement.style.setProperty(
-                "--bg-image",
-                `url(${anticipatedData.image_url})`,
-              );
-            }
-          } else {
             // Fallback 2: Check weekly_episodes (limited data)
             console.log("[AnimeDetails] 📊 Searching in weekly_episodes (limited data)...");
             let { data: weeklyEpisodeData } = await supabase
@@ -216,7 +235,7 @@ export default function AnimeDetailsPage() {
               }
             }
           }
-        }
+
 
         // Fetch episodes from weekly_episodes table
         console.log("[AnimeDetails] 📺 Fetching episodes...");

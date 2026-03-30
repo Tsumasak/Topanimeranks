@@ -7,17 +7,15 @@
             "name": "Launch Edge against localhost",
             "url": "http://localhost:3000",
             "webRoot": "${workspaceFolder}",
-            "runtimeExecutable": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
             "preLaunchTask": "dev"
         },
         {
             "type": "chrome",
             "request": "launch",
-            "name": "Launch Brave against localhost",
+            "name": "Launch Chrome/Brave against localhost",
             "preLaunchTask": "dev",
             "url": "http://localhost:3000",
-            "webRoot": "${workspaceFolder}",
-            "runtimeExecutable": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+            "webRoot": "${workspaceFolder}"
         }
     ]
 }

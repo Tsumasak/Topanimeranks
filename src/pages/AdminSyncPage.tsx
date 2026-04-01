@@ -283,12 +283,18 @@ export default function AdminSyncPage() {
     addLog(`🎬 Populating weekly_episodes for ${season} ${year}...`, 'info');
     
     try {
-      // ✅ FIXED: Use sync-past-anime-data for past years (2023, 2024)
-      // Use insert-weekly-episodes only for current season (Winter 2026)
-      const currentYear = 2026;
-      const currentSeason = 'winter';
+      // Determine if it's the current season or past data
+      const now = new Date();
+      const month = now.getUTCMonth();
+      const currentYear = now.getUTCFullYear();
+      let currentSeasonName: string;
       
-      const isPastData = year < currentYear || (year === currentYear && season !== currentSeason);
+      if (month >= 0 && month <= 2) currentSeasonName = 'winter';
+      else if (month >= 3 && month <= 5) currentSeasonName = 'spring';
+      else if (month >= 6 && month <= 8) currentSeasonName = 'summer';
+      else currentSeasonName = 'fall';
+      
+      const isPastData = year < currentYear || (year === currentYear && season !== currentSeasonName);
       
       if (isPastData) {
         // Use sync-past-anime-data for historical data
@@ -327,7 +333,7 @@ export default function AdminSyncPage() {
         }
       } else {
         // Use insert-weekly-episodes for current season only
-        addLog(`⏳ Calling insert-weekly-episodes for current season...`, 'warning');
+        addLog(`⏳ Calling insert-weekly-episodes for current season (${season} ${year})...`, 'warning');
         
         const url = `https://${projectId}.supabase.co/functions/v1/insert-weekly-episodes`;
         
@@ -345,11 +351,8 @@ export default function AdminSyncPage() {
         });
         
         const contentType = response.headers.get('content-type');
-        addLog(`Response status: ${response.status}`, 'info');
-        
         if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          addLog(`❌ Response is not JSON. First 200 chars: ${text.substring(0, 200)}`, 'error');
+          addLog(`❌ Response is not JSON. Status: ${response.status}`, 'error');
           return;
         }
         
@@ -357,8 +360,8 @@ export default function AdminSyncPage() {
         
         if (data.success) {
           addLog(`✅ SUCCESS: Weekly episodes inserted!`, 'success');
-          addLog(`📊 Total Inserted: ${data.totalItemsCreated || 0}`, 'success');
-          addLog(`📅 Weeks Processed: ${data.weeksProcessed?.join(', ') || 'None'}`, 'info');
+          addLog(`📊 Total Inserted: ${data.itemsCreated || 0}`, 'success');
+          addLog(`📅 Week Processed: ${data.weekProcessed}`, 'info');
         } else {
           addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
         }
@@ -370,6 +373,37 @@ export default function AdminSyncPage() {
       setSyncing(prev => ({ ...prev, [key]: false }));
     }
   };
+
+  // Helper to get season names and previous seasons
+  const getSeasonInfo = () => {
+    const now = new Date();
+    const month = now.getUTCMonth();
+    const year = now.getUTCFullYear();
+    
+    const seasons = ['winter', 'spring', 'summer', 'fall'];
+    const emojiMap: Record<string, string> = { winter: '❄️', spring: '🌸', summer: '☀️', fall: '🍂' };
+    
+    let currentIdx: number;
+    if (month >= 0 && month <= 2) currentIdx = 0;
+    else if (month >= 3 && month <= 5) currentIdx = 1;
+    else if (month >= 6 && month <= 8) currentIdx = 2;
+    else currentIdx = 3;
+    
+    const current = { name: seasons[currentIdx], year, emoji: emojiMap[seasons[currentIdx]] };
+    
+    // Previous season
+    let prevIdx = currentIdx - 1;
+    let prevYear = year;
+    if (prevIdx < 0) {
+      prevIdx = 3;
+      prevYear--;
+    }
+    const previous = { name: seasons[prevIdx], year: prevYear, emoji: emojiMap[seasons[prevIdx]] };
+    
+    return { current, previous };
+  };
+
+  const { current, previous } = getSeasonInfo();
 
   // ============================================
   // SYNC ALL SEASONS FOR A FULL YEAR
@@ -450,24 +484,24 @@ export default function AdminSyncPage() {
         <div className="mb-4">
           <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">📊 Sync Season Rankings</h2>
           
-          {/* Current Season (2025/2026) */}
+          {/* Current Season */}
           <div className="mb-3">
-            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Current Season</p>
+            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Seasons</p>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px]">
               <button
-                onClick={() => syncSeason('fall', 2025)}
-                disabled={syncing.fall}
+                onClick={() => syncSeason(previous.name, previous.year)}
+                disabled={syncing[previous.name]}
                 className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {syncing.fall ? '⏳ Syncing...' : '🍂 Fall 2025'}
+                {syncing[previous.name] ? '⏳ Syncing...' : `${previous.emoji} ${previous.name.toUpperCase()} ${previous.year}`}
               </button>
               
               <button
-                onClick={() => syncSeason('winter', 2026)}
-                disabled={syncing.winter}
+                onClick={() => syncSeason(current.name, current.year)}
+                disabled={syncing[current.name]}
                 className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(102,126,234,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(102,126,234,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {syncing.winter ? '⏳ Syncing...' : '❄️ Winter 2026'}
+                {syncing[current.name] ? '⏳ Syncing...' : `${current.emoji} ${current.name.toUpperCase()} ${current.year}`}
               </button>
             </div>
           </div>
@@ -477,19 +511,19 @@ export default function AdminSyncPage() {
             <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Full Year Sync (4 seasons)</p>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px]">
               <button
+                onClick={() => syncFullYear(2025)}
+                disabled={syncing.sync_year_2025}
+                className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(16,185,129,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(16,185,129,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {syncing.sync_year_2025 ? '⏳ Syncing...' : '📅 2025'}
+              </button>
+              
+              <button
                 onClick={() => syncFullYear(2024)}
                 disabled={syncing.sync_year_2024}
                 className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(16,185,129,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(16,185,129,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {syncing.sync_year_2024 ? '⏳ Syncing...' : '📅 2024'}
-              </button>
-              
-              <button
-                onClick={() => syncFullYear(2023)}
-                disabled={syncing.sync_year_2023}
-                className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(16,185,129,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(16,185,129,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                {syncing.sync_year_2023 ? '⏳ Syncing...' : '📅 2023'}
               </button>
             </div>
           </div>
@@ -499,46 +533,44 @@ export default function AdminSyncPage() {
         <div className="mb-7">
           <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">🎬 Populate Weekly Episodes</h2>
           
-          {/* Current Season (2025/2026) */}
           <div className="mb-3">
-            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Current Season</p>
+            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Seasons</p>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px]">
               <button
-                onClick={() => populateWeeklyEpisodes('fall', 2025)}
-                disabled={syncing.populate_fall_2025}
+                onClick={() => populateWeeklyEpisodes(previous.name, previous.year)}
+                disabled={syncing[`populate_${previous.name}_${previous.year}`]}
                 className="bg-gradient-to-br from-[#f59e0b] to-[#ef4444] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(245,158,11,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(245,158,11,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {syncing.populate_fall_2025 ? '⏳ Populating...' : '🎬 Fall 2025'}
+                {syncing[`populate_${previous.name}_${previous.year}`] ? '⏳ Populating...' : `🎬 ${previous.emoji} ${previous.name.toUpperCase()} ${previous.year}`}
               </button>
               
               <button
-                onClick={() => populateWeeklyEpisodes('winter', 2026)}
-                disabled={syncing.populate_winter_2026}
+                onClick={() => populateWeeklyEpisodes(current.name, current.year)}
+                disabled={syncing[`populate_${current.name}_${current.year}`]}
                 className="bg-gradient-to-br from-[#f59e0b] to-[#ef4444] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(245,158,11,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(245,158,11,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {syncing.populate_winter_2026 ? '⏳ Populating...' : '🎬 Winter 2026'}
+                {syncing[`populate_${current.name}_${current.year}`] ? '⏳ Populating...' : `🎬 ${current.emoji} ${current.name.toUpperCase()} ${current.year}`}
               </button>
             </div>
           </div>
 
-          {/* Full Year Population */}
           <div>
-            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Full Year Population (4 seasons)</p>
+            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Full Year Population</p>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-[15px]">
+              <button
+                onClick={() => populateFullYear(2025)}
+                disabled={syncing.populate_year_2025}
+                className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(139,92,246,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(139,92,246,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {syncing.populate_year_2025 ? '⏳ Populating...' : '📅 2025'}
+              </button>
+              
               <button
                 onClick={() => populateFullYear(2024)}
                 disabled={syncing.populate_year_2024}
                 className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(139,92,246,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(139,92,246,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {syncing.populate_year_2024 ? '⏳ Populating...' : '📅 2024'}
-              </button>
-              
-              <button
-                onClick={() => populateFullYear(2023)}
-                disabled={syncing.populate_year_2023}
-                className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(139,92,246,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(139,92,246,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                {syncing.populate_year_2023 ? '⏳ Populating...' : '📅 2023'}
               </button>
             </div>
           </div>

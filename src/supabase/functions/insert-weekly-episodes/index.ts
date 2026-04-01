@@ -190,24 +190,20 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
 // ============================================
 // INSERT NEW EPISODES FOR A WEEK
 // ============================================
-async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
+async function insertWeeklyEpisodes(supabase: any, weekNumber: number, seasonInfo: SeasonInfo) {
   console.log(`\n📅 ============================================`);
-  console.log(`📅 INSERTING NEW EPISODES FOR WEEK ${weekNumber}`);
+  console.log(`📅 INSERTING NEW EPISODES FOR WEEK ${weekNumber} (${seasonInfo.name.toUpperCase()} ${seasonInfo.year})`);
   console.log(`📅 ============================================\n`);
 
   const startTime = Date.now();
   let itemsCreated = 0;
 
   try {
-    // Fetch current season animes
-    const seasonsToCheck = [{ season: 'winter', year: 2026 }];
+    // Current season animes
+    const seasonsToCheck = [{ season: seasonInfo.name, year: seasonInfo.year }];
 
-    // Calculate week dates dynamically based on the season
-    // Winter 2026 starts January 1, 2026 (Wednesday)
-    // Week 1: Jan 1-4 (Wed-Sun, partial week)
-    // Week 2+: Monday-Sunday (full weeks)
-
-    const seasonStartDate = new Date(Date.UTC(2026, 0, 1)); // January 1, 2026
+    // Calculate dates for the specified week in the specified season
+    const seasonStartDate = seasonInfo.startDate;
 
     let startDate: Date;
     let endDate: Date;
@@ -287,7 +283,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`\n🔍 Fetching ALL existing episodes from database...`);
     const { data: allExistingEpisodes, error: fetchError } = await supabase
       .from('weekly_episodes')
-      .select('anime_id, episode_number, week_number')
+      .select('anime_id, episode_number')
       .eq('is_manual', false);
 
     if (fetchError) {
@@ -328,7 +324,6 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
         let hasNextEpisodePage = true;
 
         while (hasNextEpisodePage) {
-          // ✅ FIXED: Use /episodes for page 1, /episodes?page=N for page 2+
           const episodesUrl = episodePage === 1
             ? `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes`
             : `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes?page=${episodePage}`;
@@ -365,36 +360,34 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
         console.log(`  📺 Total episodes: ${allEpisodes.length}`);
 
         // Find NEW episodes that DON'T exist in database yet
-        // We'll insert ALL new episodes, not just those from this week
         for (const ep of allEpisodes) {
-          // Check if episode already exists in database (ANY week)
+          // Check if episode already exists in database
           const episodeKey = `${anime.mal_id}_${ep.mal_id}`;
           if (existingEpisodesSet.has(episodeKey)) {
             console.log(`  ⏭️ SKIP: EP${ep.mal_id} already exists in database`);
             continue;
           }
 
-          // Calculate week_number based on aired date
-          // If no aired date, use current week (Week 1 for new season)
-          let episodeSeason: string;
+          // Calculate week_number and season based on aired date
+          let episodeSeasonName: SeasonName;
           let episodeYear: number;
           let episodeWeek: number;
 
           if (ep.aired) {
             const airedDate = new Date(ep.aired);
             const calculated = getEpisodeWeekNumber(airedDate);
-            episodeSeason = calculated.season;
+            episodeSeasonName = calculated.season;
             episodeYear = calculated.year;
             episodeWeek = calculated.weekNumber;
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: ${ep.aired}, Score: ${ep.score || 'N/A'})`);
-            console.log(`  📅 Calculated: ${episodeSeason} ${episodeYear} Week ${episodeWeek}`);
+            console.log(`  📅 Calculated: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
           } else {
             // No aired date - assume current season/week
-            episodeSeason = 'winter';
-            episodeYear = 2026;
-            episodeWeek = weekNumber; // Use the week we're processing
+            episodeSeasonName = seasonInfo.name;
+            episodeYear = seasonInfo.year;
+            episodeWeek = weekNumber;
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: N/A, Score: ${ep.score || 'N/A'})`);
-            console.log(`  📅 No aired date - using: ${episodeSeason} ${episodeYear} Week ${episodeWeek}`);
+            console.log(`  📅 No aired date - using current: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
           }
 
           const episode = {
@@ -407,12 +400,12 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             episode_name: ep.title || `Episode ${ep.mal_id}`,
             episode_score: ep.score || null,
             week_number: episodeWeek,
-            position_in_week: 0, // Will be calculated by update function
+            position_in_week: 0,
             trend: 'NEW',
             is_manual: false,
             type: anime.type,
             status: anime.status,
-            season: episodeSeason,
+            season: episodeSeasonName,
             year: episodeYear,
             demographic: anime.demographics || [],
             genre: anime.genres || [],
@@ -422,7 +415,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
 
           newEpisodes.push(episode);
 
-          // Also save to season_rankings
+          // Save to season_rankings
           const seasonAnime = {
             anime_id: anime.mal_id,
             title: anime.title,
@@ -447,8 +440,8 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
             themes: anime.themes || [],
             studios: anime.studios || [],
             synopsis: anime.synopsis,
-            season: episodeSeason, // ✅ FIXED: Use calculated season from aired date
-            year: episodeYear, // ✅ FIXED: Use calculated year from aired date
+            season: episodeSeasonName,
+            year: episodeYear,
           };
 
           await supabase
@@ -477,11 +470,9 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
           .insert(episode);
 
         if (error) {
-          // Check if it's a duplicate key error (code 23505)
           if (error.code === '23505') {
             console.log(`ℹ️ SKIP: ${episode.anime_title_english} EP${episode.episode_number} - Already exists in database`);
           } else {
-            // Real error - log with ❌
             console.error(`❌ Insert error for ${episode.anime_title_english} EP${episode.episode_number}:`, error);
           }
         } else {
@@ -490,7 +481,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
         }
       }
     } else {
-      console.log(`✅ No new episodes to insert for week ${weekNumber}`);
+      console.log(`✅ No new episodes to insert`);
     }
 
     const duration = Date.now() - startTime;
@@ -504,6 +495,7 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
       items_created: itemsCreated,
       items_updated: 0,
       duration_ms: duration,
+      error_details: { season: seasonInfo.name, year: seasonInfo.year }
     });
 
     console.log(`\n✅ ============================================`);
@@ -515,14 +507,14 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number) {
     return { success: true, itemsCreated, weekNumber, timeoutReached };
   } catch (error: any) {
     const duration = Date.now() - startTime;
-    console.error(`❌ Error inserting week ${weekNumber}:`, error);
+    console.error(`❌ Error inserting episodes:`, error);
 
     await supabase.from('sync_logs').insert({
       sync_type: 'insert_weekly_episodes',
       status: 'error',
       week_number: weekNumber,
       error_message: error.message,
-      error_details: { stack: error.stack },
+      error_details: { stack: error.stack, season: seasonInfo.name, year: seasonInfo.year },
       duration_ms: duration,
     });
 
@@ -555,53 +547,39 @@ serve(async (req) => {
     const body = await req.text();
     const { week_number } = body ? JSON.parse(body) : {};
 
+    const today = new Date();
+    const currentSeasonInfo = getSeasonFromDate(today);
+    const autoWeek = getWeekInSeason(today, currentSeasonInfo);
+
     let weekToProcess: number;
+    let seasonToProcess = currentSeasonInfo;
 
     // Auto-detect current week if not provided
     if (week_number) {
-      // Support dynamic week values: "current", "current-1", "current-2", or numeric
-      const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
-      const today = new Date();
-      const diffTime = today.getTime() - baseDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const currentWeek = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
-
       if (week_number === "current") {
-        weekToProcess = currentWeek;
-        console.log(`📅 Using current week: ${weekToProcess}`);
+        weekToProcess = autoWeek;
       } else if (week_number === "current-1") {
-        weekToProcess = Math.max(1, currentWeek - 1);
-        console.log(`📅 Using previous week (current-1): ${weekToProcess}`);
+        weekToProcess = Math.max(1, autoWeek - 1);
       } else if (week_number === "current-2") {
-        weekToProcess = Math.max(1, currentWeek - 2);
-        console.log(`📅 Using 2 weeks ago (current-2): ${weekToProcess}`);
+        weekToProcess = Math.max(1, autoWeek - 2);
       } else if (typeof week_number === "number") {
         weekToProcess = week_number;
-        console.log(`📅 Using provided numeric week: ${weekToProcess}`);
       } else {
-        // Fallback to current week
-        weekToProcess = currentWeek;
-        console.log(`📅 Invalid week_number format, using current week: ${weekToProcess}`);
+        weekToProcess = autoWeek;
       }
     } else {
-      // Auto-detect current week based on Winter 2026
-      const baseDate = new Date(Date.UTC(2026, 0, 6)); // January 6, 2026 (Monday) - Winter 2026
-      const today = new Date();
-      const diffTime = today.getTime() - baseDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      weekToProcess = Math.max(1, Math.min(13, Math.floor(diffDays / 7) + 1));
-
-      console.log(`📅 Auto-detected current week: ${weekToProcess} (Date: ${today.toISOString().split('T')[0]})`);
+      weekToProcess = autoWeek;
     }
 
-    // Process ONLY ONE week per execution
-    console.log(`📅 Processing week: ${weekToProcess}`);
-    const result = await insertWeeklyEpisodes(supabase, weekToProcess);
+    console.log(`📅 Processing: ${seasonToProcess.name.toUpperCase()} ${seasonToProcess.year} Week ${weekToProcess}`);
+    const result = await insertWeeklyEpisodes(supabase, weekToProcess, seasonToProcess);
 
     return new Response(
       JSON.stringify({
         success: true,
         weekProcessed: weekToProcess,
+        season: seasonToProcess.name,
+        year: seasonToProcess.year,
         itemsCreated: result.itemsCreated,
         timeoutReached: result.timeoutReached
       }),

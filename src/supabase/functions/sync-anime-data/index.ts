@@ -118,10 +118,29 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-    // 🆕 Fetch current season to catch all airing animes
+    // 🆕 Fetch current season (and next if near transition) to catch all airing animes
+    const today = new Date();
+    const month = today.getUTCMonth();
+    const year = today.getUTCFullYear();
+    
+    let currentSeasonName: string;
+    if (month >= 0 && month <= 2) currentSeasonName = 'winter';
+    else if (month >= 3 && month <= 5) currentSeasonName = 'spring';
+    else if (month >= 6 && month <= 8) currentSeasonName = 'summer';
+    else currentSeasonName = 'fall';
+
     const seasonsToCheck = [
-      { season: 'winter', year: 2026 },
+      { season: currentSeasonName, year: year },
     ];
+
+    // If we are in the last month of a season, also check the next season
+    if (month % 3 === 2) {
+      const nextSeasons: Record<string, string> = { 'winter': 'spring', 'spring': 'summer', 'summer': 'fall', 'fall': 'winter' };
+      const nextSeason = nextSeasons[currentSeasonName];
+      const nextYear = nextSeason === 'winter' ? year + 1 : year;
+      seasonsToCheck.push({ season: nextSeason, year: nextYear });
+      console.log(`🔍 Near season transition, also checking ${nextSeason} ${nextYear}`);
+    }
 
     const allAnimes: any[] = [];
 
@@ -661,8 +680,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         studios: anime.studios || [],
         synopsis: anime.synopsis,
         pictures: pictures, // 🖼️ Add pictures array
-        season: 'winter', // ✅ FIXED: winter 2026
-        year: 2026, // ✅ FIXED: 2026
+        season: anime.season ? anime.season.toLowerCase() : 'winter', // ✅ Use Jikan metadata
+        year: anime.year || 2026, // ✅ Use Jikan metadata
       };
 
       const { data: upsertData, error } = await supabase

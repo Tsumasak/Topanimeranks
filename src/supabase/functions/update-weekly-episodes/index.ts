@@ -116,13 +116,23 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
   let itemsUpdated = 0;
 
   try {
-    // Fetch ALL episodes from database for this week and season
-    console.log(`🔍 Fetching episodes from database for week ${weekNumber}...`);
+    // Fetch ALL episodes from database for this week and seasons
+    // During transition months, we might have episodes from two different seasons in the same week
+    const currentMonth = new Date().getUTCMonth();
+    const seasonsToQuery = [seasonInfo.name as string];
+    
+    // If we are in the last month of a season, also query the next season
+    if (currentMonth % 3 === 2) {
+      const nextSeasons: Record<string, string> = { 'winter': 'spring', 'spring': 'summer', 'summer': 'fall', 'fall': 'winter' };
+      seasonsToQuery.push(nextSeasons[seasonInfo.name]);
+    }
+
+    console.log(`🔍 Fetching episodes from database for week ${weekNumber} (Seasons: ${seasonsToQuery.join(', ')})...`);
     const { data: dbEpisodes, error: fetchError } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
-      .eq('season', seasonInfo.name)
+      .in('season', seasonsToQuery)
       .eq('year', seasonInfo.year)
       .eq('is_manual', false);
 
@@ -227,11 +237,17 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
     // RECALCULATE POSITIONS AND TRENDS
     console.log(`\n🔄 Recalculating positions and trends...`);
 
+    const seasonsToQueryRerank = [seasonInfo.name as string];
+    if (currentMonth % 3 === 2) {
+      const nextSeasons: Record<string, string> = { 'winter': 'spring', 'spring': 'summer', 'summer': 'fall', 'fall': 'winter' };
+      seasonsToQueryRerank.push(nextSeasons[seasonInfo.name]);
+    }
+
     const { data: updatedEpisodes, error: refetchError } = await supabase
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
-      .eq('season', seasonInfo.name)
+      .in('season', seasonsToQueryRerank)
       .eq('year', seasonInfo.year);
 
     if (!refetchError && updatedEpisodes) {

@@ -133,22 +133,39 @@ function getWeekInSeason(date: Date, seasonInfo: SeasonInfo): number {
  * Get complete season information for an episode based on its aired date
  * Returns week number relative to the episode's broadcast season
  */
-function getEpisodeWeekNumber(airedDate: Date | string): {
+function getEpisodeWeekNumber(
+  airedDate: Date | string, 
+  preferredSeason?: SeasonName, 
+  preferredYear?: number
+): {
   season: SeasonName;
   year: number;
   weekNumber: number;
 } {
   const date = typeof airedDate === 'string' ? new Date(airedDate) : airedDate;
 
-  // Get season info
-  const seasonInfo = getSeasonFromDate(date);
+  // Get date-calculated season info
+  const dateSeasonInfo = getSeasonFromDate(date);
+  
+  // Determine final season and year
+  const finalSeason = preferredSeason || dateSeasonInfo.name;
+  const finalYear = preferredYear || dateSeasonInfo.year;
+
+  // Get fixed season info for week calculation
+  const { startDate, endDate } = getSeasonDates(finalSeason, finalYear);
+  const fixedSeasonInfo: SeasonInfo = {
+    name: finalSeason,
+    year: finalYear,
+    startDate,
+    endDate,
+  };
 
   // Get week within that season
-  const weekNumber = getWeekInSeason(date, seasonInfo);
+  const weekNumber = getWeekInSeason(date, fixedSeasonInfo);
 
   return {
-    season: seasonInfo.name,
-    year: seasonInfo.year,
+    season: finalSeason,
+    year: finalYear,
     weekNumber,
   };
 }
@@ -373,21 +390,25 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
           let episodeYear: number;
           let episodeWeek: number;
 
+          // Get anime's official season if available
+          const animeSeason = anime.season ? (anime.season.toLowerCase() as SeasonName) : undefined;
+          const animeYear = anime.year;
+
           if (ep.aired) {
             const airedDate = new Date(ep.aired);
-            const calculated = getEpisodeWeekNumber(airedDate);
+            const calculated = getEpisodeWeekNumber(airedDate, animeSeason, animeYear);
             episodeSeasonName = calculated.season;
             episodeYear = calculated.year;
             episodeWeek = calculated.weekNumber;
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: ${ep.aired}, Score: ${ep.score || 'N/A'})`);
             console.log(`  📅 Calculated: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
           } else {
-            // No aired date - assume current season/week
-            episodeSeasonName = seasonInfo.name;
-            episodeYear = seasonInfo.year;
+            // No aired date - assume anime's season or current season
+            episodeSeasonName = animeSeason || seasonInfo.name;
+            episodeYear = animeYear || seasonInfo.year;
             episodeWeek = weekNumber;
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: N/A, Score: ${ep.score || 'N/A'})`);
-            console.log(`  📅 No aired date - using current: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
+            console.log(`  📅 No aired date - using: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
           }
 
           const episode = {

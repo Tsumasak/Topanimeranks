@@ -13,6 +13,18 @@
 
 export type SeasonName = 'Winter' | 'Spring' | 'Summer' | 'Fall';
 
+/**
+ * Maps any case-insensitive season name to the standard SeasonName
+ */
+export function normalizeSeason(season: string): SeasonName {
+  const s = season.toLowerCase();
+  if (s.includes('winter')) return 'Winter';
+  if (s.includes('spring')) return 'Spring';
+  if (s.includes('summer')) return 'Summer';
+  if (s.includes('fall')) return 'Fall';
+  return 'Winter'; // Default
+}
+
 export interface SeasonInfo {
   name: SeasonName;
   year: number;
@@ -126,9 +138,15 @@ export function getWeekInSeason(date: Date, seasonInfo: SeasonInfo): number {
 }
 
 /**
- * Get complete season information for an episode based on its aired date
+ * Get complete season information for an episode based on its aired date.
+ * If preferredSeason and preferredYear are provided (from anime metadata), 
+ * they will take precedence over date-based calculation.
  */
-export function getEpisodeSeasonInfo(airedDate: Date | string): EpisodeSeasonInfo {
+export function getEpisodeSeasonInfo(
+  airedDate: Date | string, 
+  preferredSeason?: SeasonName, 
+  preferredYear?: number
+): EpisodeSeasonInfo {
   // Validate input
   if (!airedDate) {
     throw new Error('Invalid aired date: date is null or undefined');
@@ -141,17 +159,30 @@ export function getEpisodeSeasonInfo(airedDate: Date | string): EpisodeSeasonInf
     throw new Error(`Invalid aired date: ${airedDate}`);
   }
   
-  // Get season info
-  const seasonInfo = getSeasonFromDate(date);
+  // Get date-calculated season info
+  const dateSeasonInfo = getSeasonFromDate(date);
+  
+  // Determine final season and year
+  const finalSeason = preferredSeason || dateSeasonInfo.name;
+  const finalYear = preferredYear || dateSeasonInfo.year;
+  
+  // Get fixed season info for week calculation
+  const { startDate, endDate } = getSeasonDates(finalSeason, finalYear);
+  const fixedSeasonInfo: SeasonInfo = {
+    name: finalSeason,
+    year: finalYear,
+    startDate,
+    endDate,
+  };
   
   // Get week within that season
-  const weekInSeason = getWeekInSeason(date, seasonInfo);
+  const weekInSeason = getWeekInSeason(date, fixedSeasonInfo);
   
   return {
-    season: seasonInfo.name,
-    year: seasonInfo.year,
+    season: finalSeason,
+    year: finalYear,
     weekInSeason,
-    seasonDisplay: `${seasonInfo.name} ${seasonInfo.year}`,
+    seasonDisplay: `${finalSeason} ${finalYear}`,
   };
 }
 

@@ -59,7 +59,7 @@ export default function TopSeasonAnimesPage() {
 
         // Order by SCORE (rating-based ranking)
         // IMPORTANT: Show ALL animes for the season, even those without scores yet
-        const seasonAnimes = await SupabaseService.getSeasonRankings(
+        const seasonAnimes = await SupabaseService.getUnifiedSeasonRankings(
           seasonData.season,
           seasonData.year,
           'score'

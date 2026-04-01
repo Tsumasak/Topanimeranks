@@ -68,6 +68,28 @@ function generateWeeksData(): WeekData[] {
 
 export const WEEKS_DATA: WeekData[] = generateWeeksData();
 
+/**
+ * Generate weeks data for any specific season
+ */
+export function generateWeeksDataForSeason(seasonYear: number, startDateStr: string): WeekData[] {
+  const seasonStart = new Date(startDateStr);
+  
+  return Array.from({ length: TOTAL_WEEKS }, (_, i) => {
+    const weekNumber = i + 1;
+    const { startDate, endDate } = getWeekDates(weekNumber, seasonStart);
+    
+    return {
+      id: `week${weekNumber}`,
+      label: `Week ${weekNumber}`,
+      title: `Week ${weekNumber} - ${formatDate(startDate)} - ${formatDate(endDate)}, ${seasonYear}`,
+      period: `Aired - ${formatDate(startDate)} - ${formatDate(endDate)}, ${seasonYear}`,
+      isCurrentWeek: false,
+      startDate,
+      endDate,
+    };
+  });
+}
+
 export const getCurrentWeek = (): WeekData | undefined => {
   return WEEKS_DATA.find(week => week.isCurrentWeek);
 };

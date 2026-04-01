@@ -16,7 +16,7 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { SupabaseService } from "../services/supabase";
 import type { HeroBanner } from "../services/supabase";
 import Union from "../imports/Union";
-import { getCurrentSeason, getNextSeason } from "../utils/seasons";
+import { getCurrentSeason, getNextSeason, getPreviousSeason } from "../utils/seasons";
 
 interface HomeCardData {
   rank: number;
@@ -469,18 +469,19 @@ export default function HomeNewPage() {
   // Animation keys for smooth entry animations
   const [animationKey, setAnimationKey] = useState("initial");
 
+  const currentSeasonInfo = getCurrentSeason();
+  const nextSeasonInfo = getNextSeason(currentSeasonInfo.name, currentSeasonInfo.year);
+  const prevSeasonInfo = getPreviousSeason(currentSeasonInfo.name, currentSeasonInfo.year);
+
   useEffect(() => {
     const loadData = async () => {
       console.log("[HomeNewPage] 🔍 Starting to load home data");
       try {
         setIsLoading(true);
 
-        const currentSeasonInfo = getCurrentSeason();
-        const nextSeasonInfo = getNextSeason(currentSeasonInfo.name, currentSeasonInfo.year);
-
         // Load Top Season Animes from Supabase (Dynamic Current Season)
         // Order by SCORE (rating-based ranking)
-        const seasonAnimes = await SupabaseService.getSeasonRankings(
+        const seasonAnimes = await SupabaseService.getUnifiedSeasonRankings(
           currentSeasonInfo.name.toLowerCase(),
           currentSeasonInfo.year,
           "score",
@@ -556,8 +557,10 @@ export default function HomeNewPage() {
           setAnticipated(topAnticipated);
         }
 
-        // Weekly Episodes - Auto-detect latest week with 5+ scored episodes
+        // Weekly Episodes - Auto-detect latest week with 3+ episodes
         let weekToShow = 1;
+        let episodesSeason = currentSeasonInfo.name.toLowerCase();
+        let episodesYear = currentSeasonInfo.year;
 
         try {
           const response = await fetch(
@@ -583,10 +586,26 @@ export default function HomeNewPage() {
               const result = await response.json();
 
               if (result.success && result.latestWeek) {
-                weekToShow = result.latestWeek;
-                console.log(
-                  `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected)`,
-                );
+                const latestCount = result.weekCounts?.[result.latestWeek] || 0;
+                
+                // Rule: If new week has < 3 episodes, keep showing previous week
+                if (latestCount < 3) {
+                  if (result.latestWeek > 1) {
+                    weekToShow = result.latestWeek - 1;
+                    console.log(`[HomeNewPage] ⚠️ Week ${result.latestWeek} has only ${latestCount} episodes. Falling back to Week ${weekToShow}`);
+                  } else {
+                    // Fallback to previous season's last week
+                    episodesSeason = prevSeasonInfo.season.toLowerCase();
+                    episodesYear = prevSeasonInfo.year;
+                    weekToShow = 13;
+                    console.log(`[HomeNewPage] ⚠️ Season start detected but Week 1 has only ${latestCount} episodes. Falling back to ${episodesSeason} ${episodesYear} Week 13`);
+                  }
+                } else {
+                  weekToShow = result.latestWeek;
+                  console.log(
+                    `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected, ${latestCount} episodes)`,
+                  );
+                }
               } else {
                 console.log(
                   `[HomeNewPage] ⚠️ Could not detect latest week, falling back to Week 1`,
@@ -603,7 +622,11 @@ export default function HomeNewPage() {
         }
 
         let weeklyEpisodesData =
-          await SupabaseService.getWeeklyEpisodes(weekToShow);
+          await SupabaseService.getWeeklyEpisodes(
+            weekToShow,
+            episodesSeason,
+            episodesYear
+          );
 
         if (weeklyEpisodesData.episodes.length > 0) {
           const topWeekly = weeklyEpisodesData.episodes
@@ -1036,7 +1059,7 @@ export default function HomeNewPage() {
                 className="font-['Arial'] leading-[16px] text-[12px] break-words"
                 style={{ color: "var(--rating-text)" }}
               >
-                Winter 2026
+                {currentSeasonInfo.name} {currentSeasonInfo.year}
               </p>
             </div>
 
@@ -1216,7 +1239,7 @@ export default function HomeNewPage() {
                 className="font-['Arial'] leading-[16px] text-[12px] break-words"
                 style={{ color: "var(--rating-text)" }}
               >
-                Spring 2026
+                {nextSeasonInfo.season} {nextSeasonInfo.year}
               </p>
             </div>
 

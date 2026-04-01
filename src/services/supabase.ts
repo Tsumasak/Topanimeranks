@@ -9,6 +9,7 @@ import type {
   JikanAnimeData
 } from '../types/anime';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { getCurrentSeason } from '../utils/seasons';
 
 // Re-export the singleton instance
 export { supabase };
@@ -17,14 +18,10 @@ export { supabase };
 // SEASON UTILITIES (copied from server)
 // ============================================
 
-/**
- * Calculate week dates for Winter 2026 following the same logic as server
- * Week 1: Season start (Jan 1) to first Sunday
- * Week 2+: Monday to Sunday (full weeks)
- */
 function calculateWeekDates(weekNumber: number): { startDate: string; endDate: string } {
-  // Winter 2026 starts January 1, 2026 (Wednesday)
-  const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0));
+  // Use current season's start date instead of hardcoded Winter 2026
+  const seasonInfo = getCurrentSeason();
+  const seasonStart = new Date(Date.UTC(seasonInfo.year, seasonInfo.startDate.getUTCMonth(), seasonInfo.startDate.getUTCDate(), 0, 0, 0, 0));
 
   // Find the first Sunday of the season
   const firstSunday = new Date(seasonStart);
@@ -137,8 +134,16 @@ export interface WeeklyEpisodesData {
 /**
  * Get weekly episodes from Supabase
  */
-export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpisodesData> {
-  console.log(`[SupabaseService] Fetching week ${weekNumber}...`);
+export async function getWeeklyEpisodes(
+  weekNumber: number,
+  season?: string,
+  year?: number
+): Promise<WeeklyEpisodesData> {
+  const seasonInfo = getCurrentSeason();
+  const targetSeason = (season || seasonInfo.name).toLowerCase();
+  const targetYear = year || seasonInfo.year;
+
+  console.log(`[SupabaseService] Fetching ${targetSeason} ${targetYear} week ${weekNumber}...`);
 
   if (!isSupabaseConfigured()) {
     console.warn('[SupabaseService] Supabase not configured');
@@ -150,8 +155,8 @@ export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpiso
       .from('weekly_episodes')
       .select('*')
       .eq('week_number', weekNumber)
-      .eq('season', 'winter')
-      .eq('year', 2026)
+      .eq('season', targetSeason)
+      .eq('year', targetYear)
       .not('episode_score', 'is', null) // Apenas episódios com score
       .order('episode_score', { ascending: false }); // Ordenar por score DESC
 
@@ -161,11 +166,11 @@ export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpiso
     }
 
     if (!data || data.length === 0) {
-      console.log(`[SupabaseService] ℹ️  No episodes found in Supabase for week ${weekNumber} (Winter 2026)`);
+      console.log(`[SupabaseService] ℹ️  No episodes found in Supabase for week ${weekNumber} (${targetSeason} ${targetYear})`);
       return { episodes: [], startDate: '', endDate: '' };
     }
 
-    console.log(`[SupabaseService] ✅ Found ${data.length} episodes in Supabase cache for Winter 2026 Week ${weekNumber}`);
+    console.log(`[SupabaseService] ✅ Found ${data.length} episodes in Supabase cache for ${targetSeason} ${targetYear} Week ${weekNumber}`);
 
     // DEBUG: Log first episode structure
     console.log('[SupabaseService] First episode data:', data[0]);
@@ -233,6 +238,140 @@ export async function getWeeklyEpisodes(weekNumber: number): Promise<WeeklyEpiso
 // ============================================
 // SEASON RANKINGS
 // ============================================
+
+/**
+ * Get unified season rankings from both season_rankings and anticipated_animes tables.
+ * This ensures that the ranking shows the most updated data available for each anime.
+ */
+export async function getUnifiedSeasonRankings(
+  season: string,
+  year: number,
+  orderBy: 'score' | 'members' = 'score'
+): Promise<JikanAnimeData[]> {
+  console.log(`[SupabaseService] Fetching unified ${season} ${year} rankings (ordered by ${orderBy})...`);
+
+  if (!isSupabaseConfigured()) {
+    console.warn('[SupabaseService] Supabase not configured');
+    return [];
+  }
+
+  try {
+    // 1. Fetch from targeted tables concurrently
+    const [
+      { data: seasonResult, error: seasonError },
+      { data: anticipatedResult, error: anticipatedError }
+    ] = await Promise.all([
+      supabase.from('season_rankings').select('*').eq('season', season).eq('year', year),
+      supabase.from('anticipated_animes').select('*').eq('season', season).eq('year', year)
+    ]);
+
+    if (seasonError) console.error('[SupabaseService] ❌ Error querying season_rankings:', seasonError);
+    if (anticipatedError) console.error('[SupabaseService] ❌ Error querying anticipated_animes:', anticipatedError);
+
+    // Map by anime_id for conflict resolution
+    const animeMap = new Map<number, JikanAnimeData>();
+
+    const convertToJikanData = (row: any, source: 'season' | 'anticipated'): JikanAnimeData => {
+      const isSeason = source === 'season';
+      return {
+        mal_id: row.anime_id,
+        url: `/anime/${row.anime_id}`,
+        title: row.title,
+        title_english: row.title_english,
+        title_japanese: null,
+        images: {
+          jpg: {
+            image_url: row.image_url,
+            small_image_url: row.image_url,
+            large_image_url: row.image_url,
+          },
+          webp: {
+            image_url: row.image_url,
+            small_image_url: row.image_url,
+            large_image_url: row.image_url,
+          },
+        },
+        score: isSeason ? row.anime_score : row.score,
+        scored_by: row.scored_by,
+        members: row.members,
+        favorites: row.favorites,
+        popularity: row.popularity,
+        rank: row.rank,
+        type: row.type,
+        status: row.status,
+        episodes: row.episodes,
+        aired: {
+          from: row.aired_from || '',
+          to: row.aired_to,
+        },
+        season: row.season,
+        year: row.year,
+        synopsis: row.synopsis,
+        demographics: row.demographics || [],
+        genres: row.genres || [],
+        themes: row.themes || [],
+        studios: row.studios || [],
+        updated_at: row.updated_at
+      };
+    };
+
+    // Add anticipated animes first
+    if (anticipatedResult && (anticipatedResult as any[]).length > 0) {
+      (anticipatedResult as any[]).forEach(row => {
+        animeMap.set(row.anime_id, convertToJikanData(row, 'anticipated'));
+      });
+    }
+
+    // Merge with season rankings
+    if (seasonResult && (seasonResult as any[]).length > 0) {
+      (seasonResult as any[]).forEach(row => {
+        const existing = animeMap.get(row.anime_id);
+        const incoming = convertToJikanData(row, 'season');
+
+        if (!existing) {
+          animeMap.set(row.anime_id, incoming);
+        } else {
+          // Conflict Resolution logic
+          const incomingStatus = (incoming.status || '').toLowerCase();
+          const existingStatus = (existing.status || '').toLowerCase();
+
+          const incomingIsAiringOrFinished = incomingStatus.includes('airing') || incomingStatus.includes('finished');
+          const existingIsAiringOrFinished = existingStatus.includes('airing') || existingStatus.includes('finished');
+
+          // 1. Airing/Finished beats Not Yet Aired
+          if (incomingIsAiringOrFinished && !existingIsAiringOrFinished) {
+            animeMap.set(row.anime_id, incoming);
+          } else if (!incomingIsAiringOrFinished && existingIsAiringOrFinished) {
+            // Keep existing (anticipated) if it already has more advanced status (unlikely, but safe)
+          } else {
+            // 2. Updated_at tie-breaker
+            const incomingUpdated = incoming.updated_at ? new Date(incoming.updated_at).getTime() : 0;
+            const existingUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+
+            if (incomingUpdated >= existingUpdated) {
+              animeMap.set(row.anime_id, incoming);
+            }
+          }
+        }
+      });
+    }
+
+    let results = Array.from(animeMap.values());
+
+    // Sort by requested field
+    if (orderBy === 'score') {
+      results.sort((a, b) => (b.score || 0) - (a.score || 0));
+    } else {
+      results.sort((a, b) => (b.members || 0) - (a.members || 0));
+    }
+
+    console.log(`[SupabaseService] ✅ Found ${results.length} unified animes for ${season} ${year}`);
+    return results;
+  } catch (error) {
+    console.error('[SupabaseService] Error in getUnifiedSeasonRankings:', error);
+    return [];
+  }
+}
 
 /**
  * Get season rankings from Supabase
@@ -884,6 +1023,7 @@ export async function triggerManualSync(syncType: 'weekly_episodes' | 'season_ra
 export const SupabaseService = {
   getWeeklyEpisodes,
   getSeasonRankings,
+  getUnifiedSeasonRankings,
   getLaterAnimes,
   getAnticipatedAnimes,
   getAnticipatedAnimesBySeason,

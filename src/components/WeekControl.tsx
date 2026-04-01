@@ -3,10 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimeCard } from './AnimeCard';
-import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig } from '../config/weeks';
+import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig, generateWeeksDataForSeason } from '../config/weeks';
 import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { getCurrentSeason, getPreviousSeason, getSeasonDates } from '../utils/seasons';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix
 const getFormattedPeriod = (week: WeekConfig, isCurrentWeek: boolean): string => {
@@ -113,13 +114,35 @@ const WeekControl = () => {
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]); // Weeks com episódios
   const [previousWeekEpisodes, setPreviousWeekEpisodes] = useState<Episode[]>([]); // For trend calculation
   const [latestWeekNumber, setLatestWeekNumber] = useState<number>(CURRENT_WEEK_NUMBER); // Latest week with 5+ scored episodes
+  const [dynamicWeeks, setDynamicWeeks] = useState<WeekConfig[]>(WEEKS_DATA);
+  
+  const currentSeasonInfo = getCurrentSeason();
+  const prevSeasonInfo = getPreviousSeason(currentSeasonInfo.name, currentSeasonInfo.year);
+  
+  const [targetSeason, setTargetSeason] = useState(currentSeasonInfo.name.toLowerCase());
+  const [targetYear, setTargetYear] = useState(currentSeasonInfo.year);
   
   // Ref for intersection observer
   const observerTarget = useRef<HTMLDivElement>(null);
   
-  // Filter weeks to show only those with episodes
-  const visibleWeeks = WEEKS_DATA.filter(week => availableWeeks.includes(week.id));
-  const currentWeek = WEEKS_DATA.find(week => week.id === activeWeek);
+  // Filter weeks to show
+  const visibleWeeks = dynamicWeeks.filter(week => {
+    const weekNum = parseInt(week.id.replace('week', ''));
+    
+    // If we have specific available weeks data, use it
+    if (availableWeeks.includes(week.id)) return true;
+    
+    // Fallback logic for visibility:
+    // 1. If it's a past season (different from real-time current), show all 13 weeks
+    if (targetSeason !== currentSeasonInfo.name.toLowerCase() || targetYear !== currentSeasonInfo.year) {
+      return weekNum <= 13;
+    }
+    
+    // 2. If it's the current season, show up to the latest detected week (at least week 1)
+    return weekNum <= Math.max(1, latestWeekNumber);
+  });
+
+  const currentWeek = dynamicWeeks.find(week => week.id === activeWeek);
   
   // Determine if the active week is the "current" week (latest with 5+ scored episodes)
   const activeWeekNumber = activeWeek ? parseInt(activeWeek.replace('week', '')) : 0;
@@ -204,20 +227,49 @@ const WeekControl = () => {
           
           console.log(`[WeekControl] ✅ Received ${weeksWithData.length} weeks with 5+ scored episodes:`, weeksWithData);
           console.log(`[WeekControl] 🎯 Latest week detected: Week ${detectedLatestWeek}`);
-          console.log(`[WeekControl] 📊 Week counts:`, result.weekCounts);
           
-          setAvailableWeeks(weeksWithData);
-          setLatestWeekNumber(detectedLatestWeek);
+          let finalWeekNumber = detectedLatestWeek;
+          let finalSeason = currentSeasonInfo.name.toLowerCase();
+          let finalYear = currentSeasonInfo.year;
+
+          const latestCount = result.weekCounts?.[detectedLatestWeek] || 0;
+          if (latestCount < 3) {
+            if (detectedLatestWeek > 1) {
+              finalWeekNumber = detectedLatestWeek - 1;
+              console.log(`[WeekControl] ⚠️ Week ${detectedLatestWeek} has only ${latestCount} episodes. Falling back to Week ${finalWeekNumber}`);
+            } else {
+              // Fallback to previous season
+              finalSeason = prevSeasonInfo.season.toLowerCase();
+              finalYear = prevSeasonInfo.year;
+              finalWeekNumber = 13;
+              console.log(`[WeekControl] ⚠️ Season start detected but Week 1 has only ${latestCount} episodes. Falling back to ${finalSeason} ${finalYear} Week 13`);
+            }
+          }
+
+          setTargetSeason(finalSeason);
+          setTargetYear(finalYear);
+          setLatestWeekNumber(finalWeekNumber);
+
+          // Update dynamic weeks if we switched season
+          if (finalSeason !== currentSeasonInfo.name.toLowerCase() || finalYear !== currentSeasonInfo.year) {
+            // Find the correct season info (including startDate)
+            const seasonName = (finalSeason.charAt(0).toUpperCase() + finalSeason.slice(1)) as any;
+            const { startDate } = getSeasonDates(seasonName, finalYear);
+            
+            const newWeeks = generateWeeksDataForSeason(finalYear, startDate.toISOString());
+            setDynamicWeeks(newWeeks);
+          } else {
+            setDynamicWeeks(WEEKS_DATA);
+          }
+          
+          const finalWeekId = `week${finalWeekNumber}`;
           
           // Check URL param for week, otherwise default to latest week
           const weekParam = searchParams.get('week');
-          const weekToLoad = weekParam || `week${detectedLatestWeek}`;
+          const weekToLoad = weekParam || finalWeekId;
           
-          // Validate that the week from URL exists in available weeks
-          const finalWeek = weeksWithData.includes(weekToLoad) ? weekToLoad : `week${detectedLatestWeek}`;
-          
-          console.log(`[WeekControl] 📌 Setting activeWeek to: ${finalWeek}`);
-          setActiveWeek(finalWeek);
+          console.log(`[WeekControl] 📌 Setting activeWeek to: ${weekToLoad}`);
+          setActiveWeek(weekToLoad);
           console.log(`[WeekControl] 📌 activeWeek set! (from URL: ${weekParam || 'not set'})`);
         } else if (result.success && result.weeks && result.weeks.length === 0) {
           // No weeks with 5+ episodes yet - use fallback
@@ -293,7 +345,11 @@ const WeekControl = () => {
         const weekNumber = parseInt(activeWeek.replace('week', ''));
         
         // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
-        const weekData = await SupabaseService.getWeeklyEpisodes(weekNumber);
+        const weekData = await SupabaseService.getWeeklyEpisodes(
+          weekNumber,
+          targetSeason,
+          targetYear
+        );
         
         // Episodes are already in the correct format from SupabaseService
         console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for Week ${weekNumber}`);
@@ -326,16 +382,26 @@ const WeekControl = () => {
         }
 
         // Load previous week for position comparison (for trend indicator)
-        if (weekNumber > 1) {
-          try {
-            const prevWeekData = await SupabaseService.getWeeklyEpisodes(weekNumber - 1);
-            setPreviousWeekEpisodes(prevWeekData.episodes);
-            console.log(`[WeekControl] Loaded ${prevWeekData.episodes.length} episodes from Week ${weekNumber - 1} for trend calculation`);
-          } catch (err) {
-            console.error('[WeekControl] Error loading previous week data:', err);
-            setPreviousWeekEpisodes([]);
-          }
-        } else {
+        let prevWeekNum = weekNumber - 1;
+        let prevSeason = targetSeason;
+        let prevYear = targetYear;
+
+        if (weekNumber === 1) {
+          const prevSeasonInfoObj = getPreviousSeason(
+            (targetSeason.charAt(0).toUpperCase() + targetSeason.slice(1)) as any,
+            targetYear
+          );
+          prevSeason = prevSeasonInfoObj.season.toLowerCase();
+          prevYear = prevSeasonInfoObj.year;
+          prevWeekNum = 13; // Assume 13 matches your config
+        }
+
+        try {
+          const prevWeekData = await SupabaseService.getWeeklyEpisodes(prevWeekNum, prevSeason, prevYear);
+          setPreviousWeekEpisodes(prevWeekData.episodes);
+          console.log(`[WeekControl] Loaded ${prevWeekData.episodes.length} episodes from ${prevSeason} ${prevYear} Week ${prevWeekNum} for trend calculation`);
+        } catch (err) {
+          console.error('[WeekControl] Error loading previous week data:', err);
           setPreviousWeekEpisodes([]);
         }
       } catch (err) {

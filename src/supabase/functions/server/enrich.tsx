@@ -124,8 +124,12 @@ export async function enrichEpisodes(supabase: any, season: string, year: number
               continue;
             }
 
-            // Calcular week_number baseado na data de exibição
-            const { season: epSeason, year: epYear, weekNumber } = getEpisodeWeekNumber(episode.aired);
+            // Calcular week_number baseado na data de exibição e na season oficial do anime
+            const { season: epSeason, year: epYear, weekNumber } = getEpisodeWeekNumber(
+              episode.aired, 
+              season as any, 
+              year
+            );
 
             // ✅ REMOVED: Não pular episódios de outras seasons
             // Um anime pode ter episódios em múltiplas seasons (ex: Spring + Summer)

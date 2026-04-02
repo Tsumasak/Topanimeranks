@@ -118,11 +118,18 @@ async function updateWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
   try {
     // Fetch ALL episodes from database for this week and seasons
     // During transition months, we might have episodes from two different seasons in the same week
+    // ✅ IMPROVED: Determine which seasons to query
+    // In transition months, we might have episodes from two different seasons
     const currentMonth = new Date().getUTCMonth();
     const seasonsToQuery = [seasonInfo.name as string];
     
-    // If we are in the last month of a season, also query the next season
-    if (currentMonth % 3 === 2) {
+    // If we are in the FIRST month (Jan, Apr, Jul, Oct), also query the PREVIOUS season
+    if (currentMonth % 3 === 0) {
+      const prevSeasons: Record<string, string> = { 'spring': 'winter', 'summer': 'spring', 'fall': 'summer', 'winter': 'fall' };
+      seasonsToQuery.push(prevSeasons[seasonInfo.name]);
+    }
+    // If we are in the LAST month (Mar, Jun, Sep, Dec), also query the NEXT season
+    else if (currentMonth % 3 === 2) {
       const nextSeasons: Record<string, string> = { 'winter': 'spring', 'spring': 'summer', 'summer': 'fall', 'fall': 'winter' };
       seasonsToQuery.push(nextSeasons[seasonInfo.name]);
     }

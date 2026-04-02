@@ -14,7 +14,7 @@ const app = new Hono();
 // CURRENT SEASON CONFIGURATION
 // ============================================
 // Atualizar manualmente quando a temporada mudar
-const CURRENT_SEASON = 'winter';
+const CURRENT_SEASON = 'spring';
 const CURRENT_YEAR = 2026;
 
 // Enable logger

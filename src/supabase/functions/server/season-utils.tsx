@@ -129,7 +129,11 @@ export function getWeekInSeason(date: Date, seasonInfo: SeasonInfo): number {
  * Get complete season information for an episode based on its aired date
  * Returns week number relative to the episode's broadcast season
  */
-export function getEpisodeWeekNumber(airedDate: Date | string): {
+export function getEpisodeWeekNumber(
+  airedDate: Date | string,
+  preferredSeason?: SeasonName,
+  preferredYear?: number
+): {
   season: SeasonName;
   year: number;
   weekNumber: number;
@@ -146,15 +150,29 @@ export function getEpisodeWeekNumber(airedDate: Date | string): {
     throw new Error(`Invalid aired date: ${airedDate}`);
   }
   
-  // Get season info
-  const seasonInfo = getSeasonFromDate(date);
+  // Get date-calculated season info
+  const dateSeasonInfo = getSeasonFromDate(date);
+  
+  // Determine final season and year
+  // Priority: preferredSeason > dateSeasonInfo.name
+  const finalSeason = preferredSeason || dateSeasonInfo.name;
+  const finalYear = preferredYear || dateSeasonInfo.year;
+  
+  // Get fixed season info for week calculation
+  const { startDate, endDate } = getSeasonDates(finalSeason, finalYear);
+  const fixedSeasonInfo: SeasonInfo = {
+    name: finalSeason,
+    year: finalYear,
+    startDate,
+    endDate,
+  };
   
   // Get week within that season
-  const weekNumber = getWeekInSeason(date, seasonInfo);
+  const weekNumber = getWeekInSeason(date, fixedSeasonInfo);
   
   return {
-    season: seasonInfo.name,
-    year: seasonInfo.year,
+    season: finalSeason,
+    year: finalYear,
     weekNumber,
   };
 }

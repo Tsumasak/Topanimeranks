@@ -680,8 +680,8 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
         studios: anime.studios || [],
         synopsis: anime.synopsis,
         pictures: pictures, // 🖼️ Add pictures array
-        season: anime.season ? anime.season.toLowerCase() : 'winter', // ✅ Use Jikan metadata
-        year: anime.year || 2026, // ✅ Use Jikan metadata
+        season: anime.season ? anime.season.toLowerCase() : currentSeasonName, // ✅ Use calculated current season as fallback
+        year: anime.year || year, // ✅ Use current year as fallback
       };
 
       const { data: upsertData, error } = await supabase

@@ -390,9 +390,9 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
           let episodeYear: number;
           let episodeWeek: number;
 
-          // Get anime's official season if available
-          const animeSeason = anime.season ? (anime.season.toLowerCase() as SeasonName) : undefined;
-          const animeYear = anime.year;
+          // Get anime's official season if available, fallback to the season we are currently syncing
+          const animeSeason = anime.season ? (anime.season.toLowerCase() as SeasonName) : (seasonInfo.name as SeasonName);
+          const animeYear = anime.year || seasonInfo.year;
 
           if (ep.aired) {
             const airedDate = new Date(ep.aired);
@@ -403,9 +403,9 @@ async function insertWeeklyEpisodes(supabase: any, weekNumber: number, seasonInf
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: ${ep.aired}, Score: ${ep.score || 'N/A'})`);
             console.log(`  📅 Calculated: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);
           } else {
-            // No aired date - assume anime's season or current season
-            episodeSeasonName = animeSeason || seasonInfo.name;
-            episodeYear = animeYear || seasonInfo.year;
+            // No aired date - assume anime's season or the season we are syncing
+            episodeSeasonName = animeSeason;
+            episodeYear = animeYear;
             episodeWeek = weekNumber;
             console.log(`  ✅ NEW: EP${ep.mal_id} "${ep.title}" (Aired: N/A, Score: ${ep.score || 'N/A'})`);
             console.log(`  📅 No aired date - using: ${episodeSeasonName} ${episodeYear} Week ${episodeWeek}`);

@@ -82,9 +82,29 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
   let itemsUpdated = 0;
 
   try {
-    // ✅ FIXED: Calculate week dates - Week 1 starts on January 1, 2026 (Wednesday)
-    // Week 1: Jan 1-5 (Wed to Sun), Week 2+: Monday to Sunday (full weeks)
-    const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0)); // January 1, 2026
+    // ✅ DYNAMIC: Detect current season and year
+    const today = new Date();
+    const month = today.getUTCMonth(); // 0-11
+    const year = today.getUTCFullYear();
+    
+    let currentSeason: string;
+    let startMonth: number;
+    
+    if (month >= 0 && month <= 2) {
+      currentSeason = 'winter';
+      startMonth = 0; // January
+    } else if (month >= 3 && month <= 5) {
+      currentSeason = 'spring';
+      startMonth = 3; // April
+    } else if (month >= 6 && month <= 8) {
+      currentSeason = 'summer';
+      startMonth = 6; // July
+    } else {
+      currentSeason = 'fall';
+      startMonth = 9; // October
+    }
+
+    const seasonStart = new Date(Date.UTC(year, startMonth, 1, 0, 0, 0, 0));
 
     // Find the first Sunday of the season
     const firstSunday = new Date(seasonStart);
@@ -97,7 +117,7 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     let endDate: Date;
 
     if (weekNumber === 1) {
-      // Week 1: Season start to first Sunday (Jan 1-5, 2026)
+      // Week 1: Season start to first Sunday
       startDate = seasonStart;
       endDate = firstSunday;
     } else {
@@ -1167,11 +1187,14 @@ async function syncAnticipatedAnimes(supabase: any) {
 
   try {
     // STEP 1: Fetch 2026 seasons (Winter, Spring, Summer, Fall)
+    // ✅ DYNAMIC: Detect current and next year for anticipated seasons
+    const currentYear = new Date().getUTCFullYear();
     const seasons = [
-      { season: 'winter', year: 2026 },
-      { season: 'spring', year: 2026 },
-      { season: 'summer', year: 2026 },
-      { season: 'fall', year: 2026 },
+      { season: 'winter', year: currentYear },
+      { season: 'spring', year: currentYear },
+      { season: 'summer', year: currentYear },
+      { season: 'fall', year: currentYear },
+      { season: 'winter', year: currentYear + 1 },
     ];
 
     const allAnimes: any[] = [];
@@ -1517,10 +1540,17 @@ serve(async (req) => {
         let currentWeek = week_number;
 
         if (!currentWeek) {
-          // ✅ FIXED: Calculate current week based on today's date using Winter 2026 dates
-          // Week 1 starts on January 1, 2026 (Wednesday)
-          const seasonStart = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0)); // January 1, 2026
+          // ✅ DYNAMIC: Calculate current week based on today's date
           const today = new Date();
+          const month = today.getUTCMonth();
+          const year = today.getUTCFullYear();
+          
+          let startMonth = 0;
+          if (month >= 3 && month <= 5) startMonth = 3;
+          else if (month >= 6 && month <= 8) startMonth = 6;
+          else if (month >= 9) startMonth = 9;
+
+          const seasonStart = new Date(Date.UTC(year, startMonth, 1, 0, 0, 0, 0));
 
           // Find the first Sunday of the season
           const firstSunday = new Date(seasonStart);
@@ -1540,12 +1570,10 @@ serve(async (req) => {
 
             const diffTime = today.getTime() - firstMonday.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            currentWeek = Math.floor(diffDays / 7) + 2; // +2 because Week 1 is already used
+            currentWeek = Math.floor(diffDays / 7) + 2; 
           }
 
-          // Clamp to valid week range (1-15)
           currentWeek = Math.max(1, Math.min(15, currentWeek));
-
           console.log(`📅 Auto-detected current week: ${currentWeek} (based on date: ${today.toISOString().split('T')[0]})`);
         }
 
@@ -1580,9 +1608,19 @@ serve(async (req) => {
         break;
 
       case 'season_rankings':
-        // Sync current season (default to winter 2025)
-        const seasonToSync = season || 'winter';
-        const yearToSync = year || 2025;
+        // ✅ DYNAMIC: Detect current season/year if not provided
+        const todayForSeason = new Date();
+        const currentMonth = todayForSeason.getUTCMonth();
+        const currentYearForSeason = todayForSeason.getUTCFullYear();
+        
+        let detectedSeason = 'winter';
+        if (currentMonth >= 3 && currentMonth <= 5) detectedSeason = 'spring';
+        else if (currentMonth >= 6 && currentMonth <= 8) detectedSeason = 'summer';
+        else if (currentMonth >= 9) detectedSeason = 'fall';
+
+        const seasonToSync = season || detectedSeason;
+        const yearToSync = year || currentYearForSeason;
+        
         const syncResult = await syncSeasonRankings(supabase, seasonToSync, yearToSync);
         // Adjust response format to match AdminSyncPage expectations
         result = {

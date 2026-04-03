@@ -139,6 +139,10 @@ CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_sta
 
 // Get available weeks (weeks with at least 3 episodes WITH SCORE)
 app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
+  // Calcular a week atual baseada na data de hoje (moved outside try for catch block access)
+  const today = new Date();
+  const { season: currentSeason, year: currentYear, weekNumber: currentWeekNumber } = getEpisodeWeekNumber(today);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
@@ -152,10 +156,6 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    // Calcular a week atual baseada na data de hoje
-    const today = new Date();
-    const { season: currentSeason, year: currentYear, weekNumber: currentWeekNumber } = getEpisodeWeekNumber(today);
     
     console.log(`[Server] 📅 Hoje: ${today.toISOString().split('T')[0]} = ${currentSeason} ${currentYear} Week ${currentWeekNumber}`);
 
@@ -163,8 +163,8 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
     const { data, error } = await supabase
       .from('weekly_episodes')
       .select('week_number, episode_score, status, season, year, aired_at')
-      .eq('season', CURRENT_SEASON)
-      .eq('year', CURRENT_YEAR)
+      .eq('season', currentSeason)
+      .eq('year', currentYear)
       .not('episode_score', 'is', null)
       .lte('week_number', currentWeekNumber) // Apenas weeks até a atual (não mostrar futuras)
       .order('week_number', { ascending: true });
@@ -179,8 +179,8 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
         weeks: [1],
         latestWeek: 1,
         currentWeek: currentWeekNumber,
-        currentSeason: CURRENT_SEASON,
-        currentYear: CURRENT_YEAR,
+        currentSeason: currentSeason,
+        currentYear: currentYear,
         weekCounts: [{ week: 1, count: 0 }],
         isFallback: true,
         fallbackReason: error.message
@@ -216,8 +216,8 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
         weeks: [1],
         latestWeek: 1,
         currentWeek: currentWeekNumber,
-        currentSeason: CURRENT_SEASON,
-        currentYear: CURRENT_YEAR,
+        currentSeason: currentSeason,
+        currentYear: currentYear,
         weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count })),
         isFallback: true,
         fallbackReason: 'No weeks with 3+ scored episodes' // ✅ Updated message
@@ -231,7 +231,8 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       currentWeek: currentWeekNumber,
       currentSeason: currentSeason,
       currentYear: currentYear,
-      weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count }))
+      weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count })),
+      weekCountsRecord: Object.fromEntries(weekCounts.entries()) // Record format: { "1": 6 }
     });
 
   } catch (error) {
@@ -244,8 +245,8 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
       weeks: [1],
       latestWeek: 1,
       currentWeek: 1,
-      currentSeason: CURRENT_SEASON,
-      currentYear: CURRENT_YEAR,
+      currentSeason: currentSeason,
+      currentYear: currentYear,
       weekCounts: [{ week: 1, count: 0 }],
       isFallback: true,
       fallbackReason: error instanceof Error ? error.message : 'Unknown error'
@@ -255,6 +256,9 @@ app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
 
 // Get weekly episodes data
 app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
+  const today = new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+
   try {
     const weekNumber = parseInt(c.req.param('weekNumber'));
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -270,14 +274,14 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Fetch weekly episodes with filters
-    console.log(`🔍 Fetching weekly episodes for ${CURRENT_SEASON} ${CURRENT_YEAR} Week ${weekNumber}...`);
+    console.log(`🔍 Fetching weekly episodes for ${currentSeason} ${currentYear} Week ${weekNumber}...`);
     
     // Buscar APENAS episódios da season/year ATUAL
     const { data: weeklyData, error: weeklyError } = await supabase
       .from('weekly_episodes')
       .select('*')
-      .eq('season', CURRENT_SEASON)
-      .eq('year', CURRENT_YEAR)
+      .eq('season', currentSeason)
+      .eq('year', currentYear)
       .eq('week_number', weekNumber)
       .not('episode_score', 'is', null) // Apenas episódios com score
       .order('episode_score', { ascending: false }); // Ordenar por score DESC (maior = melhor)
@@ -291,7 +295,7 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       }, 200);
     }
 
-    console.log(`[Server] ${CURRENT_SEASON} ${CURRENT_YEAR} Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
+    console.log(`[Server] ${currentSeason} ${currentYear} Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
     
     // Debug: Log some episode info
     if (weeklyData && weeklyData.length > 0) {
@@ -311,8 +315,8 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
       success: true,
       data: weeklyData || [],
       count: weeklyData?.length || 0,
-      season: CURRENT_SEASON,
-      year: CURRENT_YEAR
+      season: currentSeason,
+      year: currentYear
     });
 
   } catch (error) {
@@ -326,6 +330,8 @@ app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
 
 // DEBUG: Get all episodes for a specific anime
 app.get("/make-server-c1d1bfd8/debug-anime/:animeId", async (c) => {
+  const today = new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
   try {
     const animeId = parseInt(c.req.param('animeId'));
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -369,8 +375,8 @@ app.get("/make-server-c1d1bfd8/debug-anime/:animeId", async (c) => {
       animeId: animeId,
       totalEpisodes: allEpisodes?.length || 0,
       episodes: allEpisodes || [],
-      currentSeason: CURRENT_SEASON,
-      currentYear: CURRENT_YEAR
+      currentSeason: currentSeason,
+      currentYear: currentYear
     });
 
   } catch (error) {
@@ -1227,9 +1233,11 @@ app.post("/make-server-c1d1bfd8/enrich-episodes", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`🚀 Iniciando enriquecimento de episódios para ${CURRENT_SEASON} ${CURRENT_YEAR}...`);
+    const today = new Date();
+    const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+    console.log(`🚀 Iniciando enriquecimento de episódios para ${currentSeason} ${currentYear}...`);
     
-    const result = await enrichEpisodes(supabase, CURRENT_SEASON, CURRENT_YEAR);
+    const result = await enrichEpisodes(supabase, currentSeason, currentYear);
 
     return c.json({
       success: result.errors === 0,
@@ -1267,9 +1275,11 @@ app.post("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const today = new Date();
+    const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
     console.log("🔢 Iniciando recálculo de posições...");
     
-    await recalculatePositions(supabase, CURRENT_SEASON, CURRENT_YEAR);
+    await recalculatePositions(supabase, currentSeason, currentYear);
 
     return c.json({
       success: true,
@@ -1287,6 +1297,8 @@ app.post("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
 // GET version for easy browser testing
 app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
+  const today = new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1302,7 +1314,7 @@ app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
 
     console.log("🔢 Iniciando recálculo de posições...");
     
-    await recalculatePositions(supabase, CURRENT_SEASON, CURRENT_YEAR);
+    await recalculatePositions(supabase, currentSeason, currentYear);
 
     return c.json({
       success: true,

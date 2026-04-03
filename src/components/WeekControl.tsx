@@ -232,7 +232,9 @@ const WeekControl = () => {
           let finalSeason = currentSeasonInfo.name.toLowerCase();
           let finalYear = currentSeasonInfo.year;
 
-          const latestCount = result.weekCounts?.[detectedLatestWeek] || 0;
+          // FIX: result.weekCounts is an array of objects like [{ week: 1, count: 6 }]
+          // Using result.weekCounts[detectedLatestWeek] results in undefined (index 1 when we have only week 1 at index 0)
+          const latestCount = result.weekCounts?.find((wc: any) => wc.week === detectedLatestWeek)?.count || 0;
           if (latestCount < 3) {
             if (detectedLatestWeek > 1) {
               finalWeekNumber = detectedLatestWeek - 1;

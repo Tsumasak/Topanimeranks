@@ -312,7 +312,7 @@ function HomeAnimeCard({
                 <div className="text-sm">Plan to Watch</div>
               </div>
             ) : data.score ? (
-              `★ ${data.score}`
+              `★ ${data.score.toFixed(2)}`
             ) : (
               ""
             )}
@@ -445,7 +445,7 @@ function HomeAnimeCard({
               <div className="text-sm">Plan to Watch</div>
             </div>
           ) : data.score ? (
-            `★ ${data.score}`
+            `★ ${data.score.toFixed(2)}`
           ) : (
             ""
           )}
@@ -586,7 +586,13 @@ export default function HomeNewPage() {
               const result = await response.json();
 
               if (result.success && result.latestWeek) {
-                const latestCount = result.weekCounts?.[result.latestWeek] || 0;
+                // FIXED: result.weekCounts is an array of objects like [{ week: 1, count: 6 }]
+                // Accessing it as [result.latestWeek] (index 1) returns undefined for week 1.
+                // We use find() or check weekCountsRecord if available.
+                const latestCount = result.weekCountsRecord?.[result.latestWeek] ?? 
+                                   (Array.isArray(result.weekCounts) 
+                                     ? result.weekCounts.find((wc: any) => wc.week === result.latestWeek)?.count 
+                                     : 0);
                 
                 // Rule: If new week has < 3 episodes, keep showing previous week
                 if (latestCount < 3) {

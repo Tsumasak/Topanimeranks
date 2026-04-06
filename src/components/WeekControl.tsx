@@ -129,17 +129,14 @@ const WeekControl = () => {
   const visibleWeeks = dynamicWeeks.filter(week => {
     const weekNum = parseInt(week.id.replace('week', ''));
     
-    // If we have specific available weeks data, use it
-    if (availableWeeks.includes(week.id)) return true;
-    
-    // Fallback logic for visibility:
-    // 1. If it's a past season (different from real-time current), show all 13 weeks
-    if (targetSeason !== currentSeasonInfo.name.toLowerCase() || targetYear !== currentSeasonInfo.year) {
-      return weekNum <= 13;
+    // For the current season: ALWAYS cap at latestWeekNumber (the latest week with real data)
+    if (targetSeason === currentSeasonInfo.name.toLowerCase() && targetYear === currentSeasonInfo.year) {
+      return weekNum <= Math.max(1, latestWeekNumber);
     }
     
-    // 2. If it's the current season, show up to the latest detected week (at least week 1)
-    return weekNum <= Math.max(1, latestWeekNumber);
+    // For past seasons: show available weeks or all 13
+    if (availableWeeks.includes(week.id)) return true;
+    return weekNum <= 13;
   });
 
   const currentWeek = dynamicWeeks.find(week => week.id === activeWeek);
@@ -248,6 +245,7 @@ const WeekControl = () => {
             }
           }
 
+          setAvailableWeeks(weeksWithData);
           setTargetSeason(finalSeason);
           setTargetYear(finalYear);
           setLatestWeekNumber(finalWeekNumber);
@@ -344,14 +342,38 @@ const WeekControl = () => {
       
       try {
         // Get week number from activeWeek id (e.g., "week1" -> 1)
-        const weekNumber = parseInt(activeWeek.replace('week', ''));
+        let weekNumber = parseInt(activeWeek.replace('week', ''));
+        let currentActiveWeek = activeWeek;
         
         // Fetch from Supabase - returns WeekData { episodes, startDate, endDate }
-        const weekData = await SupabaseService.getWeeklyEpisodes(
+        let weekData = await SupabaseService.getWeeklyEpisodes(
           weekNumber,
           targetSeason,
           targetYear
         );
+        
+        // FALLBACK: If auto-detected week has 0 episodes and user didn't manually switch, try previous week
+        if (weekData.episodes.length === 0 && !userSwitchedTab.current && weekNumber > 1) {
+          console.log(`[WeekControl] ⚠️ Week ${weekNumber} returned 0 episodes. Falling back to Week ${weekNumber - 1}...`);
+          const emptyWeekNumber = weekNumber;
+          weekNumber = weekNumber - 1;
+          currentActiveWeek = `week${weekNumber}`;
+          weekData = await SupabaseService.getWeeklyEpisodes(
+            weekNumber,
+            targetSeason,
+            targetYear
+          );
+          
+          // Update activeWeek to reflect the fallback
+          if (weekData.episodes.length > 0) {
+            console.log(`[WeekControl] ✅ Fallback successful! Using Week ${weekNumber} with ${weekData.episodes.length} episodes`);
+            // Remove the empty week from availableWeeks so its tab disappears
+            setAvailableWeeks(prev => prev.filter(w => w !== `week${emptyWeekNumber}`));
+            setActiveWeek(currentActiveWeek);
+            setLatestWeekNumber(weekNumber);
+            return; // Will re-trigger useEffect with new activeWeek
+          }
+        }
         
         // Episodes are already in the correct format from SupabaseService
         console.log(`[WeekControl] ✅ Fetched ${weekData.episodes.length} episodes for Week ${weekNumber}`);
@@ -359,10 +381,10 @@ const WeekControl = () => {
         
         // CRITICAL FIX: Update displayed episodes AND animation key together
         // This ensures AnimatePresence only triggers when NEW data is ready
-        console.log(`[WeekControl] 🎬 CRITICAL: Updating displayedEpisodes (${weekData.episodes.length}) and animationKey (${activeWeek})`);
-        console.log(`[WeekControl] 🎬 Previous animationKey: ${animationKey} → New: ${activeWeek}`);
+        console.log(`[WeekControl] 🎬 CRITICAL: Updating displayedEpisodes (${weekData.episodes.length}) and animationKey (${currentActiveWeek})`);
+        console.log(`[WeekControl] 🎬 Previous animationKey: ${animationKey} → New: ${currentActiveWeek}`);
         setDisplayedEpisodes(weekData.episodes);
-        setAnimationKey(activeWeek); // Only NOW change the animation key
+        setAnimationKey(currentActiveWeek); // Only NOW change the animation key
         console.log(`[WeekControl] 🎬 displayedEpisodes and animationKey updated!`);
         
         // Store the week dates from API (validate they exist)

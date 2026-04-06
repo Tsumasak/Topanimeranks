@@ -634,6 +634,38 @@ export default function HomeNewPage() {
             episodesYear
           );
 
+        // FALLBACK: If the detected week has 0 episodes, try previous weeks
+        if (weeklyEpisodesData.episodes.length === 0 && weekToShow > 1) {
+          console.log(`[HomeNewPage] ⚠️ Week ${weekToShow} returned 0 episodes. Trying Week ${weekToShow - 1}...`);
+          weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(
+            weekToShow - 1,
+            episodesSeason,
+            episodesYear
+          );
+        }
+
+        // FALLBACK 2: If still 0, try Week 1
+        if (weeklyEpisodesData.episodes.length === 0 && weekToShow > 2) {
+          console.log(`[HomeNewPage] ⚠️ Week ${weekToShow - 1} also returned 0 episodes. Trying Week 1...`);
+          weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(
+            1,
+            episodesSeason,
+            episodesYear
+          );
+        }
+
+        // FALLBACK 3: If current season has no data at all, try previous season Week 13
+        if (weeklyEpisodesData.episodes.length === 0) {
+          console.log(`[HomeNewPage] ⚠️ No episodes found in ${episodesSeason} ${episodesYear}. Trying previous season...`);
+          episodesSeason = prevSeasonInfo.season.toLowerCase();
+          episodesYear = prevSeasonInfo.year;
+          weeklyEpisodesData = await SupabaseService.getWeeklyEpisodes(
+            13,
+            episodesSeason,
+            episodesYear
+          );
+        }
+
         if (weeklyEpisodesData.episodes.length > 0) {
           const topWeekly = weeklyEpisodesData.episodes
             .slice(0, 5)
@@ -653,15 +685,11 @@ export default function HomeNewPage() {
             }));
           setTopEpisodes(topWeekly);
 
-          // Week period info (removed - no longer needed)
-          // const weekConfig = WEEKS_DATA.find((w) => w.id === `week${weekToShow}`);
-          // Calculate week period dates for display
-
           console.log(
-            `[HomeNewPage] ✅ Loaded ${topWeekly.length} episodes from Week ${weekToShow}`,
+            `[HomeNewPage] ✅ Loaded ${topWeekly.length} episodes (final week: ${episodesSeason} ${episodesYear})`,
           );
         } else {
-          console.log("[HomeNewPage] No weekly episodes found");
+          console.log("[HomeNewPage] No weekly episodes found after all fallbacks");
           setTopEpisodes([]);
         }
 

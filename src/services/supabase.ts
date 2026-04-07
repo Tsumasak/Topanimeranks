@@ -235,7 +235,62 @@ export async function getWeeklyEpisodes(
   }
 }
 
+/**
+ * Get available weeks dynamically bypassing Edge Function
+ */
+export async function getAvailableWeeks(
+  season: string,
+  year: number,
+  currentWeekNumber?: number
+): Promise<{ success: boolean; weeks: number[]; latestWeek: number; weekCounts: { week: number; count: number }[] }> {
+  try {
+    let query = supabase
+      .from('weekly_episodes')
+      .select('week_number, episode_score')
+      .eq('season', season)
+      .eq('year', year)
+      .not('episode_score', 'is', null);
+
+    if (currentWeekNumber !== undefined) {
+      query = query.lte('week_number', currentWeekNumber);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Group and count
+    const weekCountsRecord: Record<number, number> = {};
+    data?.forEach((row: any) => {
+      weekCountsRecord[row.week_number] = (weekCountsRecord[row.week_number] || 0) + 1;
+    });
+
+    const weekCounts = Object.entries(weekCountsRecord).map(([weekStr, count]) => ({
+      week: parseInt(weekStr),
+      count
+    }));
+    
+    // Server edge function only returned weeks with >= 5 (or valid data)
+    // To match server edge function logic more closely, and avoid leaking ghost weeks:
+    const validWeeks = weekCounts.filter(wc => wc.count >= 5).map(wc => wc.week);
+    const weeks = validWeeks.sort((a: number, b: number) => a - b);
+    
+    const latestWeek = weeks.length > 0 ? Math.max(...weeks) : 1;
+
+    return {
+      success: true,
+      weeks,
+      latestWeek,
+      weekCounts
+    };
+  } catch (err) {
+    console.error('[SupabaseData] Error getting available weeks:', err);
+    return { success: false, weeks: [1], latestWeek: 1, weekCounts: [] };
+  }
+}
+
 // ============================================
+
 // SEASON RANKINGS
 // ============================================
 
@@ -1022,6 +1077,7 @@ export async function triggerManualSync(syncType: 'weekly_episodes' | 'season_ra
 
 export const SupabaseService = {
   getWeeklyEpisodes,
+  getAvailableWeeks,
   getSeasonRankings,
   getUnifiedSeasonRankings,
   getLaterAnimes,

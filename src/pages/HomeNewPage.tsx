@@ -563,61 +563,35 @@ export default function HomeNewPage() {
         let episodesYear = currentSeasonInfo.year;
 
         try {
-          const response = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
-            {
-              headers: {
-                Authorization: `Bearer ${publicAnonKey}`,
-              },
-            },
-          );
+          // Use client bypass to avoid outdated Edge Function
+          const result = await SupabaseService.getAvailableWeeks(episodesSeason, episodesYear);
 
-          if (!response.ok) {
-            console.error(`[HomeNewPage] ❌ HTTP error: ${response.status}`);
-            console.log(`[HomeNewPage] 🔄 Falling back to Week 1 due to server error`);
-            // Continue with weekToShow = 1 (already set)
-          } else {
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-              console.error(`[HomeNewPage] ❌ Response is not JSON. Content-Type: ${contentType}`);
-              console.log(`[HomeNewPage] 🔄 Falling back to Week 1 due to non-JSON response`);
-              // Continue with weekToShow = 1 (already set)
-            } else {
-              const result = await response.json();
-
-              if (result.success && result.latestWeek) {
-                // FIXED: result.weekCounts is an array of objects like [{ week: 1, count: 6 }]
-                // Accessing it as [result.latestWeek] (index 1) returns undefined for week 1.
-                // We use find() or check weekCountsRecord if available.
-                const latestCount = result.weekCountsRecord?.[result.latestWeek] ?? 
-                                   (Array.isArray(result.weekCounts) 
-                                     ? result.weekCounts.find((wc: any) => wc.week === result.latestWeek)?.count 
-                                     : 0);
-                
-                // Rule: If new week has < 3 episodes, keep showing previous week
-                if (latestCount < 3) {
-                  if (result.latestWeek > 1) {
-                    weekToShow = result.latestWeek - 1;
-                    console.log(`[HomeNewPage] ⚠️ Week ${result.latestWeek} has only ${latestCount} episodes. Falling back to Week ${weekToShow}`);
-                  } else {
-                    // Fallback to previous season's last week
-                    episodesSeason = prevSeasonInfo.season.toLowerCase();
-                    episodesYear = prevSeasonInfo.year;
-                    weekToShow = 13;
-                    console.log(`[HomeNewPage] ⚠️ Season start detected but Week 1 has only ${latestCount} episodes. Falling back to ${episodesSeason} ${episodesYear} Week 13`);
-                  }
-                } else {
-                  weekToShow = result.latestWeek;
-                  console.log(
-                    `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected, ${latestCount} episodes)`,
-                  );
-                }
+          if (result.success && result.latestWeek) {
+            // weekCounts is an array like [{week: 1, count: 26}, {week: 2, count: 2}]
+            // FIND the count for the latest week
+            const latestWeekData = result.weekCounts.find((wc: any) => wc.week === result.latestWeek);
+            const latestCount = latestWeekData ? latestWeekData.count : 0;
+            
+            // Rule: If new week has < 3 episodes, keep showing previous week
+            if (latestCount < 3) {
+              if (result.latestWeek > 1) {
+                weekToShow = result.latestWeek - 1;
+                console.log(`[HomeNewPage] ⚠️ Week ${result.latestWeek} has only ${latestCount} episodes. Falling back to Week ${weekToShow}`);
               } else {
-                console.log(
-                  `[HomeNewPage] ⚠️ Could not detect latest week, falling back to Week 1`,
-                );
+                // Fallback to previous season's last week
+                episodesSeason = prevSeasonInfo.season.toLowerCase();
+                episodesYear = prevSeasonInfo.year;
+                weekToShow = 13;
+                console.log(`[HomeNewPage] ⚠️ Season start detected but Week 1 has only ${latestCount} episodes. Falling back to ${episodesSeason} ${episodesYear} Week 13`);
               }
+            } else {
+              weekToShow = result.latestWeek;
+              console.log(
+                `[HomeNewPage] 🎯 Using latest week: Week ${weekToShow} (auto-detected, ${latestCount} episodes)`,
+              );
             }
+          } else {
+            console.warn('[HomeNewPage] Could not detect latest week correctly, falling back to Week 1');
           }
         } catch (error) {
           console.error(

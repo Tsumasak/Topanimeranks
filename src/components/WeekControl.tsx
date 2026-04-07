@@ -173,48 +173,13 @@ const WeekControl = () => {
       console.log('[WeekControl] 🔍 Starting to load available weeks (5+ scored episodes filter)...');
       
       try {
-        // Call server endpoint to get weeks summary (already filtered to 5+ episodes WITH SCORE)
-        console.log('[WeekControl] 📡 Calling /available-weeks endpoint...');
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8/available-weeks`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
+        console.log('[WeekControl] 📡 Calling getAvailableWeeks (Client-side bypass)...');
+        // Let's get the max weeks, default is 15 in the service
+        const result = await SupabaseService.getAvailableWeeks(
+          currentSeasonInfo.name.toLowerCase(),
+          currentSeasonInfo.year
         );
         
-        console.log('[WeekControl] 📡 Response status:', response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[WeekControl] ❌ HTTP error:', response.status, errorText);
-          
-          // ✅ Fallback: Use Week 1 if server is down or returns error
-          console.log('[WeekControl] 🔄 Falling back to Week 1 due to server error');
-          setAvailableWeeks(['week1']);
-          setLatestWeekNumber(1);
-          setActiveWeek('week1');
-          return;
-        }
-
-        const contentType = response.headers.get('content-type');
-        console.log('[WeekControl] 📡 Content-Type:', contentType);
-        
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('[WeekControl] ❌ Response is not JSON. Content-Type:', contentType);
-          console.error('[WeekControl] ❌ Response body (first 500 chars):', text.substring(0, 500));
-          
-          // ✅ Fallback: Use Week 1 if response is HTML
-          console.log('[WeekControl] 🔄 Falling back to Week 1 due to non-JSON response');
-          setAvailableWeeks(['week1']);
-          setLatestWeekNumber(1);
-          setActiveWeek('week1');
-          return;
-        }
-
-        const result = await response.json();
         console.log('[WeekControl] 📦 Server response:', result);
         
         if (result.success && result.weeks && result.weeks.length > 0 && result.latestWeek) {
@@ -230,7 +195,6 @@ const WeekControl = () => {
           let finalYear = currentSeasonInfo.year;
 
           // FIX: result.weekCounts is an array of objects like [{ week: 1, count: 6 }]
-          // Using result.weekCounts[detectedLatestWeek] results in undefined (index 1 when we have only week 1 at index 0)
           const latestCount = result.weekCounts?.find((wc: any) => wc.week === detectedLatestWeek)?.count || 0;
           if (latestCount < 3) {
             if (detectedLatestWeek > 1) {

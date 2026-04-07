@@ -1,5 +1,6 @@
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { Episode, AnticipatedAnime } from '../types/anime';
+import { supabase } from './supabase';
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-c1d1bfd8`;
 
@@ -163,4 +164,46 @@ export class SupabaseDataService {
       return { success: false, data: [], needsData: true };
     }
   }
+
+  // Get available weeks dynamically bypassing Edge Function
+  static async getAvailableWeeks(season: string, year: number, currentWeekNumber: number): Promise<{ success: boolean; weeks: number[]; latestWeek: number; weekCounts: { week: number; count: number }[] }> {
+    try {
+      const { data, error } = await supabase
+        .from('weekly_episodes')
+        .select('week_number, episode_score')
+        .eq('season', season)
+        .eq('year', year)
+        .not('episode_score', 'is', null)
+        .lte('week_number', currentWeekNumber);
+
+      if (error) throw error;
+
+      // Group and count
+      const weekCountsRecord: Record<number, number> = {};
+      data?.forEach((row: any) => {
+        weekCountsRecord[row.week_number] = (weekCountsRecord[row.week_number] || 0) + 1;
+      });
+
+      const weekCounts = Object.entries(weekCountsRecord).map(([weekStr, count]) => ({
+        week: parseInt(weekStr),
+        count
+      }));
+      
+      const rawWeeks = data?.map((d: any) => d.week_number as number) || [];
+      const weeks = [...new Set(rawWeeks)].sort((a: number, b: number) => a - b);
+      
+      const latestWeek = weeks.length > 0 ? Math.max(...weeks) : 1;
+
+      return {
+        success: true,
+        weeks,
+        latestWeek,
+        weekCounts
+      };
+    } catch (err) {
+      console.error('[SupabaseData] Error getting available weeks:', err);
+      return { success: false, weeks: [1], latestWeek: 1, weekCounts: [] };
+    }
+  }
 }
+

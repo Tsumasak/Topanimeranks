@@ -6,7 +6,6 @@ import { AnimeCard } from './AnimeCard';
 import { WEEKS_DATA, CURRENT_WEEK_NUMBER, WeekData as WeekConfig, generateWeeksDataForSeason } from '../config/weeks';
 import { SupabaseService } from '../services/supabase';
 import { Episode } from '../types/anime';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { getCurrentSeason, getPreviousSeason, getSeasonDates } from '../utils/seasons';
 
 // Function to get the formatted period with correct "Aired" or "Airing" prefix

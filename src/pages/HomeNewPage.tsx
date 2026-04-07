@@ -3,10 +3,6 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTypeClass, getDemographicClass } from "../utils/tagHelpers";
 import {
-  projectId,
-  publicAnonKey,
-} from "../utils/supabase/info";
-import {
   Carousel,
   CarouselContent,
   CarouselItem,

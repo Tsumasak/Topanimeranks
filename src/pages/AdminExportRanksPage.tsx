@@ -164,7 +164,7 @@ export default function AdminExportRanksPage() {
                 <SelectTrigger id="rank-type">
                   <SelectValue placeholder="Select rank type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                   <SelectItem value="weekly-episodes">Weekly Anime Episodes</SelectItem>
                   <SelectItem value="top-animes">Top Animes</SelectItem>
                   <SelectItem value="anime-genres">Anime Genres</SelectItem>
@@ -185,7 +185,7 @@ export default function AdminExportRanksPage() {
                 <SelectTrigger id="format">
                   <SelectValue placeholder="Select format" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                   <SelectItem value="csv">CSV</SelectItem>
                   <SelectItem value="xlsx">XLSX (Excel)</SelectItem>
                 </SelectContent>
@@ -206,7 +206,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="weekly-year">
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {YEARS.map(year => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -227,7 +227,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="weekly-season">
                       <SelectValue placeholder="Select season" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {SEASONS.map(season => (
                         <SelectItem key={season} value={season}>
                           {season.charAt(0).toUpperCase() + season.slice(1)}
@@ -248,7 +248,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="week">
                       <SelectValue placeholder="Select week" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {Array.from({ length: 13 }, (_, i) => i + 1).map(week => (
                         <SelectItem key={week} value={week.toString()}>
                           Week {week}
@@ -273,7 +273,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="season">
                       <SelectValue placeholder="Select season" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {SEASONS.map(season => (
                         <SelectItem key={season} value={season}>
                           {season.charAt(0).toUpperCase() + season.slice(1)}
@@ -294,7 +294,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="year">
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {YEARS.map(year => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -319,7 +319,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="genre">
                       <SelectValue placeholder="Select genre" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       {GENRES.map(genre => (
                         <SelectItem key={genre} value={genre}>
                           {genre}
@@ -340,7 +340,7 @@ export default function AdminExportRanksPage() {
                     <SelectTrigger id="sortBy">
                       <SelectValue placeholder="Select sort option" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent style={{ backgroundColor: "var(--card-background)", borderColor: "var(--card-border)" }}>
                       <SelectItem value="members">By Members</SelectItem>
                       <SelectItem value="score">By Score</SelectItem>
                     </SelectContent>

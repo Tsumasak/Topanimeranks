@@ -85,7 +85,7 @@ async function exportWeeklyEpisodes(supabase: any, weekNumber: number, year?: nu
 // Export Top Animes
 async function exportTopAnimes(supabase: any, season: string, year: number) {
   const { data, error } = await supabase
-    .from("season_animes")
+    .from("season_rankings")
     .select("*")
     .eq("season", season.toLowerCase())
     .eq("year", year)
@@ -180,7 +180,7 @@ async function exportAnimeGenres(supabase: any, genre: string, sortBy: "members"
 async function exportMostAnticipated(supabase: any, season: string, year: number) {
   // First try to order by score (if available), fallback to members
   const { data, error } = await supabase
-    .from("upcoming_animes")
+    .from("anticipated_animes")
     .select("*")
     .eq("season", season.toLowerCase())
     .eq("year", year)

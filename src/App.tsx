@@ -10,6 +10,10 @@ import { SearchResultsPage } from "./pages/SearchResultsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminHeroBanners from "./pages/AdminHeroBanners";
 import AdminExportRanksPage from "./pages/AdminExportRanksPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminExportAnimePage from "./pages/AdminExportAnimePage";
+import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
 import { MigrationAlert } from "./components/MigrationAlert";
@@ -231,10 +235,13 @@ function AppContent() {
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
           <Route path="/anime/:id" element={<AnimeDetailsPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
-          <Route path="/admin-sync" element={<AdminSyncPage />} />
-          <Route path="/admin-hero-banners" element={<AdminHeroBanners />} />
-          <Route path="/admin-export-ranks" element={<AdminExportRanksPage />} />
-          <Route path="/admin-panel" element={<AdminPanel />} />
+          <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />
+          <Route path="/admin-sync" element={<AdminProtectedRoute><AdminSyncPage /></AdminProtectedRoute>} />
+          <Route path="/admin-hero-banners" element={<AdminProtectedRoute><AdminHeroBanners /></AdminProtectedRoute>} />
+          <Route path="/admin-export-ranks" element={<AdminProtectedRoute><AdminExportRanksPage /></AdminProtectedRoute>} />
+          <Route path="/admin-export-anime" element={<AdminProtectedRoute><AdminExportAnimePage /></AdminProtectedRoute>} />
+          <Route path="/admin-panel" element={<AdminProtectedRoute><AdminPanel /></AdminProtectedRoute>} />
           <Route path="/ranks/fantasy" element={<FantasyRankings />} />
           <Route path="/ranks/action" element={<ActionRankings />} />
           <Route path="/ranks/comedy" element={<ComedyRankings />} />

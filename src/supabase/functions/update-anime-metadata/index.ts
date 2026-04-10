@@ -121,6 +121,13 @@ serve(async (req) => {
 
       const apiData = animeData.data;
 
+      // Format image URL
+      const imageUrl = apiData.images?.jpg?.large_image_url || apiData.images?.jpg?.image_url || dbAnime.image_url;
+
+      // Extract season and year properly, falling back to what's in DB if null in API
+      const seasonValue = apiData.season ? apiData.season.toLowerCase() : dbAnime.season;
+      const yearValue = apiData.year || dbAnime.year;
+
       // Map to proper keys
       const updatePayload = {
         anime_score: apiData.score,
@@ -132,6 +139,14 @@ serve(async (req) => {
         status: apiData.status,
         episodes: apiData.episodes,
         rating: apiData.rating,
+        image_url: imageUrl,
+        season: seasonValue,
+        year: yearValue,
+        title_english: apiData.title_english || dbAnime.title_english,
+        aired_from: apiData.aired?.from,
+        aired_to: apiData.aired?.to,
+        duration: apiData.duration,
+        synopsis: apiData.synopsis || dbAnime.synopsis,
         // Also touch updated_at
         updated_at: new Date().toISOString()
       };

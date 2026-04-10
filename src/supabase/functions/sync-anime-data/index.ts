@@ -1279,102 +1279,7 @@ async function syncAnticipatedAnimes(supabase: any) {
     console.log(`\n📊 Total unique animes: ${allAnimes.length}`);
     console.log(`📊 Processed anime IDs: ${processedAnimeIds.size}`);
 
-    // STEP 1: Delete ONLY invalid records (empty image_url) and duplicates
-    console.log(`\n🗑️  Cleaning up invalid and duplicate records...`);
 
-    // Delete animes with empty image_url
-    const { error: deleteInvalidError } = await supabase
-      .from('anticipated_animes')
-      .delete()
-      .or('image_url.is.null,image_url.eq.');
-
-    if (deleteInvalidError) {
-      console.error('❌ Error deleting invalid records:', deleteInvalidError);
-    } else {
-      console.log(`✅ Deleted records with empty image_url`);
-    }
-
-    // ALSO: Find animes with WHITESPACE-only image_url and delete them
-    const { data: blankImageAnimes, error: blankFetchError } = await supabase
-      .from('anticipated_animes')
-      .select('anime_id, title, image_url')
-      .not('image_url', 'is', null);
-
-    if (!blankFetchError && blankImageAnimes) {
-      const blankIds = blankImageAnimes
-        .filter(anime => anime.image_url.trim() === '')
-        .map(anime => anime.anime_id);
-
-      if (blankIds.length > 0) {
-        console.log(`🗑️  Found ${blankIds.length} animes with whitespace-only image_url, deleting...`);
-        const { error: deleteBlankError } = await supabase
-          .from('anticipated_animes')
-          .delete()
-          .in('anime_id', blankIds);
-
-        if (deleteBlankError) {
-          console.error('❌ Error deleting blank image records:', deleteBlankError);
-        } else {
-          console.log(`✅ Deleted ${blankIds.length} records with blank image_url`);
-        }
-      }
-    }
-
-    // STEP 2: For each anime ID, keep only the FIRST occurrence (by priority: Winter > Spring > Summer > Fall)
-    // Get all current records grouped by anime_id
-    const { data: existingAnimes, error: fetchError } = await supabase
-      .from('anticipated_animes')
-      .select('anime_id, season, year, id')
-      .order('anime_id');
-
-    if (!fetchError && existingAnimes) {
-      const animeGroups = new Map<number, any[]>();
-
-      // Group by anime_id
-      existingAnimes.forEach(anime => {
-        if (!animeGroups.has(anime.anime_id)) {
-          animeGroups.set(anime.anime_id, []);
-        }
-        animeGroups.get(anime.anime_id)!.push(anime);
-      });
-
-      // For each group with duplicates, keep only the earliest season
-      const seasonPriority = { 'winter': 1, 'spring': 2, 'summer': 3, 'fall': 4 };
-      const idsToDelete: number[] = [];
-
-      animeGroups.forEach((records, animeId) => {
-        if (records.length > 1) {
-          // Sort by season priority
-          records.sort((a, b) => {
-            const priorityA = seasonPriority[a.season as keyof typeof seasonPriority] || 999;
-            const priorityB = seasonPriority[b.season as keyof typeof seasonPriority] || 999;
-            return priorityA - priorityB;
-          });
-
-          // Keep the first (highest priority), delete the rest
-          for (let i = 1; i < records.length; i++) {
-            idsToDelete.push(records[i].id);
-            console.log(`🗑️  Marking duplicate for deletion: ${animeId} (${records[i].season} ${records[i].year})`);
-          }
-        }
-      });
-
-      // Delete duplicates
-      if (idsToDelete.length > 0) {
-        const { error: deleteDupsError } = await supabase
-          .from('anticipated_animes')
-          .delete()
-          .in('id', idsToDelete);
-
-        if (deleteDupsError) {
-          console.error('❌ Error deleting duplicates:', deleteDupsError);
-        } else {
-          console.log(`✅ Deleted ${idsToDelete.length} duplicate records`);
-        }
-      } else {
-        console.log(`✅ No duplicates found`);
-      }
-    }
 
     // STEP 3: Upsert (insert or update) all anime records
     console.log(`\n💾 Starting upsert for ${allAnimes.length} animes...`);
@@ -1413,12 +1318,12 @@ async function syncAnticipatedAnimes(supabase: any) {
         continue;
       }
 
-      const anticipatedAnime = {
+      const seasonAnimeToSave = {
         anime_id: anime.mal_id,
         title: anime.title,
         title_english: anime.title_english,
         image_url: imageUrl,
-        score: anime.score,
+        anime_score: anime.score,
         scored_by: anime.scored_by,
         members: anime.members,
         favorites: anime.favorites,
@@ -1428,29 +1333,30 @@ async function syncAnticipatedAnimes(supabase: any) {
         source: anime.source,
         episodes: anime.episodes,
         aired_from: anime.aired?.from,
-        season: anime.season,
-        year: anime.year,
+        season: anime.season ? anime.season.toLowerCase() : 'upcoming',
+        year: anime.year || 9999,
         synopsis: anime.synopsis,
         demographics: anime.demographics || [],
         genres: anime.genres || [],
         themes: anime.themes || [],
         studios: anime.studios || [],
-        position: i + 1,
       };
 
       // Check if exists to determine if it's create or update
       const { data: existing } = await supabase
-        .from('anticipated_animes')
+        .from('season_rankings')
         .select('id')
         .eq('anime_id', anime.mal_id)
+        .eq('season', seasonAnimeToSave.season)
+        .eq('year', seasonAnimeToSave.year)
         .maybeSingle();
 
       const isUpdate = !!existing;
 
       const { data: upsertData, error } = await supabase
-        .from('anticipated_animes')
-        .upsert(anticipatedAnime, {
-          onConflict: 'anime_id',
+        .from('season_rankings')
+        .upsert(seasonAnimeToSave, {
+          onConflict: 'anime_id,season,year',
           ignoreDuplicates: false,
         })
         .select();

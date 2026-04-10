@@ -125,8 +125,24 @@ serve(async (req) => {
       const imageUrl = apiData.images?.jpg?.large_image_url || apiData.images?.jpg?.image_url || dbAnime.image_url;
 
       // Extract season and year properly, falling back to what's in DB if null in API
-      const seasonValue = apiData.season ? apiData.season.toLowerCase() : dbAnime.season;
-      const yearValue = apiData.year || dbAnime.year;
+      // Special Fix: ONAs and Movies usually have season/year as null. We calculate it from aired.from if it exists.
+      let finalSeason = apiData.season ? apiData.season.toLowerCase() : null;
+      let finalYear = apiData.year || null;
+
+      if ((!finalSeason || !finalYear) && apiData.aired?.from) {
+        const airedDate = new Date(apiData.aired.from);
+        const month = airedDate.getMonth(); // 0-11
+        if (month >= 0 && month <= 2) finalSeason = 'winter';
+        else if (month >= 3 && month <= 5) finalSeason = 'spring';
+        else if (month >= 6 && month <= 8) finalSeason = 'summer';
+        else finalSeason = 'fall';
+        
+        finalYear = airedDate.getFullYear();
+      }
+
+      // Fallback definitively to what we had in DB if still absolutely nothing
+      const seasonValue = finalSeason || dbAnime.season;
+      const yearValue = finalYear || dbAnime.year;
 
       // Map to proper keys
       const updatePayload = {

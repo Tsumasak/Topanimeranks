@@ -374,6 +374,49 @@ export default function AdminSyncPage() {
     }
   };
 
+  const syncAnticipated = async () => {
+    const key = 'sync_anticipated';
+    setSyncing(prev => ({ ...prev, [key]: true }));
+    
+    addLog(`\n🌟 Starting GLOBAL Anticipated Sync (2026-2027 Horizon)...`, 'info');
+    addLog('📡 Calling sync-anime-data with sync_type="anticipated"...', 'info');
+    addLog('⏳ This process checks multiple pages across 8 future seasons. Please wait...', 'warning');
+    
+    try {
+      const url = `https://${projectId}.supabase.co/functions/v1/sync-anime-data`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sync_type: 'anticipated' })
+      });
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        addLog(`❌ Response is not JSON. Status: ${response.status}`, 'error');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addLog(`✅ SUCCESS: Global anticipated sync completed!`, 'success');
+        addLog(`📊 Created: ${data.itemsCreated || 0}`, 'success');
+        addLog(`📊 Updated: ${data.itemsUpdated || 0}`, 'success');
+      } else {
+        addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+      }
+      
+    } catch (error) {
+      addLog(`❌ FETCH ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setSyncing(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const updateAnimeMetadata = async () => {
     const key = 'update_metadata';
     setSyncing(prev => ({ ...prev, [key]: true }));
@@ -620,17 +663,28 @@ export default function AdminSyncPage() {
           </div>
         </div>
 
-        {/* Update Metadata Block */}
+        {/* Global Data Maintenance Block */}
         <div className="mb-7">
-          <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">🔄 Global Data Maintenance</h2>
+          <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">⚙️ Global Sync & Maintenance</h2>
           
-          <div>
-            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Update stale anime metadata (Score, Members, Status, etc)</p>
-            <div className="grid grid-cols-1 gap-[15px]">
+          <div className="space-y-4">
+            <div>
+              <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Sync all upcoming animes for 2026/2027 (Extended Horizon)</p>
+              <button
+                onClick={syncAnticipated}
+                disabled={syncing.sync_anticipated}
+                className="w-full bg-gradient-to-br from-[#f43f5e] to-[#e11d48] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(244,63,94,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(244,63,94,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {syncing.sync_anticipated ? '⏳ Syncing Anticipated...' : '🚀 Sync Most Anticipated (2026-2027)'}
+              </button>
+            </div>
+
+            <div>
+              <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Update stale anime metadata (Score, Members, Status, etc)</p>
               <button
                 onClick={updateAnimeMetadata}
                 disabled={syncing.update_metadata}
-                className="bg-gradient-to-br from-[#0284c7] to-[#0369a1] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(2,132,199,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(2,132,199,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+                className="w-full bg-gradient-to-br from-[#0284c7] to-[#0369a1] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(2,132,199,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(2,132,199,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {syncing.update_metadata ? '⏳ Updating Metadata...' : '🔄 Update 60 Oldest Animes'}
               </button>

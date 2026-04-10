@@ -1938,50 +1938,7 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     }
 
     // ============================================
-    // 3. Search in ANTICIPATED_ANIMES
-    // ============================================
-    const { data: anticipatedData, error: anticipatedError } = await supabase
-      .from('anticipated_animes')
-      .select('anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, score, type')
-      .order('members', { ascending: false, nullsFirst: false })
-      .limit(200);
-
-    if (!anticipatedError && anticipatedData) {
-      const filteredAnticipated = anticipatedData
-        .map(anime => ({
-          ...anime,
-          relevance: calculateRelevance(
-            anime.title,
-            anime.title_english,
-            anime.season,
-            anime.genres || [],
-            anime.themes || [],
-            anime.demographics || []
-          )
-        }))
-        .filter(anime => anime.relevance > 0)
-        .map(anime => ({
-          id: anime.anime_id,
-          title: anime.title_english || anime.title,
-          imageUrl: anime.image_url,
-          season: anime.season,
-          year: anime.year,
-          type: anime.type,
-          genres: extractTags(anime.genres || []),
-          themes: extractTags(anime.themes || []),
-          demographics: extractTags(anime.demographics || []),
-          members: anime.members,
-          score: anime.score,
-          source: 'anticipated_animes',
-          relevance: anime.relevance
-        }));
-
-      allResults.push(...filteredAnticipated);
-      console.log(`[Search] Found ${filteredAnticipated.length} animes in anticipated_animes`);
-    }
-
-    // ============================================
-    // 4. Deduplicate by anime_id (keep highest relevance)
+    // 3. Deduplicate by anime_id (keep highest relevance)
     // ============================================
     const uniqueResults = new Map();
     allResults.forEach(result => {
@@ -1991,7 +1948,7 @@ app.get("/make-server-c1d1bfd8/search", async (c) => {
     });
 
     // ============================================
-    // 5. Sort by relevance DESC, then members DESC
+    // 4. Sort by relevance DESC, then members DESC
     // ============================================
     const totalUniqueResults = Array.from(uniqueResults.values());
     const sortedResults = totalUniqueResults

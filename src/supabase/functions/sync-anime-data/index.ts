@@ -1183,7 +1183,7 @@ async function syncAnticipatedAnimes(supabase: any) {
 
   try {
     // STEP 1: Fetch 2026 seasons (Winter, Spring, Summer, Fall)
-    // ✅ DYNAMIC: Detect current and next year for anticipated seasons
+    // ✅ DYNAMIC: Detect current and next years for anticipated seasons (8 seasons ahead)
     const currentYear = new Date().getUTCFullYear();
     const seasons = [
       { season: 'winter', year: currentYear },
@@ -1191,6 +1191,9 @@ async function syncAnticipatedAnimes(supabase: any) {
       { season: 'summer', year: currentYear },
       { season: 'fall', year: currentYear },
       { season: 'winter', year: currentYear + 1 },
+      { season: 'spring', year: currentYear + 1 },
+      { season: 'summer', year: currentYear + 1 },
+      { season: 'fall', year: currentYear + 1 },
     ];
 
     const allAnimes: any[] = [];

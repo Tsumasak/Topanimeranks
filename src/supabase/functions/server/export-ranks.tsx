@@ -180,11 +180,11 @@ async function exportAnimeGenres(supabase: any, genre: string, sortBy: "members"
 async function exportMostAnticipated(supabase: any, season: string, year: number) {
   // First try to order by score (if available), fallback to members
   const { data, error } = await supabase
-    .from("anticipated_animes")
+    .from("season_rankings")
     .select("*")
     .eq("season", season.toLowerCase())
     .eq("year", year)
-    .order("score", { ascending: false, nullsLast: true })
+    .order("anime_score", { ascending: false, nullsLast: true })
     .order("members", { ascending: false });
 
   if (error) {
@@ -202,7 +202,7 @@ async function exportMostAnticipated(supabase: any, season: string, year: number
     title: row.title,
     title_english: row.title_english,
     image_url: row.image_url,
-    score: row.score,
+    score: row.anime_score,
     scored_by: row.scored_by,
     members: row.members,
     favorites: row.favorites,

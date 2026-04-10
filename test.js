@@ -1,1167 +1,1424 @@
 "use strict";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const JIKAN_BASE_URL = "https://api.jikan.moe/v4";
-const RATE_LIMIT_DELAY = 500;
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-async function fetchWithRetry(url, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`\u{1F504} Fetching (attempt ${i + 1}/${retries}): ${url}`);
-      const response = await fetch(url);
-      console.log(`\u{1F4E1} Response status: ${response.status} ${response.statusText}`);
-      if (response.status === 429) {
-        console.log(`Rate limited, waiting 3 seconds... (attempt ${i + 1}/${retries})`);
-        await delay(3e3);
-        continue;
-      }
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`\u274C HTTP Error: ${response.status} - ${errorText}`);
-        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-      }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        throw new Error(`Response is not JSON: ${text.substring(0, 100)}`);
-      }
-      const data = await response.json();
-      console.log(`\u2705 Data received, keys: ${Object.keys(data).join(", ")}`);
-      return data;
-    } catch (error) {
-      console.error(`\u274C Fetch error (attempt ${i + 1}/${retries}):`, error);
-      if (i === retries - 1) throw error;
-      await delay(2e3);
-    }
-  }
-}
-async function fetchAnimePictures(animeId) {
+import { Hono } from "npm:hono@4";
+import { cors } from "npm:hono/cors";
+import { logger } from "npm:hono/logger";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { enrichEpisodes, recalculatePositions } from "./enrich.tsx";
+import { syncUpcoming } from "./sync-upcoming.tsx";
+import { syncSeason } from "./sync-season.tsx";
+import { getEpisodeWeekNumber } from "./season-utils.tsx";
+import { generateExport } from "./export-ranks.tsx";
+const app = new Hono();
+const CURRENT_SEASON = "spring";
+const CURRENT_YEAR = 2026;
+app.use("*", logger(console.log));
+app.use(
+  "/*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600
+  })
+);
+app.get("/make-server-c1d1bfd8/health", (c) => {
+  return c.json({ status: "ok" });
+});
+app.get("/make-server-c1d1bfd8/migration-status", async (c) => {
   try {
-    console.log(`\u{1F5BC}\uFE0F Fetching pictures for anime ${animeId}...`);
-    const picturesUrl = `${JIKAN_BASE_URL}/anime/${animeId}/pictures`;
-    const picturesData = await fetchWithRetry(picturesUrl);
-    if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
-      console.log(`\u2705 Found ${picturesData.data.length} pictures for anime ${animeId}`);
-      return picturesData.data;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials",
+        migrationNeeded: true
+      }, 500);
     }
-    console.log(`\u26A0\uFE0F No pictures found for anime ${animeId}`);
-    return [];
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: episodesWithDates, error } = await supabase.from("weekly_episodes").select("week_start_date, week_end_date").limit(1);
+    if (error) {
+      if (error.code === "42703") {
+        console.log("[Migration] \u2139\uFE0F Columns do not exist - migration needed");
+        return c.json({
+          success: true,
+          migrationNeeded: true,
+          message: "Migration needed: week_start_date and week_end_date columns do not exist",
+          sqlToRun: `
+ALTER TABLE weekly_episodes
+ADD COLUMN IF NOT EXISTS week_start_date DATE,
+ADD COLUMN IF NOT EXISTS week_end_date DATE;
+
+UPDATE weekly_episodes
+SET 
+  week_start_date = DATE '2025-09-29' + ((week_number - 1) * 7),
+  week_end_date = DATE '2025-09-29' + ((week_number - 1) * 7) + 6
+WHERE week_start_date IS NULL OR week_end_date IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_start_date, week_end_date);
+          `.trim()
+        });
+      }
+      console.error("[Migration] Unexpected error checking dates:", error);
+      return c.json({
+        success: false,
+        error: error.message,
+        migrationNeeded: true
+      }, 500);
+    }
+    const hasDates = episodesWithDates && episodesWithDates.length > 0 && episodesWithDates[0].week_start_date !== null && episodesWithDates[0].week_end_date !== null;
+    if (!hasDates) {
+      console.log("[Migration] \u2139\uFE0F Columns exist but are empty - migration needed");
+      return c.json({
+        success: true,
+        migrationNeeded: true,
+        message: "Migration needed: date columns are empty",
+        sqlToRun: `
+UPDATE weekly_episodes
+SET 
+  week_start_date = DATE '2025-09-29' + ((week_number - 1) * 7),
+  week_end_date = DATE '2025-09-29' + ((week_number - 1) * 7) + 6
+WHERE week_start_date IS NULL OR week_end_date IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_weekly_episodes_dates ON weekly_episodes(week_start_date, week_end_date);
+        `.trim()
+      });
+    }
+    console.log("[Migration] \u2705 Migration already applied");
+    return c.json({
+      success: true,
+      migrationNeeded: false,
+      message: "Migration already applied - all good!"
+    });
   } catch (error) {
-    console.error(`\u274C Error fetching pictures for anime ${animeId}:`, error);
-    return [];
+    console.error("\u274C Migration status error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      migrationNeeded: true
+    }, 500);
   }
-}
-async function syncWeeklyEpisodes(supabase, weekNumber) {
-  console.log(`
-\u{1F4C5} Syncing week ${weekNumber}...`);
-  const startTime = Date.now();
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
+});
+app.get("/make-server-c1d1bfd8/available-weeks", async (c) => {
+  const today = /* @__PURE__ */ new Date();
+  const { season: currentSeason, year: currentYear, weekNumber: currentWeekNumber } = getEpisodeWeekNumber(today);
   try {
-    const today = /* @__PURE__ */ new Date();
-    const month = today.getUTCMonth();
-    const year = today.getUTCFullYear();
-    let currentSeason;
-    let startMonth;
-    if (month >= 0 && month <= 2) {
-      currentSeason = "winter";
-      startMonth = 0;
-    } else if (month >= 3 && month <= 5) {
-      currentSeason = "spring";
-      startMonth = 3;
-    } else if (month >= 6 && month <= 8) {
-      currentSeason = "summer";
-      startMonth = 6;
-    } else {
-      currentSeason = "fall";
-      startMonth = 9;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("[Server] \u274C Missing Supabase credentials");
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
     }
-    const seasonStart = new Date(Date.UTC(year, startMonth, 1, 0, 0, 0, 0));
-    const firstSunday = new Date(seasonStart);
-    const dayOfWeek = firstSunday.getUTCDay();
-    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
-    firstSunday.setUTCHours(23, 59, 59, 999);
-    let startDate;
-    let endDate;
-    if (weekNumber === 1) {
-      startDate = seasonStart;
-      endDate = firstSunday;
-    } else {
-      const firstMonday = new Date(firstSunday);
-      firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
-      firstMonday.setUTCHours(0, 0, 0, 0);
-      startDate = new Date(firstMonday);
-      startDate.setUTCDate(firstMonday.getUTCDate() + (weekNumber - 2) * 7);
-      endDate = new Date(startDate);
-      endDate.setUTCDate(startDate.getUTCDate() + 6);
-      endDate.setUTCHours(23, 59, 59, 999);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log(`[Server] \u{1F4C5} Hoje: ${today.toISOString().split("T")[0]} = ${currentSeason} ${currentYear} Week ${currentWeekNumber}`);
+    const { data, error } = await supabase.from("weekly_episodes").select("week_number, episode_score, status, season, year, aired_at").eq("season", currentSeason).eq("year", currentYear).not("episode_score", "is", null).lte("week_number", currentWeekNumber).order("week_number", { ascending: true });
+    if (error) {
+      console.error("[Server] \u274C Error fetching available weeks:", error);
+      console.log("[Server] \u{1F504} Returning fallback: Week 1 only");
+      return c.json({
+        success: true,
+        weeks: [1],
+        latestWeek: 1,
+        currentWeek: currentWeekNumber,
+        currentSeason,
+        currentYear,
+        weekCounts: [{ week: 1, count: 0 }],
+        isFallback: true,
+        fallbackReason: error.message
+      });
     }
-    console.log(`\u{1F4C5} Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    let currentSeasonName;
-    if (month >= 0 && month <= 2) currentSeasonName = "winter";
-    else if (month >= 3 && month <= 5) currentSeasonName = "spring";
-    else if (month >= 6 && month <= 8) currentSeasonName = "summer";
-    else currentSeasonName = "fall";
-    const seasonsToCheck = [
-      { season: currentSeasonName, year }
-    ];
-    if (month % 3 === 2) {
-      const nextSeasons = { "winter": "spring", "spring": "summer", "summer": "fall", "fall": "winter" };
-      const nextSeason = nextSeasons[currentSeasonName];
-      const nextYear = nextSeason === "winter" ? year + 1 : year;
-      seasonsToCheck.push({ season: nextSeason, year: nextYear });
-      console.log(`\u{1F50D} Near season transition, also checking ${nextSeason} ${nextYear}`);
-    }
-    const allAnimes = [];
-    for (const { season, year: year2 } of seasonsToCheck) {
-      let currentPage = 1;
-      let hasNextPage = true;
-      console.log(`
-\u{1F310} ============================================`);
-      console.log(`\u{1F310} FETCHING ALL PAGES FOR ${season.toUpperCase()} ${year2}`);
-      console.log(`\u{1F310} Week: ${weekNumber}`);
-      console.log(`\u{1F310} ============================================
-`);
-      while (hasNextPage && currentPage <= 30) {
-        const seasonUrl = `${JIKAN_BASE_URL}/seasons/${year2}/${season}?page=${currentPage}`;
-        console.log(`
-\u{1F4C4} ============================================`);
-        console.log(`\u{1F4C4} PAGE ${currentPage} FETCH STARTING...`);
-        console.log(`\u{1F4C4} URL: ${seasonUrl}`);
-        console.log(`\u{1F4C4} ============================================`);
-        try {
-          const seasonData = await fetchWithRetry(seasonUrl);
-          console.log(`
-\u2705 ============================================`);
-          console.log(`\u2705 PAGE ${currentPage} FETCH SUCCESSFUL!`);
-          console.log(`\u2705 seasonData exists: ${!!seasonData}`);
-          console.log(`\u2705 seasonData.data exists: ${!!seasonData?.data}`);
-          console.log(`\u2705 seasonData.data.length: ${seasonData?.data?.length || 0}`);
-          console.log(`\u2705 seasonData.pagination: ${JSON.stringify(seasonData?.pagination || {})}`);
-          console.log(`\u2705 ============================================
-`);
-          if (seasonData && seasonData.data) {
-            console.log(`\u{1F4FA} Page ${currentPage}: Found ${seasonData.data.length} animes in ${season} ${year2}`);
-            allAnimes.push(...seasonData.data);
-            hasNextPage = seasonData.pagination?.has_next_page || false;
-            currentPage++;
-            console.log(`
-\u{1F4CA} ============================================`);
-            console.log(`\u{1F4CA} PAGINATION STATUS AFTER PAGE ${currentPage - 1}`);
-            console.log(`\u{1F4CA} Total animes accumulated: ${allAnimes.length}`);
-            console.log(`\u{1F4CA} Has next page: ${hasNextPage}`);
-            console.log(`\u{1F4CA} Next page will be: ${hasNextPage ? currentPage : "NONE (stopping)"}`);
-            console.log(`\u{1F4CA} ============================================
-`);
-            if (hasNextPage) {
-              console.log(`\u23F3 Waiting ${RATE_LIMIT_DELAY}ms before fetching page ${currentPage}...
-`);
-              await delay(RATE_LIMIT_DELAY);
-            } else {
-              console.log(`\u{1F3C1} NO MORE PAGES - Pagination complete!
-`);
-            }
-          } else {
-            console.log(`
-\u26A0\uFE0F ============================================`);
-            console.log(`\u26A0\uFE0F PAGE ${currentPage} RETURNED NO DATA!`);
-            console.log(`\u26A0\uFE0F seasonData: ${JSON.stringify(seasonData)}`);
-            console.log(`\u26A0\uFE0F Setting hasNextPage = false`);
-            console.log(`\u26A0\uFE0F ============================================
-`);
-            hasNextPage = false;
-          }
-        } catch (error) {
-          console.error(`
-\u274C ============================================`);
-          console.error(`\u274C ERROR FETCHING PAGE ${currentPage}!`);
-          console.error(`\u274C Week: ${weekNumber}`);
-          console.error(`\u274C URL: ${seasonUrl}`);
-          console.error(`\u274C Error:`, error);
-          console.error(`\u274C Error message: ${error.message}`);
-          console.error(`\u274C Error stack: ${error.stack}`);
-          console.error(`\u274C Setting hasNextPage = false - STOPPING PAGINATION`);
-          console.error(`\u274C ============================================
-`);
-          hasNextPage = false;
-        }
-      }
-      console.log(`
-\u{1F3C1} ============================================`);
-      console.log(`\u{1F3C1} PAGINATION COMPLETE FOR ${season.toUpperCase()} ${year2}`);
-      console.log(`\u{1F3C1} Week: ${weekNumber}`);
-      console.log(`\u{1F3C1} Total pages fetched: ${currentPage - 1}`);
-      console.log(`\u{1F3C1} Total animes collected: ${allAnimes.length}`);
-      console.log(`\u{1F3C1} ============================================
-`);
-    }
-    console.log(`\u{1F4FA} Total animes from all seasons: ${allAnimes.length}`);
-    const HARDCODED_ANIME_IDS = [62405, 59062, 60378];
-    console.log(`\\n\u2B50 Checking ${HARDCODED_ANIME_IDS.length} hardcoded exception animes...`);
-    for (const animeId of HARDCODED_ANIME_IDS) {
-      const alreadyExists = allAnimes.some((a) => a.mal_id === animeId);
-      if (alreadyExists) {
-        console.log(`\u2705 Anime ${animeId} already in season list`);
-        continue;
-      }
-      console.log(`\u{1F504} Fetching hardcoded anime ${animeId} directly from API...`);
-      try {
-        const animeUrl = `${JIKAN_BASE_URL}/anime/${animeId}`;
-        const animeData = await fetchWithRetry(animeUrl);
-        if (animeData && animeData.data) {
-          console.log(`\u2705 Added hardcoded anime: ${animeData.data.title} (ID: ${animeId})`);
-          console.log(`   Status: ${animeData.data.status}`);
-          console.log(`   Members: ${animeData.data.members}`);
-          allAnimes.push(animeData.data);
-        } else {
-          console.error(`\u274C Failed to fetch anime ${animeId}`);
-        }
-        await delay(RATE_LIMIT_DELAY);
-      } catch (error) {
-        console.error(`\u274C Error fetching hardcoded anime ${animeId}:`, error);
-      }
-    }
-    console.log(`\u{1F4FA} Total animes after hardcoded additions: ${allAnimes.length}`);
-    const airingAnimes = allAnimes.filter((anime) => anime.members >= 5e3).filter(
-      (anime) => anime.status === "Currently Airing" || anime.status === "Finished Airing"
-    );
-    console.log(`\u2705 After filter (5k+ members, airing/finished): ${airingAnimes.length} animes`);
-    console.log(`
-\u{1F50D} Fetching existing episodes from database for week ${weekNumber}...`);
-    const { data: existingEpisodes, error: existingFetchError } = await supabase.from("weekly_episodes").select("anime_id, episode_number, week_number").eq("week_number", weekNumber).eq("is_manual", false);
-    if (existingFetchError) {
-      console.error(`\u274C Error fetching existing episodes:`, existingFetchError);
-    }
-    const existingAnimeIds = new Set(existingEpisodes?.map((ep) => ep.anime_id) || []);
-    console.log(`\u{1F4CA} Found ${existingAnimeIds.size} existing episodes in database for week ${weekNumber}`);
-    console.log(`
-\u{1F50D} Fetching ALL existing episodes from database (all weeks)...`);
-    const { data: allExistingEpisodes, error: allExistingFetchError } = await supabase.from("weekly_episodes").select("anime_id, episode_number, week_number, aired_at").eq("is_manual", false);
-    if (allExistingFetchError) {
-      console.error(`\u274C Error fetching all existing episodes:`, allExistingFetchError);
-    }
-    const allEpisodesMap = /* @__PURE__ */ new Map();
-    allExistingEpisodes?.forEach((ep) => {
-      const key = `${ep.anime_id}_${ep.episode_number}`;
-      allEpisodesMap.set(key, { week_number: ep.week_number, aired_at: ep.aired_at });
+    const weekCounts = /* @__PURE__ */ new Map();
+    data?.forEach((row) => {
+      const count = weekCounts.get(row.week_number) || 0;
+      weekCounts.set(row.week_number, count + 1);
     });
-    console.log(`\u{1F4CA} Found ${allEpisodesMap.size} total episodes across all weeks in database`);
-    const episodes = [];
-    const processedEpisodeKeys = /* @__PURE__ */ new Set();
-    const animesToSaveInSeasonRankings = /* @__PURE__ */ new Map();
-    console.log(`
-\u{1F504} Starting to process ${airingAnimes.length} airing animes for week ${weekNumber}...`);
-    console.log(`\u{1F4C5} Week dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    let processedAnimeCount = 0;
-    for (const anime of airingAnimes) {
-      try {
-        processedAnimeCount++;
-        console.log(`
-\u{1F4CC} ============================================`);
-        console.log(`\u{1F4CC} ANIME PROGRESS: [${processedAnimeCount}/${airingAnimes.length}]`);
-        console.log(`\u{1F4CC} Starting: ${anime.title} (ID: ${anime.mal_id})`);
-        console.log(`\u{1F4CC} ============================================`);
-        await delay(RATE_LIMIT_DELAY);
-        console.log(`
-\u{1F50D} Processing: ${anime.title} (ID: ${anime.mal_id}, Members: ${anime.members})`);
-        let allEpisodes = [];
-        let episodePage = 1;
-        let hasNextEpisodePage = true;
-        while (hasNextEpisodePage) {
-          const episodesUrl = episodePage === 1 ? `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes` : `${JIKAN_BASE_URL}/anime/${anime.mal_id}/episodes?page=${episodePage}`;
-          console.log(`  \u{1F4C4} Fetching episodes page ${episodePage}: ${episodesUrl}`);
-          const episodesData = await fetchWithRetry(episodesUrl);
-          if (!episodesData || !episodesData.data || episodesData.data.length === 0) {
-            console.log(`  \u23ED\uFE0F No episodes found on page ${episodePage} for ${anime.title}`);
-            hasNextEpisodePage = false;
-            break;
-          }
-          console.log(`  \u{1F4FA} Page ${episodePage}: Found ${episodesData.data.length} episodes`);
-          allEpisodes.push(...episodesData.data);
-          hasNextEpisodePage = episodesData.pagination?.has_next_page || false;
-          episodePage++;
-          if (hasNextEpisodePage) {
-            await delay(RATE_LIMIT_DELAY);
-          }
-        }
-        if (allEpisodes.length === 0) {
-          console.log(`\u23ED\uFE0F No episodes found for ${anime.title}`);
-          continue;
-        }
-        console.log(`  \u{1F4FA} Total episodes fetched: ${allEpisodes.length} for ${anime.title}`);
-        const maxEpsToLog = anime.mal_id === 62405 ? allEpisodes.length : 5;
-        allEpisodes.forEach((ep, idx) => {
-          if (idx < maxEpsToLog) {
-            console.log(`    EP${ep.mal_id}: ${ep.title || "Untitled"} - Aired: ${ep.aired || "No date"} - Score: ${ep.score || "N/A"}`);
-          }
-        });
-        const weekEpisodes = [];
-        const existingEpsForAnime = existingEpisodes?.filter((ep) => ep.anime_id === anime.mal_id) || [];
-        for (const existingEp of existingEpsForAnime) {
-          const apiEpisode = allEpisodes.find((ep) => ep.mal_id === existingEp.episode_number);
-          if (apiEpisode) {
-            console.log(`  \u{1F504} UPDATING existing episode: EP${apiEpisode.mal_id} (Score: ${apiEpisode.score || "N/A"})`);
-            weekEpisodes.push(apiEpisode);
-          }
-        }
-        const newEpisodes = allEpisodes.filter((ep) => {
-          if (!ep.aired) {
-            if (anime.mal_id === 62405) {
-              console.log(`  \u{1F50D} DEBUG 62405: EP${ep.mal_id} has no aired date`);
-            }
-            return false;
-          }
-          const airedDate = new Date(ep.aired);
-          const isInWeek = airedDate >= startDate && airedDate <= endDate;
-          if (anime.mal_id === 62405) {
-            console.log(`  \u{1F50D} DEBUG 62405: EP${ep.mal_id} aired ${ep.aired} | airedDate: ${airedDate.toISOString()} | isInWeek: ${isInWeek}`);
-            console.log(`     startDate: ${startDate.toISOString()} | endDate: ${endDate.toISOString()}`);
-          }
-          const alreadyAdded = weekEpisodes.some((we) => we.mal_id === ep.mal_id);
-          if (isInWeek && !alreadyAdded) {
-            console.log(`  \u2705 NEW MATCH! EP${ep.mal_id} aired on ${ep.aired} (within week range)`);
-            return true;
-          }
-          return false;
-        });
-        weekEpisodes.push(...newEpisodes);
-        if (weekEpisodes.length === 0) {
-          console.log(`  \u23ED\uFE0F No episodes aired in week ${weekNumber} range for ${anime.title} and no existing episodes to update`);
-          continue;
-        }
-        console.log(`  \u{1F4CB} Processing ${weekEpisodes.length} episode(s) for ${anime.title} in week ${weekNumber}`);
-        for (const weekEpisode of weekEpisodes) {
-          const episodeKey = `${anime.mal_id}_${weekEpisode.mal_id}`;
-          if (processedEpisodeKeys.has(episodeKey)) {
-            console.log(`  \u23ED\uFE0F Already processed ${anime.title} EP${weekEpisode.mal_id}, skipping duplicate`);
-            continue;
-          }
-          processedEpisodeKeys.add(episodeKey);
-          console.log(`  \u2705 Adding episode: ${anime.title} EP${weekEpisode.mal_id} "${weekEpisode.title}" (Aired: ${weekEpisode.aired}, Score: ${weekEpisode.score || "N/A"})`);
-          const episode = {
-            anime_id: anime.mal_id,
-            anime_title_english: anime.title_english || anime.title,
-            anime_image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
-            from_url: weekEpisode.url || anime.url,
-            forum_url: weekEpisode.forum_url || null,
-            episode_number: weekEpisode.mal_id,
-            episode_name: weekEpisode.title || `Episode ${weekEpisode.mal_id}`,
-            episode_score: weekEpisode.score || null,
-            week_number: weekNumber,
-            position_in_week: 0,
-            // Will be set later
-            is_manual: false,
-            type: anime.type,
-            status: anime.status,
-            demographic: anime.demographics || [],
-            genre: anime.genres || [],
-            theme: anime.themes || [],
-            aired_at: weekEpisode.aired
-          };
-          episodes.push(episode);
-          animesToSaveInSeasonRankings.set(anime.mal_id, anime);
-        }
-      } catch (error) {
-        console.error(`\u274C Error processing anime ${anime.title} (ID: ${anime.mal_id}):`, error);
-      }
-    }
-    console.log(`
-\u{1F4CA} ============================================`);
-    console.log(`\u{1F4CA} Week ${weekNumber} Processing Summary:`);
-    console.log(`\u{1F4CA} Total airing animes checked: ${airingAnimes.length}`);
-    console.log(`\u{1F4CA} Episodes found for this week: ${episodes.length}`);
-    console.log(`\u{1F4CA} ============================================`);
-    if (episodes.length > 0) {
-      console.log(`
-\u{1F41B} DEBUG: All ${episodes.length} episodes BEFORE sorting:`);
-      episodes.forEach((ep, idx) => {
-        console.log(`  ${idx + 1}. ${ep.anime_title_english} EP${ep.episode_number} (Score: ${ep.episode_score || "N/A"}, Aired: ${ep.aired_at})`);
+    const validWeeks = Array.from(weekCounts.entries()).filter(([week, count]) => count >= 3).map(([week]) => week).sort((a, b) => a - b);
+    const latestWeek = validWeeks.length > 0 ? Math.max(...validWeeks) : 1;
+    console.log(`[Server] \u{1F4CA} Weeks with scored episodes:`, Array.from(weekCounts.entries()).map(([w, c2]) => `Week ${w}: ${c2} episodes`).join(", "));
+    console.log(`[Server] \u2705 Available weeks (3+ episodes with score): ${validWeeks.join(", ")}`);
+    console.log(`[Server] \u{1F3AF} Latest week with 3+ scored episodes: Week ${latestWeek}`);
+    if (validWeeks.length === 0) {
+      console.log("[Server] \u26A0\uFE0F No weeks with 3+ scored episodes found");
+      console.log("[Server] \u{1F504} Returning fallback: Week 1 only");
+      return c.json({
+        success: true,
+        weeks: [1],
+        latestWeek: 1,
+        currentWeek: currentWeekNumber,
+        currentSeason,
+        currentYear,
+        weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count })),
+        isFallback: true,
+        fallbackReason: "No weeks with 3+ scored episodes"
+        // ✅ Updated message
       });
     }
-    episodes.sort((a, b) => {
-      const scoreA = a.episode_score !== null ? a.episode_score : -1;
-      const scoreB = b.episode_score !== null ? b.episode_score : -1;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return (b.members || 0) - (a.members || 0);
+    return c.json({
+      success: true,
+      weeks: validWeeks,
+      latestWeek,
+      currentWeek: currentWeekNumber,
+      currentSeason,
+      currentYear,
+      weekCounts: Array.from(weekCounts.entries()).map(([week, count]) => ({ week, count })),
+      weekCountsRecord: Object.fromEntries(weekCounts.entries())
+      // Record format: { "1": 6 }
     });
-    if (episodes.length > 0) {
-      console.log(`
-\u{1F41B} DEBUG: All ${episodes.length} episodes AFTER sorting:`);
-      episodes.forEach((ep, idx) => {
-        console.log(`  ${idx + 1}. ${ep.anime_title_english} EP${ep.episode_number} (Score: ${ep.episode_score || "N/A"})`);
+  } catch (error) {
+    console.error("[Server] \u274C Available weeks error:", error);
+    console.error("[Server] \u274C Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    return c.json({
+      success: true,
+      weeks: [1],
+      latestWeek: 1,
+      currentWeek: 1,
+      currentSeason,
+      currentYear,
+      weekCounts: [{ week: 1, count: 0 }],
+      isFallback: true,
+      fallbackReason: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+app.get("/make-server-c1d1bfd8/weekly-episodes/:weekNumber", async (c) => {
+  const today = /* @__PURE__ */ new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+  try {
+    const weekNumber = parseInt(c.req.param("weekNumber"));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log(`\u{1F50D} Fetching weekly episodes for ${currentSeason} ${currentYear} Week ${weekNumber}...`);
+    const { data: weeklyData, error: weeklyError } = await supabase.from("weekly_episodes").select("*").eq("season", currentSeason).eq("year", currentYear).eq("week_number", weekNumber).not("episode_score", "is", null).order("episode_score", { ascending: false });
+    if (weeklyError) {
+      console.error("Error fetching weekly episodes:", weeklyError);
+      return c.json({
+        success: false,
+        error: weeklyError.message,
+        needsData: true
+      }, 200);
+    }
+    console.log(`[Server] ${currentSeason} ${currentYear} Week ${weekNumber}: ${weeklyData?.length || 0} episodes (sorted by episode_score DESC)`);
+    if (weeklyData && weeklyData.length > 0) {
+      const firstEp = weeklyData[0];
+      console.log(`[Server] First episode:`, {
+        anime: firstEp.anime_title_english,
+        episode: firstEp.episode_number,
+        score: firstEp.episode_score,
+        season: firstEp.season,
+        year: firstEp.year,
+        week: firstEp.week_number,
+        aired_at: firstEp.aired_at
       });
     }
-    for (let i = 0; i < episodes.length; i++) {
-      const episode = episodes[i];
-      const currentPosition = i + 1;
-      episode.position_in_week = currentPosition;
-      if (weekNumber > 1) {
-        const previousWeek = weekNumber - 1;
-        const { data: prevEpisode } = await supabase.from("weekly_episodes").select("position_in_week").eq("anime_id", episode.anime_id).eq("week_number", previousWeek).single();
-        if (prevEpisode) {
-          const positionChange = prevEpisode.position_in_week - currentPosition;
-          if (positionChange > 0) {
-            episode.trend = `+${positionChange}`;
-          } else if (positionChange < 0) {
-            episode.trend = `${positionChange}`;
-          } else {
-            episode.trend = "=";
-          }
-        } else {
-          episode.trend = "NEW";
-        }
-      } else {
-        episode.trend = "NEW";
-      }
+    return c.json({
+      success: true,
+      data: weeklyData || [],
+      count: weeklyData?.length || 0,
+      season: currentSeason,
+      year: currentYear
+    });
+  } catch (error) {
+    console.error("\u274C Weekly episodes error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/debug-anime/:animeId", async (c) => {
+  const today = /* @__PURE__ */ new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+  try {
+    const animeId = parseInt(c.req.param("animeId"));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
     }
-    console.log(`
-\u{1F4E6} Processed ${episodes.length} episodes for week ${weekNumber}`);
-    console.log(`\u{1F4CB} Sample episode data:`, JSON.stringify(episodes[0], null, 2));
-    console.log(`
-\u{1F4BE} Starting database upsert for ${episodes.length} episodes...`);
-    for (const episode of episodes) {
-      const { data: existing, error: checkError } = await supabase.from("weekly_episodes").select("id").eq("anime_id", episode.anime_id).eq("episode_number", episode.episode_number).eq("week_number", episode.week_number).maybeSingle();
-      const isUpdate = existing !== null && !checkError;
-      console.log(`  ${isUpdate ? "\u{1F504} UPDATING" : "\u2795 CREATING"} ${episode.anime_title_english} (anime_id: ${episode.anime_id}, ep: ${episode.episode_number}, week: ${episode.week_number})`);
-      const { data, error } = await supabase.from("weekly_episodes").upsert(episode, {
-        onConflict: "anime_id,episode_number,season,year",
-        // ✅ FIX: Adicionado season,year para prevenir duplicatas
-        ignoreDuplicates: false
-      }).select();
-      if (error) {
-        console.error(`  \u274C Upsert error for ${episode.anime_title_english}:`, JSON.stringify(error));
-        continue;
-      }
-      console.log(`  \u2705 ${isUpdate ? "Updated" : "Created"}: ${episode.anime_title_english}`);
-      if (data && data.length > 0) {
-        if (isUpdate) {
-          itemsUpdated++;
-        } else {
-          itemsCreated++;
-        }
-      }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log(`\u{1F50D} DEBUG: Fetching ALL episodes for anime ${animeId}...`);
+    const { data: allEpisodes, error: allError } = await supabase.from("weekly_episodes").select("*").eq("anime_id", animeId).order("episode_number", { ascending: false });
+    if (allError) {
+      console.error("Error fetching anime episodes:", allError);
+      return c.json({
+        success: false,
+        error: allError.message
+      }, 500);
     }
-    console.log(`
-\u{1F504} Recalculating positions for week ${weekNumber}...`);
-    const { data: allWeekEpisodes, error: fetchError } = await supabase.from("weekly_episodes").select("*").eq("week_number", weekNumber);
-    if (fetchError) {
-      console.error(`\u274C Error fetching episodes for recalculation:`, fetchError);
-    } else if (allWeekEpisodes) {
-      const sorted = allWeekEpisodes.sort((a, b) => {
-        const scoreA = a.episode_score !== null ? a.episode_score : -1;
-        const scoreB = b.episode_score !== null ? b.episode_score : -1;
-        return scoreB - scoreA;
+    console.log(`[DEBUG] Found ${allEpisodes?.length || 0} episodes for anime ${animeId}`);
+    allEpisodes?.forEach((ep) => {
+      console.log(`[DEBUG] EP${ep.episode_number}: Score=${ep.episode_score}, Week=${ep.week_number}, Season=${ep.season} ${ep.year}, Aired=${ep.aired_at}`);
+    });
+    return c.json({
+      success: true,
+      animeId,
+      totalEpisodes: allEpisodes?.length || 0,
+      episodes: allEpisodes || [],
+      currentSeason,
+      currentYear
+    });
+  } catch (error) {
+    console.error("\u274C Debug anime error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
+  try {
+    const season = c.req.param("season");
+    const year = parseInt(c.req.param("year"));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log(`[Server] \u{1F50D} Fetching season rankings for ${season} ${year}...`);
+    const { data: animes, error } = await supabase.from("season_rankings").select("*").ilike("season", season).eq("year", year).order("anime_score", { ascending: false, nullsFirst: false }).order("members", { ascending: false, nullsFirst: false });
+    if (error) {
+      console.error("Error fetching season rankings:", error);
+      return c.json({
+        success: false,
+        error: error.message,
+        needsData: true
+      }, 200);
+    }
+    console.log(`[Server] \u2705 Found ${animes?.length || 0} animes for ${season} ${year}`);
+    if (animes && animes.length > 0) {
+      console.log("[Server] First 3 animes:", animes.slice(0, 3).map((a) => ({
+        id: a.anime_id,
+        title: a.title_english || a.title,
+        season: a.season,
+        year: a.year,
+        score: a.anime_score
+      })));
+    }
+    return c.json({
+      success: true,
+      data: animes || [],
+      count: animes?.length || 0
+    });
+  } catch (error) {
+    console.error("\u274C Season rankings error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/genre-years", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const genre = c.req.query("genre");
+    if (!genre) {
+      return c.json({
+        success: false,
+        error: "Missing genre parameter"
+      }, 400);
+    }
+    console.log(`[Server] \u{1F50D} Fetching years for genre: ${genre}...`);
+    const { data: genreData, error: genreError } = await supabase.from("genre_rankings").select("year").eq("genre", genre).neq("year", 9999).order("year", { ascending: false });
+    if (!genreError && genreData && genreData.length > 0) {
+      const years2 = [...new Set(genreData.map((row) => row.year))].sort((a, b) => b - a);
+      console.log(`[Server] \u2705 Found ${years2.length} years for genre ${genre} (from genre_rankings): ${years2.join(", ")}`);
+      return c.json({
+        success: true,
+        years: years2,
+        source: "genre_rankings"
       });
-      for (let i = 0; i < sorted.length; i++) {
-        const episode = sorted[i];
-        const newPosition = i + 1;
-        const oldPosition = episode.position_in_week;
-        if (newPosition !== oldPosition) {
-          let newTrend = episode.trend;
-          if (weekNumber > 1) {
-            const { data: prevEpisode } = await supabase.from("weekly_episodes").select("position_in_week").eq("anime_id", episode.anime_id).eq("week_number", weekNumber - 1).single();
-            if (prevEpisode) {
-              const positionChange = prevEpisode.position_in_week - newPosition;
-              if (positionChange > 0) {
-                newTrend = `+${positionChange}`;
-              } else if (positionChange < 0) {
-                newTrend = `${positionChange}`;
-              } else {
-                newTrend = "=";
+    }
+    console.log(`[Server] \u26A0\uFE0F genre_rankings table empty or doesn't exist, falling back to season_rankings...`);
+    const { data, error } = await supabase.from("season_rankings").select("year").neq("status", "Not yet aired").neq("year", 9999).order("year", { ascending: false });
+    if (error) {
+      console.error("Error fetching genre years:", error);
+      return c.json({
+        success: false,
+        error: error.message
+      }, 500);
+    }
+    const yearsSet = /* @__PURE__ */ new Set();
+    if (data) {
+      for (const row of data) {
+        const { data: anime, error: animeError } = await supabase.from("season_rankings").select("genres, year").eq("year", row.year).neq("status", "Not yet aired").neq("year", 9999).limit(1e3);
+        if (!animeError && anime) {
+          for (const a of anime) {
+            if (a.genres && Array.isArray(a.genres)) {
+              const hasGenre = a.genres.some((g) => g.name === genre);
+              if (hasGenre && a.year !== 9999) {
+                yearsSet.add(a.year);
               }
             }
           }
-          const { error: updateError } = await supabase.from("weekly_episodes").update({
-            position_in_week: newPosition,
-            trend: newTrend
-          }).eq("id", episode.id);
-          if (updateError) {
-            console.error(`\u274C Error updating position for ${episode.anime_title_english}:`, updateError);
-          } else {
-            console.log(`\u{1F4CA} Reranked ${episode.anime_title_english}: #${oldPosition} \u2192 #${newPosition}`);
+        }
+      }
+    }
+    const years = Array.from(yearsSet).sort((a, b) => b - a);
+    console.log(`[Server] \u2705 Found ${years.length} years for genre ${genre} (from season_rankings): ${years.join(", ")}`);
+    return c.json({
+      success: true,
+      years,
+      source: "season_rankings"
+    });
+  } catch (error) {
+    console.error("\u274C Genre years error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/genre-seasons", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase configuration"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const genre = c.req.query("genre");
+    const year = c.req.query("year");
+    if (!genre || !year) {
+      return c.json({
+        success: false,
+        error: "Missing genre or year parameter"
+      }, 400);
+    }
+    console.log(`[Server] \u{1F50D} Fetching available seasons for genre: ${genre}, year: ${year}`);
+    const seasonsSet = /* @__PURE__ */ new Set();
+    const { data: genreData, error: genreError } = await supabase.from("genre_rankings").select("season").eq("genre", genre).eq("year", parseInt(year)).not("season", "is", null);
+    if (!genreError && genreData && genreData.length > 0) {
+      for (const row of genreData) {
+        if (row.season) {
+          seasonsSet.add(row.season.toLowerCase());
+        }
+      }
+      const seasons2 = Array.from(seasonsSet).sort();
+      console.log(`[Server] \u2705 Found ${seasons2.length} seasons from genre_rankings: ${seasons2.join(", ")}`);
+      return c.json({
+        success: true,
+        seasons: seasons2,
+        source: "genre_rankings"
+      });
+    }
+    const { data: seasonData, error: seasonError } = await supabase.from("season_rankings").select("season, genres").eq("year", parseInt(year)).neq("status", "Not yet aired");
+    if (seasonError) {
+      console.error("\u274C Supabase error:", seasonError);
+      return c.json({
+        success: false,
+        error: seasonError.message
+      }, 500);
+    }
+    if (seasonData) {
+      for (const anime of seasonData) {
+        if (anime.genres && Array.isArray(anime.genres)) {
+          const hasGenre = anime.genres.some((g) => g.name === genre);
+          if (hasGenre && anime.season) {
+            seasonsSet.add(anime.season.toLowerCase());
           }
         }
       }
-      console.log(`\u2705 Position recalculation complete for week ${weekNumber}`);
     }
-    console.log(`
-\u{1F4BE} Upserting ${animesToSaveInSeasonRankings.size} animes to season_rankings...`);
-    for (const [animeId, anime] of animesToSaveInSeasonRankings) {
-      const pictures = await fetchAnimePictures(anime.mal_id);
-      await delay(RATE_LIMIT_DELAY);
-      const seasonAnime = {
-        anime_id: anime.mal_id,
+    const seasons = Array.from(seasonsSet).sort();
+    console.log(`[Server] \u2705 Found ${seasons.length} seasons from season_rankings: ${seasons.join(", ")}`);
+    return c.json({
+      success: true,
+      seasons,
+      source: "season_rankings"
+    });
+  } catch (error) {
+    console.error("\u274C Genre seasons error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/genre-rankings", async (c) => {
+  const startTime = Date.now();
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const genre = c.req.query("genre");
+    const year = c.req.query("year");
+    const season = c.req.query("season");
+    const sortBy = c.req.query("sortBy") || "score";
+    const offset = parseInt(c.req.query("offset") || "0");
+    const limit = parseInt(c.req.query("limit") || "100");
+    if (!genre || !year) {
+      return c.json({
+        success: false,
+        error: "Missing required parameters: genre and year"
+      }, 400);
+    }
+    console.log(`[Server] \u{1F50D} Fetching genre rankings for ${genre}, ${year}, ${season || "all seasons"} (offset: ${offset}, limit: ${limit})...`);
+    let query = supabase.from("genre_rankings").select("*", { count: "exact" }).eq("genre", genre).eq("year", parseInt(year));
+    if (season && season !== "all") {
+      query = query.ilike("season", season);
+    }
+    if (sortBy === "popularity") {
+      query = query.order("members", { ascending: false, nullsFirst: false });
+    } else {
+      query = query.order("anime_score", { ascending: false, nullsFirst: false });
+    }
+    query = query.range(offset, offset + limit - 1);
+    const queryStartTime = Date.now();
+    const { data: optimizedData, error: optimizedError, count } = await query;
+    const queryEndTime = Date.now();
+    if (!optimizedError && optimizedData && optimizedData.length > 0) {
+      console.log(`[Server] \u23F1\uFE0F  Optimized query took ${queryEndTime - queryStartTime}ms`);
+      console.log(`[Server] \u2705 Found ${optimizedData.length} animes (total: ${count}) from genre_rankings`);
+      const totalTime2 = Date.now() - startTime;
+      console.log(`[Server] \u{1F680} Total request time: ${totalTime2}ms (OPTIMIZED)`);
+      const mappedData = optimizedData.map((anime) => ({
+        anime_id: anime.anime_id,
         title: anime.title,
         title_english: anime.title_english,
-        image_url: anime.images?.jpg?.large_image_url,
-        anime_score: anime.score,
-        // Using 'anime_score' to match database schema
-        scored_by: anime.scored_by,
-        members: anime.members,
-        favorites: anime.favorites,
-        popularity: anime.popularity,
-        rank: anime.rank,
+        image_url: anime.image_url,
         type: anime.type,
-        status: anime.status,
-        rating: anime.rating,
-        source: anime.source,
-        episodes: anime.episodes,
-        aired_from: anime.aired?.from,
-        aired_to: anime.aired?.to,
-        duration: anime.duration,
+        anime_score: anime.anime_score,
+        members: anime.members,
         demographics: anime.demographics || [],
         genres: anime.genres || [],
         themes: anime.themes || [],
-        studios: anime.studios || [],
-        synopsis: anime.synopsis,
-        pictures,
-        // 🖼️ Add pictures array
-        season: anime.season ? anime.season.toLowerCase() : currentSeasonName,
-        // ✅ Use calculated current season as fallback
-        year: anime.year || year
-        // ✅ Use current year as fallback
-      };
-      const { data: upsertData, error } = await supabase.from("season_rankings").upsert(seasonAnime, {
-        onConflict: "anime_id,season,year",
-        ignoreDuplicates: false
-      }).select();
-      if (error) {
-        console.error("Upsert error:", error);
-        continue;
-      }
-      if (upsertData && upsertData.length > 0) {
-        const existing = await supabase.from("season_rankings").select("created_at, updated_at").eq("id", upsertData[0].id).single();
-        if (existing.data.created_at === existing.data.updated_at) {
-          itemsCreated++;
-        } else {
-          itemsUpdated++;
+        season: anime.season,
+        year: anime.year,
+        status: anime.status,
+        episodes: anime.episodes,
+        studios: anime.studios || []
+      }));
+      return c.json({
+        success: true,
+        data: mappedData,
+        count: count || 0,
+        returned: mappedData.length,
+        offset,
+        limit,
+        hasMore: count ? offset + mappedData.length < count : false,
+        genre,
+        year: year === "all" ? "all" : parseInt(year),
+        season: season || "all",
+        sortBy,
+        source: "genre_rankings",
+        performance: {
+          totalTime: totalTime2,
+          queryTime: queryEndTime - queryStartTime,
+          isOptimized: true
         }
-      }
-      await delay(RATE_LIMIT_DELAY);
-    }
-    const duration = Date.now() - startTime;
-    await supabase.from("sync_logs").insert({
-      sync_type: "weekly_episodes",
-      status: "success",
-      week_number: weekNumber,
-      items_synced: episodes.length,
-      items_created: itemsCreated,
-      items_updated: itemsUpdated,
-      duration_ms: duration
-    });
-    console.log(`
-\u2705 ============================================`);
-    console.log(`\u2705 Week ${weekNumber} sync completed!`);
-    console.log(`\u2705 Total episodes in list: ${episodes.length}`);
-    console.log(`\u2705 NEW episodes created: ${itemsCreated}`);
-    console.log(`\u2705 Existing episodes updated: ${itemsUpdated}`);
-    console.log(`\u2705 Duration: ${duration}ms`);
-    console.log(`\u2705 ============================================`);
-    return { success: true, itemsCreated, itemsUpdated };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\u274C Error syncing week ${weekNumber}:`, error);
-    await supabase.from("sync_logs").insert({
-      sync_type: "weekly_episodes",
-      status: "error",
-      week_number: weekNumber,
-      error_message: error.message,
-      error_details: { stack: error.stack },
-      duration_ms: duration
-    });
-    throw error;
-  }
-}
-async function syncSeasonRankings(supabase, season, year) {
-  console.log(`
-\u{1F338} Syncing ${season} ${year} rankings...`);
-  const startTime = Date.now();
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
-  try {
-    let allAnimes = [];
-    let currentPage = 1;
-    let hasNextPage = true;
-    console.log(`\u{1F310} Fetching all pages for ${season} ${year}...`);
-    while (hasNextPage && currentPage <= 15) {
-      const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${currentPage}`;
-      console.log(`\u{1F4C4} Fetching page ${currentPage}: ${url}`);
-      const data = await fetchWithRetry(url);
-      if (!data || !data.data) {
-        throw new Error(`No season data received for page ${currentPage}`);
-      }
-      allAnimes = allAnimes.concat(data.data);
-      hasNextPage = data.pagination?.has_next_page || false;
-      currentPage++;
-      console.log(`\u{1F4C4} Page ${currentPage - 1}: Added ${data.data.length} animes. Total so far: ${allAnimes.length}`);
-      if (hasNextPage) {
-        await delay(RATE_LIMIT_DELAY);
-      }
-    }
-    console.log(`\u{1F4FA} Total animes fetched: ${allAnimes.length}`);
-    const animes = allAnimes.filter((anime) => anime.members >= 5e3).sort((a, b) => {
-      const membersA = a.members || 0;
-      const membersB = b.members || 0;
-      if (membersB !== membersA) return membersB - membersA;
-      return (b.score || 0) - (a.score || 0);
-    });
-    console.log(`\u2705 After filtering (5k+ members): ${animes.length} animes for ${season} ${year}`);
-    if (animes.length > 0) {
-      const firstAnime = animes[0];
-      console.log(`\u{1F50D} DEBUG - First anime structure:`, {
-        mal_id: firstAnime.mal_id,
-        title: firstAnime.title,
-        has_images: !!firstAnime.images,
-        has_jpg: !!firstAnime.images?.jpg,
-        large_image_url: firstAnime.images?.jpg?.large_image_url,
-        image_url_full: firstAnime.images?.jpg?.image_url
       });
     }
+    console.log(`[Server] \u26A0\uFE0F genre_rankings table empty or doesn't exist, falling back to season_rankings...`);
+    console.log(`[Server] \u{1F4A1} Run POST /populate-genre-rankings to populate the optimized table`);
+    let fallbackQuery = supabase.from("season_rankings").select("*").eq("year", parseInt(year)).neq("status", "Not yet aired");
+    if (season && season !== "all") {
+      fallbackQuery = fallbackQuery.ilike("season", season);
+    }
+    const fallbackQueryStartTime = Date.now();
+    const { data: allAnimes, error } = await fallbackQuery;
+    const fallbackQueryEndTime = Date.now();
+    console.log(`[Server] \u23F1\uFE0F  Database query took ${fallbackQueryEndTime - fallbackQueryStartTime}ms`);
+    console.log(`[Server] \u{1F4CA} Retrieved ${allAnimes?.length || 0} animes from database`);
+    if (error) {
+      console.error("Error fetching genre rankings:", error);
+      return c.json({
+        success: false,
+        error: error.message
+      }, 500);
+    }
+    const filterStartTime = Date.now();
+    const filteredAnimes = allAnimes?.filter((anime) => {
+      if (!anime.genres || !Array.isArray(anime.genres)) return false;
+      return anime.genres.some((g) => g.name === genre);
+    }) || [];
+    const filterEndTime = Date.now();
+    console.log(`[Server] \u23F1\uFE0F  Genre filtering took ${filterEndTime - filterStartTime}ms`);
+    console.log(`[Server] \u{1F3AF} Filtered down to ${filteredAnimes.length} animes with genre ${genre}`);
+    const sortStartTime = Date.now();
+    filteredAnimes.sort((a, b) => {
+      if (sortBy === "popularity") {
+        return (b.members || 0) - (a.members || 0);
+      } else {
+        return (b.anime_score || 0) - (a.anime_score || 0);
+      }
+    });
+    const sortEndTime = Date.now();
+    console.log(`[Server] \u23F1\uFE0F  Sorting took ${sortEndTime - sortStartTime}ms`);
+    const paginatedAnimes = filteredAnimes.slice(offset, offset + limit);
+    const totalTime = Date.now() - startTime;
+    console.log(`[Server] \u2705 Total request time: ${totalTime}ms (FALLBACK - consider populating genre_rankings)`);
+    return c.json({
+      success: true,
+      data: paginatedAnimes,
+      count: filteredAnimes.length,
+      returned: paginatedAnimes.length,
+      offset,
+      limit,
+      hasMore: offset + paginatedAnimes.length < filteredAnimes.length,
+      genre,
+      year: parseInt(year),
+      season: season || "all",
+      sortBy,
+      source: "season_rankings",
+      performance: {
+        totalTime,
+        queryTime: fallbackQueryEndTime - fallbackQueryStartTime,
+        filterTime: filterEndTime - filterStartTime,
+        sortTime: sortEndTime - sortStartTime,
+        retrievedCount: allAnimes?.length || 0,
+        filteredCount: filteredAnimes.length,
+        isOptimized: false
+      }
+    });
+  } catch (error) {
+    console.error("\u274C Genre rankings error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/anticipated-animes", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: animes, error } = await supabase.from("anticipated_animes").select("*").order("position", { ascending: true });
+    if (error) {
+      console.error("Error fetching anticipated animes:", error);
+      return c.json({
+        success: false,
+        error: error.message,
+        needsData: true
+      }, 200);
+    }
+    return c.json({
+      success: true,
+      data: animes || [],
+      count: animes?.length || 0
+    });
+  } catch (error) {
+    console.error("\u274C Anticipated animes error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/populate-genre-rankings", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`[Populate] \u{1F680} Starting to populate genre_rankings table...`);
+    const { data: allAnimes, error: fetchError } = await supabase.from("season_rankings").select("*").neq("status", "Not yet aired").neq("year", 9999);
+    if (fetchError) {
+      console.error("[Populate] \u274C Error fetching animes:", fetchError);
+      return c.json({ success: false, error: fetchError.message }, 500);
+    }
+    if (!allAnimes || allAnimes.length === 0) {
+      return c.json({
+        success: true,
+        message: "No animes to populate",
+        processed: 0,
+        inserted: 0
+      });
+    }
+    console.log(`[Populate] \u{1F4CA} Found ${allAnimes.length} animes to process`);
+    const genreRows = [];
+    let processedCount = 0;
+    for (const anime of allAnimes) {
+      if (!anime.genres || !Array.isArray(anime.genres) || anime.genres.length === 0) {
+        continue;
+      }
+      for (const genreObj of anime.genres) {
+        const genreName = typeof genreObj === "string" ? genreObj : genreObj.name;
+        if (!genreName) continue;
+        genreRows.push({
+          anime_id: anime.anime_id,
+          genre: genreName,
+          year: anime.year,
+          season: anime.season,
+          title: anime.title,
+          title_english: anime.title_english,
+          image_url: anime.image_url,
+          anime_score: anime.anime_score,
+          members: anime.members,
+          type: anime.type,
+          status: anime.status,
+          episodes: anime.episodes,
+          genres: anime.genres,
+          themes: anime.themes,
+          demographics: anime.demographics,
+          studios: anime.studios,
+          updated_at: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      processedCount++;
+      if (processedCount % 100 === 0) {
+        console.log(`[Populate] \u{1F4E6} Processed ${processedCount}/${allAnimes.length} animes...`);
+      }
+    }
+    console.log(`[Populate] \u2705 Created ${genreRows.length} genre rows from ${processedCount} animes`);
+    const BATCH_SIZE = 500;
+    let insertedCount = 0;
+    for (let i = 0; i < genreRows.length; i += BATCH_SIZE) {
+      const batch = genreRows.slice(i, i + BATCH_SIZE);
+      console.log(`[Populate] \u{1F4BE} Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(genreRows.length / BATCH_SIZE)}...`);
+      const { error: upsertError } = await supabase.from("genre_rankings").upsert(batch, {
+        onConflict: "anime_id,genre,year,season",
+        ignoreDuplicates: false
+      });
+      if (upsertError) {
+        console.error(`[Populate] \u274C Error upserting batch:`, upsertError);
+        return c.json({
+          success: false,
+          error: upsertError.message,
+          processedSoFar: insertedCount
+        }, 500);
+      }
+      insertedCount += batch.length;
+    }
+    console.log(`[Populate] \u{1F389} Successfully populated genre_rankings table!`);
+    console.log(`[Populate] \u{1F4CA} Total: ${insertedCount} rows inserted/updated`);
+    return c.json({
+      success: true,
+      message: "Genre rankings table populated successfully",
+      processed: processedCount,
+      inserted: insertedCount,
+      totalRows: genreRows.length
+    });
+  } catch (error) {
+    console.error("[Populate] \u274C Error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/populate-genre-rankings", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`[Populate] \u{1F680} Starting to populate genre_rankings table...`);
+    const { data: allAnimes, error: fetchError } = await supabase.from("season_rankings").select("*").neq("status", "Not yet aired").neq("year", 9999);
+    if (fetchError) {
+      console.error("[Populate] \u274C Error fetching animes:", fetchError);
+      return c.json({ success: false, error: fetchError.message }, 500);
+    }
+    if (!allAnimes || allAnimes.length === 0) {
+      return c.json({
+        success: true,
+        message: "No animes to populate",
+        processed: 0,
+        inserted: 0
+      });
+    }
+    console.log(`[Populate] \u{1F4CA} Found ${allAnimes.length} animes to process`);
+    const genreRows = [];
+    let processedCount = 0;
+    for (const anime of allAnimes) {
+      if (!anime.genres || !Array.isArray(anime.genres) || anime.genres.length === 0) {
+        continue;
+      }
+      for (const genreObj of anime.genres) {
+        const genreName = typeof genreObj === "string" ? genreObj : genreObj.name;
+        if (!genreName) continue;
+        genreRows.push({
+          anime_id: anime.anime_id,
+          genre: genreName,
+          year: anime.year,
+          season: anime.season,
+          title: anime.title,
+          title_english: anime.title_english,
+          image_url: anime.image_url,
+          anime_score: anime.anime_score,
+          members: anime.members,
+          type: anime.type,
+          status: anime.status,
+          episodes: anime.episodes,
+          genres: anime.genres,
+          themes: anime.themes,
+          demographics: anime.demographics,
+          studios: anime.studios,
+          updated_at: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      processedCount++;
+      if (processedCount % 100 === 0) {
+        console.log(`[Populate] \u{1F4E6} Processed ${processedCount}/${allAnimes.length} animes...`);
+      }
+    }
+    console.log(`[Populate] \u2705 Created ${genreRows.length} genre rows from ${processedCount} animes`);
+    const BATCH_SIZE = 500;
+    let insertedCount = 0;
+    for (let i = 0; i < genreRows.length; i += BATCH_SIZE) {
+      const batch = genreRows.slice(i, i + BATCH_SIZE);
+      console.log(`[Populate] \u{1F4BE} Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(genreRows.length / BATCH_SIZE)}...`);
+      const { error: upsertError } = await supabase.from("genre_rankings").upsert(batch, {
+        onConflict: "anime_id,genre,year,season",
+        ignoreDuplicates: false
+      });
+      if (upsertError) {
+        console.error(`[Populate] \u274C Error upserting batch:`, upsertError);
+        return c.json({
+          success: false,
+          error: upsertError.message,
+          processedSoFar: insertedCount
+        }, 500);
+      }
+      insertedCount += batch.length;
+    }
+    console.log(`[Populate] \u{1F389} Successfully populated genre_rankings table!`);
+    console.log(`[Populate] \u{1F4CA} Total: ${insertedCount} rows inserted/updated`);
+    return c.json({
+      success: true,
+      message: "Genre rankings table populated successfully",
+      processed: processedCount,
+      inserted: insertedCount,
+      totalRows: genreRows.length
+    });
+  } catch (error) {
+    console.error("[Populate] \u274C Error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/sync-upcoming", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log("\u{1F680} Iniciando sync UPCOMING animes...");
+    const result = await syncUpcoming(supabase);
+    return c.json({
+      success: result.success,
+      total: result.total,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      errors: result.errors,
+      message: `Sync completed: ${result.inserted} animes inserted/updated`
+    });
+  } catch (error) {
+    console.error("\u274C Sync UPCOMING error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/enrich-episodes", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const today = /* @__PURE__ */ new Date();
+    const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+    console.log(`\u{1F680} Iniciando enriquecimento de epis\xF3dios para ${currentSeason} ${currentYear}...`);
+    const result = await enrichEpisodes(supabase, currentSeason, currentYear);
+    return c.json({
+      success: result.errors === 0,
+      enriched: result.enriched,
+      inserted: result.inserted,
+      errors: result.errors,
+      message: result.message
+    });
+  } catch (error) {
+    console.error("\u274C Enrich episodes error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const today = /* @__PURE__ */ new Date();
+    const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+    console.log("\u{1F522} Iniciando rec\xE1lculo de posi\xE7\xF5es...");
+    await recalculatePositions(supabase, currentSeason, currentYear);
+    return c.json({
+      success: true,
+      message: "Posi\xE7\xF5es recalculadas com sucesso!"
+    });
+  } catch (error) {
+    console.error("\u274C Recalculate positions error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/recalculate-positions", async (c) => {
+  const today = /* @__PURE__ */ new Date();
+  const { season: currentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log("\u{1F522} Iniciando rec\xE1lculo de posi\xE7\xF5es...");
+    await recalculatePositions(supabase, currentSeason, currentYear);
+    return c.json({
+      success: true,
+      message: "Posi\xE7\xF5es recalculadas com sucesso!"
+    });
+  } catch (error) {
+    console.error("\u274C Recalculate positions error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/fix-week-numbers", async (c) => {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log("\u{1F527} Iniciando rec\xE1lculo de week_numbers usando sistema de seasons...");
+    const { data: episodes, error: fetchError } = await supabase.from("weekly_episodes").select("id, anime_id, episode_number, aired_at, anime_title_english").not("aired_at", "is", null);
+    if (fetchError) {
+      console.error("\u274C Erro ao buscar epis\xF3dios:", fetchError);
+      return c.json({
+        success: false,
+        error: fetchError.message
+      }, 500);
+    }
+    if (!episodes || episodes.length === 0) {
+      console.log("\u26A0\uFE0F Nenhum epis\xF3dio com aired_at encontrado");
+      return c.json({
+        success: true,
+        message: "Nenhum epis\xF3dio para recalcular",
+        updated: 0
+      });
+    }
+    console.log(`\u{1F4CA} Encontrados ${episodes.length} epis\xF3dios para recalcular`);
+    let updated = 0;
+    let errors = 0;
+    for (const episode of episodes) {
+      try {
+        const airedDate = new Date(episode.aired_at);
+        const { season, year, weekNumber } = getEpisodeWeekNumber(airedDate);
+        console.log(`  \u{1F4C5} ${episode.anime_title_english || "Unknown"} EP${episode.episode_number}: ${season} ${year} Week ${weekNumber}`);
+        const { error: updateError } = await supabase.from("weekly_episodes").update({
+          week_number: weekNumber,
+          season,
+          year
+        }).eq("id", episode.id);
+        if (updateError) {
+          console.error(`\u274C Erro ao atualizar epis\xF3dio ${episode.id}:`, updateError);
+          errors++;
+        } else {
+          updated++;
+        }
+      } catch (error) {
+        console.error(`\u274C Erro ao processar epis\xF3dio ${episode.id}:`, error);
+        errors++;
+      }
+    }
+    console.log(`\u{1F389} Rec\xE1lculo conclu\xEDdo: ${updated} epis\xF3dios atualizados, ${errors} erros`);
+    return c.json({
+      success: true,
+      message: `Week numbers recalculados com sucesso!`,
+      total: episodes.length,
+      updated,
+      errors
+    });
+  } catch (error) {
+    console.error("\u274C Fix week numbers error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/save-season-batch", async (c) => {
+  try {
+    const { animes, season, year } = await c.req.json();
+    console.log(`\u{1F4BE} Saving ${animes?.length || 0} animes for ${season} ${year}...`);
+    if (!animes || !Array.isArray(animes) || animes.length === 0) {
+      return c.json({ success: false, error: "No animes provided" }, 400);
+    }
     const uniqueAnimes = Array.from(
-      new Map(animes.map((anime) => [anime.mal_id, anime])).values()
+      new Map(animes.map((anime) => [anime.anime_id, anime])).values()
     );
     if (uniqueAnimes.length < animes.length) {
       console.log(`\u26A0\uFE0F Removed ${animes.length - uniqueAnimes.length} duplicate animes`);
     }
-    const animeIds = uniqueAnimes.map((a) => a.mal_id);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const animeIds = uniqueAnimes.map((a) => a.anime_id);
     const { data: existingAnimes } = await supabase.from("season_rankings").select("anime_id").eq("season", season).eq("year", year).in("anime_id", animeIds);
     const existingIds = new Set(existingAnimes?.map((a) => a.anime_id) || []);
-    console.log(`\u{1F4CA} Found ${existingIds.size} existing animes, ${animes.length - existingIds.size} new animes`);
-    const seasonAnimes = uniqueAnimes.map((anime) => ({
-      anime_id: anime.mal_id,
-      title: anime.title,
-      title_english: anime.title_english,
-      image_url: anime.images?.jpg?.large_image_url,
-      anime_score: anime.score,
-      scored_by: anime.scored_by,
-      members: anime.members,
-      favorites: anime.favorites,
-      popularity: anime.popularity,
-      rank: anime.rank,
-      type: anime.type,
-      status: anime.status,
-      rating: anime.rating,
-      source: anime.source,
-      episodes: anime.episodes,
-      aired_from: anime.aired?.from,
-      aired_to: anime.aired?.to,
-      duration: anime.duration,
-      demographics: anime.demographics || [],
-      genres: anime.genres || [],
-      themes: anime.themes || [],
-      studios: anime.studios || [],
-      synopsis: anime.synopsis,
-      season,
-      year,
-      pictures: []
-      // ✅ Will be populated later
-    }));
+    console.log(`\u{1F4CA} Found ${existingIds.size} existing, ${uniqueAnimes.length - existingIds.size} new`);
     const BATCH_SIZE = 100;
-    for (let i = 0; i < seasonAnimes.length; i += BATCH_SIZE) {
-      const batch = seasonAnimes.slice(i, i + BATCH_SIZE);
-      console.log(`\u{1F4E6} Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(seasonAnimes.length / BATCH_SIZE)} (${batch.length} animes)...`);
+    for (let i = 0; i < uniqueAnimes.length; i += BATCH_SIZE) {
+      const batch = uniqueAnimes.slice(i, i + BATCH_SIZE);
+      console.log(`\u{1F4E6} Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(uniqueAnimes.length / BATCH_SIZE)}...`);
       const { error } = await supabase.from("season_rankings").upsert(batch, {
         onConflict: "anime_id,season,year",
         ignoreDuplicates: false
       });
       if (error) {
         console.error("\u274C Batch upsert error:", error);
+        return c.json({ success: false, error: error.message }, 500);
       }
     }
-    itemsCreated = uniqueAnimes.filter((a) => !existingIds.has(a.mal_id)).length;
-    itemsUpdated = uniqueAnimes.filter((a) => existingIds.has(a.mal_id)).length;
-    console.log(`\u2705 Batch upsert complete: ${itemsCreated} created, ${itemsUpdated} updated`);
-    const { data: sampleRecords } = await supabase.from("season_rankings").select("anime_id, title, image_url").eq("season", season).eq("year", year).limit(3);
-    if (sampleRecords) {
-      console.log(`\u{1F50D} DEBUG - Sample records after upsert:`, sampleRecords.map((r) => ({
-        anime_id: r.anime_id,
-        title: r.title,
-        has_image_url: !!r.image_url,
-        image_url_preview: r.image_url?.substring(0, 50) + "..."
-      })));
-    }
-    console.log(`
-\u{1F5BC}\uFE0F Fetching pictures for ${uniqueAnimes.length} animes...`);
-    let picturesFetched = 0;
-    let picturesSkipped = 0;
-    const PICTURES_BATCH_SIZE = 3;
-    for (let i = 0; i < uniqueAnimes.length; i += PICTURES_BATCH_SIZE) {
-      const batch = uniqueAnimes.slice(i, i + PICTURES_BATCH_SIZE);
-      const promises = batch.map(async (anime) => {
-        try {
-          const picturesUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}/pictures`;
-          const picturesData = await fetchWithRetry(picturesUrl);
-          if (picturesData && picturesData.data && Array.isArray(picturesData.data)) {
-            const pictures = picturesData.data.map((p) => ({
-              jpg: p.jpg,
-              webp: p.webp
-            }));
-            if (pictures.length === 0) {
-              console.warn(`\u26A0\uFE0F Anime ${anime.mal_id} has empty pictures array`);
-              return { success: false, anime_id: anime.mal_id, error: "Empty pictures" };
-            }
-            const { error } = await supabase.from("season_rankings").update({ pictures }).eq("anime_id", anime.mal_id).eq("season", season).eq("year", year);
-            if (!error) {
-              console.log(`\u2705 Pictures saved for ${anime.mal_id}: ${pictures.length} images`);
-              return { success: true, anime_id: anime.mal_id };
-            } else {
-              console.error(`\u274C Error updating pictures for ${anime.mal_id}:`, error);
-              return { success: false, anime_id: anime.mal_id, error: error.message };
-            }
-          }
-          console.warn(`\u26A0\uFE0F No pictures data for ${anime.mal_id}`);
-          return { success: false, anime_id: anime.mal_id, error: "No pictures data" };
-        } catch (error) {
-          console.error(`\u26A0\uFE0F Failed to fetch pictures for ${anime.mal_id}:`, error);
-          return { success: false, anime_id: anime.mal_id, error: error instanceof Error ? error.message : "Unknown error" };
-        }
-      });
-      const results = await Promise.all(promises);
-      picturesFetched += results.filter((r) => r.success).length;
-      picturesSkipped += results.filter((r) => !r.success).length;
-      if ((i + PICTURES_BATCH_SIZE) % 15 === 0) {
-        console.log(`\u{1F4F8} Progress: ${Math.min(i + PICTURES_BATCH_SIZE, uniqueAnimes.length)}/${uniqueAnimes.length} animes (${picturesFetched} with pictures)`);
-      }
-      if (i + PICTURES_BATCH_SIZE < uniqueAnimes.length) {
-        await delay(1e3);
-      }
-    }
-    console.log(`\u2705 Pictures sync complete: ${picturesFetched} animes updated, ${picturesSkipped} skipped`);
-    const duration = Date.now() - startTime;
-    await supabase.from("sync_logs").insert({
-      sync_type: "season_rankings",
-      status: "success",
-      season,
-      year,
-      items_synced: uniqueAnimes.length,
-      items_created: itemsCreated,
-      items_updated: itemsUpdated,
-      duration_ms: duration
+    const inserted = uniqueAnimes.filter((a) => !existingIds.has(a.anime_id)).length;
+    const updated = uniqueAnimes.filter((a) => existingIds.has(a.anime_id)).length;
+    console.log(`\u2705 Save complete: ${inserted} inserted, ${updated} updated`);
+    return c.json({
+      success: true,
+      inserted,
+      updated,
+      total: animes.length
     });
-    console.log(`\u2705 ${season} ${year} synced: ${itemsCreated} created, ${itemsUpdated} updated (${duration}ms)`);
-    return { success: true, itemsCreated, itemsUpdated };
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\u274C Error syncing ${season} ${year}:`, error);
-    await supabase.from("sync_logs").insert({
-      sync_type: "season_rankings",
-      status: "error",
-      season,
-      year,
-      error_message: error.message,
-      error_details: { stack: error.stack },
-      duration_ms: duration
-    });
-    throw error;
-  }
-}
-async function syncUpcomingAnimes(supabase) {
-  console.log(`
-\u{1F52E} Syncing upcoming animes for "Later" tab...`);
-  const startTime = Date.now();
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
-  try {
-    let allAnimes = [];
-    let currentPage = 1;
-    let hasNextPage = true;
-    while (hasNextPage) {
-      const url = `${JIKAN_BASE_URL}/seasons/upcoming?page=${currentPage}`;
-      console.log(`\u{1F310} Fetching upcoming page ${currentPage}: ${url}`);
-      const data = await fetchWithRetry(url);
-      if (!data || !data.data) {
-        throw new Error(`No upcoming data received. Response: ${JSON.stringify(data)}`);
-      }
-      allAnimes = allAnimes.concat(data.data);
-      hasNextPage = data.pagination?.has_next_page || false;
-      currentPage++;
-      console.log(`\u{1F4C4} Page ${currentPage - 1}: Added ${data.data.length} animes. Total so far: ${allAnimes.length}`);
-      if (hasNextPage) {
-        await delay(RATE_LIMIT_DELAY);
-      }
-    }
-    console.log(`\u{1F4FA} Found ${allAnimes.length} total upcoming animes`);
-    const filtered = allAnimes.filter((anime) => anime.status === "Not yet aired").filter((anime) => anime.members >= 2e4);
-    console.log(`\u2705 Filtered to ${filtered.length} animes (Not yet aired + 20k+ members)`);
-    filtered.sort((a, b) => {
-      const membersA = a.members || 0;
-      const membersB = b.members || 0;
-      if (membersB !== membersA) return membersB - membersA;
-      return (b.score || 0) - (a.score || 0);
-    });
-    for (const anime of filtered) {
-      const seasonData = {
-        anime_id: anime.mal_id,
-        title: anime.title,
-        title_english: anime.title_english,
-        image_url: anime.images?.jpg?.large_image_url,
-        anime_score: anime.score,
-        // Using 'anime_score' to match database schema
-        scored_by: anime.scored_by,
-        members: anime.members,
-        favorites: anime.favorites,
-        popularity: anime.popularity,
-        rank: anime.rank,
-        type: anime.type,
-        status: anime.status,
-        rating: anime.rating,
-        source: anime.source,
-        episodes: anime.episodes,
-        aired_from: anime.aired?.from,
-        aired_to: anime.aired?.to,
-        duration: anime.duration,
-        demographics: anime.demographics || [],
-        genres: anime.genres || [],
-        themes: anime.themes || [],
-        studios: anime.studios || [],
-        synopsis: anime.synopsis,
-        season: anime.season || "upcoming",
-        // Use 'upcoming' if season is null
-        year: anime.year || 9999
-        // Use 9999 for unknown year to put at end
-      };
-      const { data: upsertData, error } = await supabase.from("season_rankings").upsert(seasonData, {
-        onConflict: "anime_id,season,year",
-        ignoreDuplicates: false
-      }).select();
-      if (error) {
-        console.error("Upsert error:", error);
-        continue;
-      }
-      if (upsertData && upsertData.length > 0) {
-        const existing = await supabase.from("season_rankings").select("created_at, updated_at").eq("id", upsertData[0].id).single();
-        if (existing.data.created_at === existing.data.updated_at) {
-          itemsCreated++;
-        } else {
-          itemsUpdated++;
-        }
-      }
-      await delay(RATE_LIMIT_DELAY);
-    }
-    const duration = Date.now() - startTime;
-    await supabase.from("sync_logs").insert({
-      sync_type: "upcoming",
-      status: "success",
-      items_synced: filtered.length,
-      items_created: itemsCreated,
-      items_updated: itemsUpdated,
-      duration_ms: duration
-    });
-    console.log(`\u2705 Upcoming animes synced: ${itemsCreated} created, ${itemsUpdated} updated (${duration}ms)`);
-    return { success: true, itemsCreated, itemsUpdated };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\u274C Error syncing upcoming animes:`, error);
-    await supabase.from("sync_logs").insert({
-      sync_type: "upcoming",
-      status: "error",
-      error_message: error.message,
-      error_details: { stack: error.stack },
-      duration_ms: duration
-    });
-    throw error;
-  }
-}
-async function syncAnticipatedAnimes(supabase) {
-  console.log(`
-\u2B50 Syncing most anticipated animes...`);
-  const startTime = Date.now();
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
-  try {
-    const currentYear = (/* @__PURE__ */ new Date()).getUTCFullYear();
-    const seasons = [
-      { season: "winter", year: currentYear },
-      { season: "spring", year: currentYear },
-      { season: "summer", year: currentYear },
-      { season: "fall", year: currentYear },
-      { season: "winter", year: currentYear + 1 }
-    ];
-    const allAnimes = [];
-    const processedAnimeIds = /* @__PURE__ */ new Set();
-    for (const { season, year } of seasons) {
-      console.log(`
-\u23F3 Fetching ALL pages for ${season} ${year} to find anticipated animes...`);
-      let seasonPage = 1;
-      let seasonHasNext = true;
-      while (seasonHasNext && seasonPage <= 5) {
-        const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${seasonPage}`;
-        const data = await fetchWithRetry(url);
-        if (!data || !data.data || data.data.length === 0) {
-          break;
-        }
-        const filtered = data.data.filter((anime) => anime.status === "Not yet aired").filter((anime) => anime.members >= 1e4).filter((anime) => {
-          if (processedAnimeIds.has(anime.mal_id)) {
-            return false;
-          }
-          return true;
-        });
-        console.log(`\u{1F4FA} ${season} ${year} (Page ${seasonPage}): Found ${filtered.length} NEW anticipated animes`);
-        filtered.forEach((anime) => processedAnimeIds.add(anime.mal_id));
-        allAnimes.push(...filtered);
-        seasonHasNext = data.pagination?.has_next_page || false;
-        seasonPage++;
-        if (seasonHasNext) {
-          await delay(RATE_LIMIT_DELAY);
-        }
-      }
-    }
-    console.log(`
-\u{1F52E} Fetching /seasons/upcoming for Later tab...`);
-    let upcomingPage = 1;
-    let hasNextPage = true;
-    while (hasNextPage) {
-      const upcomingUrl = `${JIKAN_BASE_URL}/seasons/upcoming?page=${upcomingPage}`;
-      console.log(`\u{1F4C4} Fetching upcoming page ${upcomingPage}: ${upcomingUrl}`);
-      const upcomingData = await fetchWithRetry(upcomingUrl);
-      if (!upcomingData || !upcomingData.data) {
-        console.log(`\u26A0\uFE0F  No data on page ${upcomingPage}, stopping`);
-        break;
-      }
-      const filteredUpcoming = upcomingData.data.filter((anime) => anime.status === "Not yet aired").filter((anime) => anime.members >= 1e4).filter((anime) => {
-        if (processedAnimeIds.has(anime.mal_id)) {
-          console.log(`\u23ED\uFE0F  Skipping ${anime.title} (ID: ${anime.mal_id}) - already in 2026 seasons`);
-          return false;
-        }
-        return true;
-      });
-      console.log(`\u{1F4FA} Upcoming page ${upcomingPage}: Found ${filteredUpcoming.length} NEW animes (${upcomingData.data.length} total before dedup)`);
-      filteredUpcoming.forEach((anime) => processedAnimeIds.add(anime.mal_id));
-      allAnimes.push(...filteredUpcoming);
-      hasNextPage = upcomingData.pagination?.has_next_page || false;
-      upcomingPage++;
-      if (hasNextPage) {
-        await delay(RATE_LIMIT_DELAY);
-      }
-    }
-    allAnimes.sort((a, b) => (b.members || 0) - (a.members || 0));
-    console.log(`
-\u{1F4CA} Total unique animes: ${allAnimes.length}`);
-    console.log(`\u{1F4CA} Processed anime IDs: ${processedAnimeIds.size}`);
-    console.log(`
-\u{1F4BE} Starting upsert for ${allAnimes.length} animes...`);
-    for (let i = 0; i < allAnimes.length; i++) {
-      const anime = allAnimes[i];
-      let imageUrl = anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "";
-      if (!imageUrl || imageUrl.trim() === "") {
-        console.warn(`\u26A0\uFE0F  Anime ${anime.title} (ID: ${anime.mal_id}) has no image, fetching full details...`);
-        try {
-          const detailsUrl = `${JIKAN_BASE_URL}/anime/${anime.mal_id}`;
-          const detailsData = await fetchWithRetry(detailsUrl);
-          if (detailsData?.data?.images?.jpg?.large_image_url) {
-            imageUrl = detailsData.data.images.jpg.large_image_url;
-            console.log(`\u2705 Found image from full details: ${imageUrl}`);
-          } else if (detailsData?.data?.images?.jpg?.image_url) {
-            imageUrl = detailsData.data.images.jpg.image_url;
-            console.log(`\u2705 Found image from full details: ${imageUrl}`);
-          }
-          await delay(RATE_LIMIT_DELAY);
-        } catch (error2) {
-          console.error(`\u274C Error fetching full details for ${anime.title}:`, error2);
-        }
-      }
-      if (!imageUrl || imageUrl.trim() === "") {
-        console.warn(`\u26A0\uFE0F  SKIPPING anime ${anime.title} (ID: ${anime.mal_id}) - no image URL available even after fetching full details`);
-        continue;
-      }
-      const seasonAnimeToSave = {
-        anime_id: anime.mal_id,
-        title: anime.title,
-        title_english: anime.title_english,
-        image_url: imageUrl,
-        anime_score: anime.score,
-        scored_by: anime.scored_by,
-        members: anime.members,
-        favorites: anime.favorites,
-        type: anime.type,
-        status: anime.status,
-        rating: anime.rating,
-        source: anime.source,
-        episodes: anime.episodes,
-        aired_from: anime.aired?.from,
-        season: anime.season ? anime.season.toLowerCase() : "upcoming",
-        year: anime.year || 9999,
-        synopsis: anime.synopsis,
-        demographics: anime.demographics || [],
-        genres: anime.genres || [],
-        themes: anime.themes || [],
-        studios: anime.studios || []
-      };
-      const { data: existing } = await supabase.from("season_rankings").select("id").eq("anime_id", anime.mal_id).eq("season", seasonAnimeToSave.season).eq("year", seasonAnimeToSave.year).maybeSingle();
-      const isUpdate = !!existing;
-      const { data: upsertData, error } = await supabase.from("season_rankings").upsert(seasonAnimeToSave, {
-        onConflict: "anime_id,season,year",
-        ignoreDuplicates: false
-      }).select();
-      if (error) {
-        console.error("Upsert error:", error);
-        continue;
-      }
-      if (upsertData && upsertData.length > 0) {
-        if (isUpdate) {
-          itemsUpdated++;
-          console.log(`\u{1F504} #${i + 1} Updated: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
-        } else {
-          itemsCreated++;
-          console.log(`\u2705 #${i + 1} Created: ${anime.title} (${anime.season} ${anime.year}, Members: ${anime.members})`);
-        }
-      }
-    }
-    const duration = Date.now() - startTime;
-    await supabase.from("sync_logs").insert({
-      sync_type: "anticipated",
-      status: "success",
-      items_synced: allAnimes.length,
-      items_created: itemsCreated,
-      items_updated: itemsUpdated,
-      duration_ms: duration
-    });
-    console.log(`\u2705 Anticipated animes synced: ${itemsCreated} created, ${itemsUpdated} updated (${duration}ms)`);
-    return { success: true, itemsCreated, itemsUpdated };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\u274C Error syncing anticipated animes:`, error);
-    await supabase.from("sync_logs").insert({
-      sync_type: "anticipated",
-      status: "error",
-      error_message: error.message,
-      error_details: { stack: error.stack },
-      duration_ms: duration
-    });
-    throw error;
-  }
-}
-serve(async (req) => {
-  try {
-    if (req.method === "OPTIONS") {
-      return new Response("ok", {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
-        }
-      });
-    }
-    console.log("\n\u{1F680} Sync anime data function invoked");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const body = await req.text();
-    console.log("\u{1F4E6} Raw body received:", body);
-    const { sync_type, week_number, season, year } = body ? JSON.parse(body) : {};
-    console.log("\u{1F4CB} Parsed sync_type:", sync_type);
-    let result;
-    switch (sync_type) {
-      case "weekly_episodes": {
-        let currentWeek = week_number;
-        if (!currentWeek) {
-          const today = /* @__PURE__ */ new Date();
-          const month = today.getUTCMonth();
-          const year2 = today.getUTCFullYear();
-          let startMonth = 0;
-          if (month >= 3 && month <= 5) startMonth = 3;
-          else if (month >= 6 && month <= 8) startMonth = 6;
-          else if (month >= 9) startMonth = 9;
-          const seasonStart = new Date(Date.UTC(year2, startMonth, 1, 0, 0, 0, 0));
-          const firstSunday = new Date(seasonStart);
-          const dayOfWeek = firstSunday.getUTCDay();
-          const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-          firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
-          firstSunday.setUTCHours(23, 59, 59, 999);
-          if (today >= seasonStart && today <= firstSunday) {
-            currentWeek = 1;
-          } else {
-            const firstMonday = new Date(firstSunday);
-            firstMonday.setUTCDate(firstSunday.getUTCDate() + 1);
-            firstMonday.setUTCHours(0, 0, 0, 0);
-            const diffTime = today.getTime() - firstMonday.getTime();
-            const diffDays = Math.floor(diffTime / (1e3 * 60 * 60 * 24));
-            currentWeek = Math.floor(diffDays / 7) + 2;
-          }
-          currentWeek = Math.max(1, Math.min(15, currentWeek));
-          console.log(`\u{1F4C5} Auto-detected current week: ${currentWeek} (based on date: ${today.toISOString().split("T")[0]})`);
-        }
-        const weeksToSync = [];
-        for (let i = Math.max(1, currentWeek - 2); i <= currentWeek; i++) {
-          weeksToSync.push(i);
-        }
-        console.log(`\u{1F4C5} Syncing weeks: ${weeksToSync.join(", ")}`);
-        const results = [];
-        for (const week of weeksToSync) {
-          console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`);
-          console.log(`\u{1F4C5} Starting sync for week ${week}...`);
-          console.log(`\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-          const weekResult = await syncWeeklyEpisodes(supabase, week);
-          results.push({ week, ...weekResult });
-          if (week !== weeksToSync[weeksToSync.length - 1]) {
-            await delay(2e3);
-          }
-        }
-        result = {
-          success: true,
-          weeks_synced: weeksToSync,
-          results
-        };
-        break;
-      }
-      case "season_rankings": {
-        const todayForSeason = /* @__PURE__ */ new Date();
-        const currentMonth = todayForSeason.getUTCMonth();
-        const currentYearForSeason = todayForSeason.getUTCFullYear();
-        let detectedSeason = "winter";
-        if (currentMonth >= 3 && currentMonth <= 5) detectedSeason = "spring";
-        else if (currentMonth >= 6 && currentMonth <= 8) detectedSeason = "summer";
-        else if (currentMonth >= 9) detectedSeason = "fall";
-        const seasonToSync = season || detectedSeason;
-        const yearToSync = year || currentYearForSeason;
-        const syncResult = await syncSeasonRankings(supabase, seasonToSync, yearToSync);
-        result = {
-          ...syncResult,
-          total: syncResult.itemsCreated + syncResult.itemsUpdated,
-          inserted: syncResult.itemsCreated,
-          updated: syncResult.itemsUpdated,
-          skipped: 0,
-          deleted: 0,
-          errors: 0
-        };
-        break;
-      }
-      case "anticipated":
-        result = await syncAnticipatedAnimes(supabase);
-        break;
-      case "upcoming":
-        result = await syncUpcomingAnimes(supabase);
-        break;
-      default:
-        throw new Error(`Unknown sync_type: ${sync_type}`);
-    }
-    return new Response(
-      JSON.stringify({ success: true, ...result }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      }
-    );
-  } catch (error) {
-    console.error("Function error:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        stack: error.stack
-      }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      }
-    );
+    console.error("\u274C Save batch error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
   }
 });
+app.post("/make-server-c1d1bfd8/update-anime-pictures", async (c) => {
+  try {
+    const { anime_id, season, year, pictures } = await c.req.json();
+    if (!anime_id || !season || !year || !pictures) {
+      return c.json({ success: false, error: "Missing required fields" }, 400);
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { error } = await supabase.from("season_rankings").update({ pictures }).eq("anime_id", anime_id).eq("season", season).eq("year", year);
+    if (error) {
+      console.error(`\u274C Error updating pictures for anime ${anime_id}:`, error);
+      return c.json({ success: false, error: error.message }, 500);
+    }
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("\u274C Update pictures error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
+  try {
+    const season = c.req.param("season");
+    const year = parseInt(c.req.param("year"));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`\u{1F680} Iniciando sync da temporada ${season} ${year}...`);
+    const result = await syncSeason(supabase, season, year);
+    return c.json({
+      success: result.success,
+      total: result.total,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      errors: result.errors,
+      message: `Sync completed: ${result.inserted} animes inserted/updated`
+    });
+  } catch (error) {
+    console.error("\u274C Sync SEASON error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/sync-season/:season/:year", async (c) => {
+  try {
+    const season = c.req.param("season");
+    const year = parseInt(c.req.param("year"));
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`\u{1F680} Iniciando sync da temporada ${season} ${year}...`);
+    const result = await syncSeason(supabase, season, year);
+    return c.json({
+      success: result.success,
+      total: result.total,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      errors: result.errors,
+      message: `Sync completed: ${result.inserted} animes inserted/updated`
+    });
+  } catch (error) {
+    console.error("\u274C Sync SEASON error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/sync-past/:season/:year", async (c) => {
+  try {
+    const key = c.req.query("key");
+    if (key !== "sync2025") {
+      return c.json({
+        success: false,
+        error: "Invalid or missing security key. Add ?key=sync2025 to the URL"
+      }, 401);
+    }
+    const season = c.req.param("season");
+    const year = parseInt(c.req.param("year"));
+    console.log(`[Sync Past] \u{1F50D} Starting to sync and populate ${season} ${year}...`);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Missing Supabase credentials");
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`[Sync Past] Step 1: Syncing ${season} ${year} season data from Jikan...`);
+    const syncResult = await syncSeason(supabase, season, year);
+    if (!syncResult.success) {
+      return c.json({
+        success: false,
+        error: `Failed to sync season: ${syncResult.errors}`
+      }, 500);
+    }
+    console.log(`[Sync Past] \u2705 Step 1 complete: ${syncResult.inserted} animes synced`);
+    console.log(`[Sync Past] Step 2: Enriching episodes and populating weekly_episodes...`);
+    const enrichResult = await enrichEpisodes(supabase, season, year);
+    console.log(`[Sync Past] \u2705 Successfully completed sync for ${season} ${year}`);
+    console.log(`[Sync Past] Total Animes: ${syncResult.total}`);
+    console.log(`[Sync Past] Enriched Episodes: ${enrichResult.enriched}`);
+    return c.json({
+      success: true,
+      message: `Successfully synced and populated ${season} ${year}`,
+      season,
+      year,
+      totalAnimes: syncResult.total,
+      insertedAnimes: syncResult.inserted,
+      totalEpisodes: enrichResult.enriched,
+      insertedEpisodes: enrichResult.enriched,
+      errors: enrichResult.errors
+    });
+  } catch (error) {
+    console.error("[Sync Past] \u274C Error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.get("/make-server-c1d1bfd8/search", async (c) => {
+  try {
+    const query = c.req.query("q")?.toLowerCase().trim() || "";
+    const limitParam = c.req.query("limit");
+    const limit = limitParam ? parseInt(limitParam) : 100;
+    if (!query || query.length < 3) {
+      return c.json({
+        success: true,
+        results: [],
+        count: 0,
+        message: "Query must be at least 3 characters"
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return c.json({
+        success: false,
+        error: "Missing Supabase credentials"
+      }, 500);
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log(`[Search] Query: "${query}", Limit: ${limit}`);
+    const seasonYearPattern = /^(winter|spring|summer|fall)\s+(\d{4})$/i;
+    const match = query.match(seasonYearPattern);
+    let filterSeason = null;
+    let filterYear = null;
+    if (match) {
+      filterSeason = match[1].toLowerCase();
+      filterYear = parseInt(match[2]);
+      console.log(`[Search] Detected Season + Year filter: ${filterSeason} ${filterYear}`);
+    }
+    const extractTags = (jsonbArray) => {
+      if (!Array.isArray(jsonbArray)) return [];
+      return jsonbArray.map(
+        (item) => typeof item === "string" ? item : item.name || ""
+      ).filter(Boolean);
+    };
+    const tagsMatchQuery = (jsonbArray, query2) => {
+      const tags = extractTags(jsonbArray);
+      return tags.some((tag) => tag.toLowerCase().includes(query2));
+    };
+    const calculateRelevance = (title, titleEnglish, season, genres, themes, demographics) => {
+      const titleLower = title?.toLowerCase() || "";
+      const titleEnglishLower = titleEnglish?.toLowerCase() || "";
+      const seasonLower = season?.toLowerCase() || "";
+      if (titleLower === query || titleEnglishLower === query) return 1e3;
+      if (titleLower.startsWith(query) || titleEnglishLower.startsWith(query)) return 500;
+      if (titleLower.includes(query) || titleEnglishLower.includes(query)) return 100;
+      if (seasonLower === query) return 50;
+      if (seasonLower.includes(query)) return 30;
+      if (tagsMatchQuery(genres, query) || tagsMatchQuery(themes, query) || tagsMatchQuery(demographics, query)) {
+        return 10;
+      }
+      return 0;
+    };
+    const allResults = [];
+    const { data: weeklyData, error: weeklyError } = await supabase.from("weekly_episodes").select("anime_id, anime_title, anime_title_english, anime_image_url, week_number, week_start_date, week_end_date, genres, themes, demographics, members, score, type").not("episode_score", "is", null).order("members", { ascending: false, nullsFirst: false }).limit(200);
+    if (!weeklyError && weeklyData) {
+      const filteredWeekly = weeklyData.map((ep) => ({
+        ...ep,
+        relevance: calculateRelevance(
+          ep.anime_title,
+          ep.anime_title_english,
+          null,
+          // weekly episodes don't have season field
+          ep.genres || [],
+          ep.themes || [],
+          ep.demographics || []
+        )
+      })).filter((ep) => ep.relevance > 0);
+      const uniqueAnimes = /* @__PURE__ */ new Map();
+      filteredWeekly.forEach((ep) => {
+        if (!uniqueAnimes.has(ep.anime_id) || uniqueAnimes.get(ep.anime_id).relevance < ep.relevance) {
+          uniqueAnimes.set(ep.anime_id, {
+            id: ep.anime_id,
+            title: ep.anime_title_english || ep.anime_title,
+            imageUrl: ep.anime_image_url,
+            season: null,
+            // Will try to infer from dates
+            year: null,
+            type: ep.type,
+            genres: extractTags(ep.genres || []),
+            themes: extractTags(ep.themes || []),
+            demographics: extractTags(ep.demographics || []),
+            members: ep.members,
+            score: ep.score,
+            source: "weekly_episodes",
+            relevance: ep.relevance
+          });
+        }
+      });
+      allResults.push(...Array.from(uniqueAnimes.values()));
+      console.log(`[Search] Found ${uniqueAnimes.size} unique animes in weekly_episodes`);
+    }
+    let seasonRankingsQuery = supabase.from("season_rankings").select("anime_id, title, title_english, image_url, season, year, genres, themes, demographics, members, anime_score, type");
+    if (filterSeason && filterYear) {
+      seasonRankingsQuery = seasonRankingsQuery.ilike("season", filterSeason).eq("year", filterYear);
+      console.log(`[Search] Applying filter: season=${filterSeason}, year=${filterYear}`);
+    } else {
+      seasonRankingsQuery = seasonRankingsQuery.or(`title.ilike.%${query}%,title_english.ilike.%${query}%,season.ilike.%${query}%`);
+    }
+    const { data: seasonData, error: seasonError } = await seasonRankingsQuery.order("members", { ascending: false, nullsFirst: false }).limit(500);
+    if (!seasonError && seasonData) {
+      const filteredSeason = seasonData.map((anime) => ({
+        ...anime,
+        // ✅ FIXED: If season+year filter is active, give all results high relevance
+        relevance: filterSeason && filterYear ? 1e3 : calculateRelevance(
+          anime.title,
+          anime.title_english,
+          anime.season,
+          anime.genres || [],
+          anime.themes || [],
+          anime.demographics || []
+        )
+      })).filter((anime) => anime.relevance > 0).map((anime) => ({
+        id: anime.anime_id,
+        title: anime.title_english || anime.title,
+        imageUrl: anime.image_url,
+        season: anime.season,
+        year: anime.year,
+        type: anime.type,
+        genres: extractTags(anime.genres || []),
+        themes: extractTags(anime.themes || []),
+        demographics: extractTags(anime.demographics || []),
+        members: anime.members,
+        score: anime.anime_score,
+        // ✅ FIXED: Changed from anime.score to anime.anime_score
+        source: "season_rankings",
+        relevance: anime.relevance
+      }));
+      allResults.push(...filteredSeason);
+      console.log(`[Search] Found ${filteredSeason.length} animes in season_rankings`);
+    }
+    const uniqueResults = /* @__PURE__ */ new Map();
+    allResults.forEach((result) => {
+      if (!uniqueResults.has(result.id) || uniqueResults.get(result.id).relevance < result.relevance) {
+        uniqueResults.set(result.id, result);
+      }
+    });
+    const totalUniqueResults = Array.from(uniqueResults.values());
+    const sortedResults = totalUniqueResults.sort((a, b) => {
+      if (b.relevance !== a.relevance) {
+        return b.relevance - a.relevance;
+      }
+      return (b.members || 0) - (a.members || 0);
+    }).slice(0, limit);
+    console.log(`[Search] Total unique results: ${totalUniqueResults.length}, returning: ${sortedResults.length}`);
+    return c.json({
+      success: true,
+      results: sortedResults,
+      totalCount: totalUniqueResults.length,
+      // Total before limit
+      query
+    });
+  } catch (error) {
+    console.error("\u274C Search error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+app.post("/make-server-c1d1bfd8/export-ranks", async (c) => {
+  try {
+    const body = await c.req.json();
+    console.log("[Export] \u{1F4E5} Export request received:", body);
+    const { buffer, contentType } = await generateExport(body);
+    console.log("[Export] \u2705 Export generated successfully");
+    return new Response(buffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="export.${body.format}"`,
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  } catch (error) {
+    console.error("\u274C Export error:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Export failed"
+    }, 500);
+  }
+});
+app.onError((err, c) => {
+  console.error("\u274C Unhandled error:", err);
+  return c.json({
+    success: false,
+    error: err.message || "Internal server error",
+    stack: err.stack
+  }, 500);
+});
+app.notFound((c) => {
+  return c.json({
+    success: false,
+    error: "Not Found",
+    path: c.req.path
+  }, 404);
+});
+Deno.serve(app.fetch);

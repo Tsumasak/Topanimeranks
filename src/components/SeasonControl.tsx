@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import AnticipatedAnimeCard from './AnticipatedAnimeCard';
 import { SEASONS_DATA } from '../config/seasons';
 import { SupabaseService } from '../services/supabase';
-import { AnticipatedAnime, JikanAnimeData } from '../types/anime';
+import { AnticipatedAnime } from '../types/anime';
 
 const SeasonControl = () => {
   console.log("[SeasonControl] Component rendering/re-rendering");

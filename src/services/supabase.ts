@@ -84,28 +84,7 @@ interface SeasonRankingRow {
   studios: any[];
 }
 
-interface AnticipatedAnimeRow {
-  anime_id: number;
-  title: string;
-  title_english: string;
-  image_url: string;
-  score: number | null; // FIXED: Match the anticipated_animes table column name
-  scored_by: number | null;
-  members: number;
-  favorites: number | null;
-  synopsis: string;
-  type: string;
-  status: string | null;
-  episodes: number | null;
-  aired_from: string | null;
-  aired_to: string | null;
-  season: string | null;
-  year: number | null;
-  demographics: any[];
-  genres: any[];
-  themes: any[];
-  studios: any[];
-}
+
 
 interface SyncStatusRow {
   sync_type: string;

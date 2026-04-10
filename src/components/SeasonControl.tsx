@@ -84,126 +84,16 @@ const SeasonControl = () => {
       try {
         const { season, year, isLater } = parseSeasonId(activeSeason);
         
-        // Use Supabase service - ANTICIPATED ANIMES table
-        if (isLater) {
-          // For "Later" tab, get all upcoming animes from Summer 2026 onwards
-          // This function already returns AnticipatedAnime[] format - no need to transform!
-          const laterAnimes = await SupabaseService.getAnticipatedAnimesLater();
-          
-          console.log(`[SeasonControl] ✅ Fetched ${laterAnimes.length} animes for later (already in AnticipatedAnime format)`);
-          
-          // Set displayedAnimes directly - no transformation needed!
-          setDisplayedAnimes(laterAnimes);
-          setAnimationKey('later');
-          console.log(`[SeasonControl] 🎬 CRITICAL: Updating displayedAnimes (${laterAnimes.length}) and animationKey (later)`);
-          return; // CRITICAL: Early return to avoid double transformation
-        }
-        
-        // For regular seasons (winter/spring)
-        let jikanAnimesList: JikanAnimeData[];
-        
-        if (activeSeason === 'later') {
-          // This should never execute now due to early return above
-          const laterAnimes = await SupabaseService.getAnticipatedAnimesLater();
-          // Transform AnticipatedAnime to JikanAnimeData for type consistency
-          jikanAnimesList = laterAnimes.map(anime => ({
-            mal_id: anime.id,
-            url: anime.url,
-            title: anime.title,
-            title_english: anime.title,
-            title_japanese: null,
-            images: {
-              jpg: {
-                image_url: anime.imageUrl,
-                small_image_url: anime.imageUrl,
-                large_image_url: anime.imageUrl,
-              },
-              webp: {
-                image_url: anime.imageUrl,
-                small_image_url: anime.imageUrl,
-                large_image_url: anime.imageUrl,
-              },
-            },
-            score: anime.animeScore,
-            scored_by: null,
-            members: anime.members,
-            favorites: 0,
-            popularity: 0,
-            rank: null,
-            type: anime.animeType,
-            status: 'Not yet aired',
-            episodes: null,
-            aired: { from: '', to: null },
-            season: anime.season,
-            year: anime.year,
-            synopsis: anime.synopsis,
-            demographics: anime.demographics.map(d => ({ mal_id: 0, name: d })),
-            genres: anime.genres.map(g => ({ mal_id: 0, name: g })),
-            themes: anime.themes.map(t => ({ mal_id: 0, name: t })),
-            studios: anime.studios.map(s => ({ mal_id: 0, name: s })),
-          }));
+        let transformedAnimes: AnticipatedAnime[] = [];
+
+        if (isLater || activeSeason === 'later') {
+          transformedAnimes = await SupabaseService.getAnticipatedAnimesLater();
+          console.log(`[SeasonControl] ✅ Fetched ${transformedAnimes.length} animes for later`);
         } else {
-          // For regular seasons, use getAnticipatedAnimesBySeason (ordered by Plan to Watch count)
-          const anticipatedList = await SupabaseService.getAnticipatedAnimesBySeason(season, year);
-          
-          // Transform AnticipatedAnime to JikanAnimeData format for compatibility
-          jikanAnimesList = anticipatedList.map(anime => ({
-            mal_id: anime.id,
-            url: anime.url,
-            title: anime.title,
-            title_english: anime.title,
-            title_japanese: null,
-            images: {
-              jpg: {
-                image_url: anime.imageUrl,
-                small_image_url: anime.imageUrl,
-                large_image_url: anime.imageUrl,
-              },
-              webp: {
-                image_url: anime.imageUrl,
-                small_image_url: anime.imageUrl,
-                large_image_url: anime.imageUrl,
-              },
-            },
-            score: anime.animeScore,
-            scored_by: null,
-            members: anime.members,
-            favorites: 0,
-            popularity: 0,
-            rank: null,
-            type: anime.animeType,
-            status: 'Not yet aired',
-            episodes: null,
-            aired: { from: '', to: null },
-            season: anime.season,
-            year: anime.year,
-            synopsis: anime.synopsis,
-            demographics: anime.demographics.map(d => ({ mal_id: 0, name: d })),
-            genres: anime.genres.map(g => ({ mal_id: 0, name: g })),
-            themes: anime.themes.map(t => ({ mal_id: 0, name: t })),
-            studios: anime.studios.map(s => ({ mal_id: 0, name: s })),
-          }));
+          transformedAnimes = await SupabaseService.getAnticipatedAnimesBySeason(season, year);
+          console.log(`[SeasonControl] ✅ Fetched ${transformedAnimes.length} animes for ${activeSeason}`);
         }
         
-        // Transform to AnticipatedAnime format for display
-        const transformedAnimes: AnticipatedAnime[] = jikanAnimesList.map(anime => ({
-          id: anime.mal_id,
-          title: anime.title_english || anime.title,
-          imageUrl: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-          animeScore: anime.score,
-          members: anime.members || 0,
-          synopsis: anime.synopsis || '',
-          animeType: anime.type || 'TV',
-          season: anime.season || season,
-          year: anime.year || year,
-          demographics: Array.isArray(anime.demographics) ? anime.demographics.map(d => typeof d === 'string' ? d : d.name) : [],
-          genres: Array.isArray(anime.genres) ? anime.genres.map(g => typeof g === 'string' ? g : g.name) : [],
-          themes: Array.isArray(anime.themes) ? anime.themes.map(t => typeof t === 'string' ? t : t.name) : [],
-          studios: Array.isArray(anime.studios) ? anime.studios.map(s => typeof s === 'string' ? s : s.name) : [],
-          url: `/anime/${anime.mal_id}`,
-        }));
-        
-        console.log(`[SeasonControl] ✅ Fetched ${transformedAnimes.length} animes for ${activeSeason}`);
         setAnimes(transformedAnimes);
         
         // CRITICAL FIX: Update displayed animes AND animation key together

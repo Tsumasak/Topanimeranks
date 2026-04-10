@@ -116,9 +116,8 @@ export async function syncUpcoming(supabase: any) {
             anime_id: anime.mal_id,
             title: anime.title,
             title_english: anime.title_english || anime.title,
-            title_japanese: anime.title_japanese || null,
             image_url: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
-            score: anime.score,
+            anime_score: anime.score,
             scored_by: anime.scored_by,
             members: anime.members,
             favorites: anime.favorites,
@@ -137,15 +136,14 @@ export async function syncUpcoming(supabase: any) {
             themes: anime.themes || [],
             studios: anime.studios || [],
             synopsis: anime.synopsis || '',
-            season: anime.season || null, // Pode ser null para "2026 to ?", "2027 to ?", etc.
-            year: anime.year || null, // Pode ser null para "Not available"
-            position: currentPosition++, // Position based on order in API
+            season: anime.season || 'upcoming',
+            year: anime.year || 9999,
             updated_at: new Date().toISOString(),
           };
           
           // Verificar se já existe antes de inserir
           const { data: existingAnime } = await supabase
-            .from('anticipated_animes')
+            .from('season_rankings')
             .select('id')
             .eq('anime_id', anime.mal_id)
             .maybeSingle();
@@ -155,14 +153,14 @@ export async function syncUpcoming(supabase: any) {
           if (existingAnime) {
             // Atualizar anime existente
             const { error } = await supabase
-              .from('anticipated_animes')
+              .from('season_rankings')
               .update(animeData)
               .eq('anime_id', anime.mal_id);
             upsertError = error;
           } else {
             // Inserir novo anime
             const { error } = await supabase
-              .from('anticipated_animes')
+              .from('season_rankings')
               .insert(animeData);
             upsertError = error;
           }

@@ -183,25 +183,7 @@ serve(async (req) => {
       await delay(RATE_LIMIT_DELAY);
     }
     
-    // Check if same anime exists in anticipated_animes to keep things consistent
-    if (itemsUpdated > 0) {
-      console.log("\n🔄 Updating anticipated_animes out-of-sync records if any...");
-      try {
-        const ids = animesToUpdate.map(a => a.anime_id);
-        
-        for (let i = 0; i < animesToUpdate.length; i++) {
-          const dbAnime = animesToUpdate[i];
-          if (errorIds.includes(dbAnime.anime_id)) continue;
-          
-          await supabase
-            .rpc('update_anticipated_from_season_rankings', { 
-               p_anime_id: dbAnime.anime_id
-            }).catch(() => null);
-        }
-      } catch (e) {
-        console.error("Non-critical error syncing anticipated_animes:", e);
-      }
-    }
+
 
     const duration = Date.now() - startTime;
     

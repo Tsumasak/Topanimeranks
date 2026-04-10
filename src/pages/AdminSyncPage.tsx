@@ -374,6 +374,50 @@ export default function AdminSyncPage() {
     }
   };
 
+  const updateAnimeMetadata = async () => {
+    const key = 'update_metadata';
+    setSyncing(prev => ({ ...prev, [key]: true }));
+    
+    addLog(`\n🔄 Starting bulk metadata update for out-of-date animes...`, 'info');
+    
+    try {
+      const url = `https://${projectId}.supabase.co/functions/v1/update-anime-metadata`;
+      
+      addLog('📡 Calling update-anime-metadata (processing up to 60 animes)...', 'info');
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        addLog(`❌ Response is not JSON. Status: ${response.status}`, 'error');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addLog(`✅ SUCCESS: Metadata update completed!`, 'success');
+        addLog(`📊 Processed: ${data.processed || 0}`, 'success');
+        addLog(`📊 Updated: ${data.updated || 0}`, 'success');
+        if (data.errors > 0) addLog(`⚠️ Errors: ${data.errors}`, 'warning');
+        if (data.timeoutReached) addLog(`⏱️ Stopped early due to timeout. Run again.`, 'warning');
+      } else {
+        addLog(`❌ ERROR: ${data.error || data.message || 'Unknown error'}`, 'error');
+      }
+      
+    } catch (error) {
+      addLog(`❌ FETCH ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setSyncing(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   // Helper to get season names and previous seasons
   const getSeasonInfo = () => {
     const now = new Date();
@@ -571,6 +615,24 @@ export default function AdminSyncPage() {
                 className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(139,92,246,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(139,92,246,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {syncing.populate_year_2024 ? '⏳ Populating...' : '📅 2024'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Update Metadata Block */}
+        <div className="mb-7">
+          <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">🔄 Global Data Maintenance</h2>
+          
+          <div>
+            <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Update stale anime metadata (Score, Members, Status, etc)</p>
+            <div className="grid grid-cols-1 gap-[15px]">
+              <button
+                onClick={updateAnimeMetadata}
+                disabled={syncing.update_metadata}
+                className="bg-gradient-to-br from-[#0284c7] to-[#0369a1] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(2,132,199,0.4)] hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(2,132,199,0.6)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {syncing.update_metadata ? '⏳ Updating Metadata...' : '🔄 Update 60 Oldest Animes'}
               </button>
             </div>
           </div>

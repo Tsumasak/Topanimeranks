@@ -2,9 +2,10 @@
 
 ## ✅ MUDANÇAS IMPLEMENTADAS
 
-As seguintes Edge Functions foram atualizadas para suportar processamento dinâmico de weeks:
+As seguintes Edge Functions foram atualizadas/criadas para suportar processamento e sync dinâmico:
 - ✅ `/supabase/functions/insert-weekly-episodes/index.ts`
 - ✅ `/supabase/functions/update-weekly-episodes/index.ts`
+- ✅ `/supabase/functions/update-anime-metadata/index.ts` (NOVA)
 
 Ambas agora aceitam `week_number` via POST body com os seguintes valores:
 - `"current"` - Processa a week atual
@@ -28,12 +29,16 @@ supabase functions deploy insert-weekly-episodes
 
 # Deploy update-weekly-episodes
 supabase functions deploy update-weekly-episodes
+
+# Deploy update-anime-metadata
+supabase functions deploy update-anime-metadata
 ```
 
 3. Aguarde até ver a mensagem de sucesso:
    ```
    ✅ Deployed Function insert-weekly-episodes
    ✅ Deployed Function update-weekly-episodes
+   ✅ Deployed Function update-anime-metadata
    ```
 
 ---
@@ -194,6 +199,23 @@ SELECT cron.schedule(
       ) AS request_id;
     $$
 );
+
+-- ♻️ CRON 7: Update Anime Metadata (A cada 1 hora)
+-- Isso garante que animes antigos e novas pontuações/membros sejam atualizados continuamente
+SELECT cron.schedule(
+    'update-anime-metadata-hourly',
+    '0 * * * *',
+    $$
+    SELECT
+      net.http_post(
+        url := (SELECT value FROM app_config WHERE key = 'supabase_url') || '/functions/v1/update-anime-metadata',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+        )
+      ) AS request_id;
+    $$
+);
 ```
 
 4. Clique em **"RUN"** para executar
@@ -220,18 +242,20 @@ WHERE jobname IN (
     'insert-2-weeks-ago',
     'update-current-week',
     'update-previous-week',
-    'update-2-weeks-ago'
+    'update-2-weeks-ago',
+    'update-anime-metadata-hourly'
 )
 ORDER BY jobname;
 ```
 
-**Você deve ver 6 linhas com `active = true`:**
+**Você deve ver 7 linhas com `active = true`:**
 - ✅ `insert-current-week`
 - ✅ `insert-previous-week`
 - ✅ `insert-2-weeks-ago`
 - ✅ `update-current-week`
 - ✅ `update-previous-week`
 - ✅ `update-2-weeks-ago`
+- ✅ `update-anime-metadata-hourly`
 
 ---
 
@@ -271,6 +295,7 @@ Ou teste via Dashboard:
 | `update-current-week` | `update-weekly-episodes` | `0 */2 * * *` (A cada 2h) | `current` | Atualiza scores da semana atual |
 | `update-previous-week` | `update-weekly-episodes` | `0 */6 * * *` (A cada 6h) | `current-1` | Atualiza scores da semana passada |
 | `update-2-weeks-ago` | `update-weekly-episodes` | `0 0 * * *` (Diário 0:00) | `current-2` | Atualiza scores de 2 weeks atrás |
+| `update-anime-metadata-hourly` | `update-anime-metadata` | `0 * * * *` (A cada 1h) | N/A | Atualiza membros, score, status dos 60 animes mais desatualizados |
 
 **⚠️ NOTA:** Todos os horários são em **UTC**. Ajuste mentalmente para seu fuso horário local!
 
@@ -331,7 +356,8 @@ WHERE jobname IN (
     'insert-2-weeks-ago',
     'update-current-week',
     'update-previous-week',
-    'update-2-weeks-ago'
+    'update-2-weeks-ago',
+    'update-anime-metadata-hourly'
 );
 ```
 

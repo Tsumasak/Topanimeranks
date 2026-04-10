@@ -139,10 +139,6 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
     console.log(`📅 Week ${weekNumber}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     // 🆕 Fetch current season (and next if near transition) to catch all airing animes
-    const today = new Date();
-    const month = today.getUTCMonth();
-    const year = today.getUTCFullYear();
-    
     let currentSeasonName: string;
     if (month >= 0 && month <= 2) currentSeasonName = 'winter';
     else if (month >= 3 && month <= 5) currentSeasonName = 'spring';
@@ -1202,31 +1198,42 @@ async function syncAnticipatedAnimes(supabase: any) {
 
     // Process 2026 seasons IN ORDER to prioritize Winter > Spring > Summer > Fall
     for (const { season, year } of seasons) {
-      const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}`;
-      const data = await fetchWithRetry(url);
+      console.log(`\n⏳ Fetching ALL pages for ${season} ${year} to find anticipated animes...`);
+      let seasonPage = 1;
+      let seasonHasNext = true;
 
-      if (data.data) {
+      while (seasonHasNext && seasonPage <= 5) { // Protect with up to 5 pages per season
+        const url = `${JIKAN_BASE_URL}/seasons/${year}/${season}?page=${seasonPage}`;
+        const data = await fetchWithRetry(url);
+
+        if (!data || !data.data || data.data.length === 0) {
+          break;
+        }
+
         const filtered = data.data
           .filter((anime: any) => anime.status === 'Not yet aired')
           .filter((anime: any) => anime.members >= 10000)
           // CRITICAL: Skip if already processed in previous season
           .filter((anime: any) => {
             if (processedAnimeIds.has(anime.mal_id)) {
-              console.log(`⏭️  Skipping ${anime.title} (ID: ${anime.mal_id}) - already in ${seasons.find(s => s.season === season)?.season || 'previous season'}`);
               return false;
             }
             return true;
           });
 
-        console.log(`📺 ${season} ${year}: Found ${filtered.length} NEW anticipated animes (${data.data.length} total before dedup)`);
+        console.log(`📺 ${season} ${year} (Page ${seasonPage}): Found ${filtered.length} NEW anticipated animes`);
 
         // Mark these IDs as processed
         filtered.forEach((anime: any) => processedAnimeIds.add(anime.mal_id));
-
         allAnimes.push(...filtered);
-      }
 
-      await delay(RATE_LIMIT_DELAY);
+        seasonHasNext = data.pagination?.has_next_page || false;
+        seasonPage++;
+
+        if (seasonHasNext) {
+          await delay(RATE_LIMIT_DELAY);
+        }
+      }
     }
 
     // STEP 2: Fetch ALL upcoming animes (2027+, animes without season, etc.)
@@ -1441,7 +1448,7 @@ serve(async (req) => {
     let result;
 
     switch (sync_type) {
-      case 'weekly_episodes':
+      case 'weekly_episodes': {
         // Auto-detect current week if not specified
         let currentWeek = week_number;
 
@@ -1512,8 +1519,9 @@ serve(async (req) => {
           results: results
         };
         break;
+      }
 
-      case 'season_rankings':
+      case 'season_rankings': {
         // ✅ DYNAMIC: Detect current season/year if not provided
         const todayForSeason = new Date();
         const currentMonth = todayForSeason.getUTCMonth();
@@ -1539,6 +1547,7 @@ serve(async (req) => {
           errors: 0,
         };
         break;
+      }
 
       case 'anticipated':
         result = await syncAnticipatedAnimes(supabase);

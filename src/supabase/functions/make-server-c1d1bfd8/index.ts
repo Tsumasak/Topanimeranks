@@ -457,6 +457,9 @@ app.get("/make-server-c1d1bfd8/season-rankings/:season/:year", async (c) => {
 // Get available years for a genre
 app.get("/make-server-c1d1bfd8/genre-years", async (c) => {
   try {
+    const today = new Date();
+    const { year: currentYear } = getEpisodeWeekNumber(today);
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
@@ -479,37 +482,13 @@ app.get("/make-server-c1d1bfd8/genre-years", async (c) => {
 
     console.log(`[Server] 🔍 Fetching years for genre: ${genre}...`);
 
-    // Try to use genre_rankings table (optimized)
-    const { data: genreData, error: genreError } = await supabase
-      .from('genre_rankings')
-      .select('year')
-      .eq('genre', genre)
-      .neq('year', 9999)
-      .order('year', { ascending: false });
-
-    // If genre_rankings table exists and has data, use it
-    if (!genreError && genreData && genreData.length > 0) {
-      const years = [...new Set(genreData.map(row => row.year))].sort((a, b) => b - a);
-      console.log(`[Server] ✅ Found ${years.length} years for genre ${genre} (from genre_rankings): ${years.join(', ')}`);
-      
-      return c.json({
-        success: true,
-        years: years,
-        source: 'genre_rankings'
-      });
-    }
-
-    // Fallback to old method if genre_rankings doesn't exist or is empty
-    console.log(`[Server] ⚠️ genre_rankings table empty or doesn't exist, falling back to season_rankings...`);
-
-    // Get distinct years for animes with this genre
-    // CRITICAL: Exclude upcoming animes (status = 'Not yet aired') and year 9999
+    // Get from season_rankings
+    // Offloaded to Postgres using JSONB Contains!
     const { data, error } = await supabase
       .from('season_rankings')
       .select('year')
-      .neq('status', 'Not yet aired')
-      .neq('year', 9999)
-      .order('year', { ascending: false });
+      .contains('genres', JSON.stringify([{ name: genre }]))
+      .neq('year', 9999);
 
     if (error) {
       console.error("Error fetching genre years:", error);
@@ -518,42 +497,23 @@ app.get("/make-server-c1d1bfd8/genre-years", async (c) => {
         error: error.message
       }, 500);
     }
-
-    // Filter animes that have the genre and extract unique years
-    const yearsSet = new Set<number>();
     
+    const yearsSet = new Set<number>();
     if (data) {
-      for (const row of data) {
-        // Need to check if anime has the genre
-        const { data: anime, error: animeError } = await supabase
-          .from('season_rankings')
-          .select('genres, year')
-          .eq('year', row.year)
-          .neq('status', 'Not yet aired')
-          .neq('year', 9999)
-          .limit(1000);
-        
-        if (!animeError && anime) {
-          for (const a of anime) {
-            if (a.genres && Array.isArray(a.genres)) {
-              const hasGenre = a.genres.some((g: any) => g.name === genre);
-              if (hasGenre && a.year !== 9999) {
-                yearsSet.add(a.year);
-              }
-            }
-          }
-        }
-      }
+      data.forEach(row => yearsSet.add(row.year));
     }
 
-    const years = Array.from(yearsSet).sort((a, b) => b - a);
+    // Filter against current year directly
+    const years = Array.from(yearsSet)
+      .filter((y) => y <= currentYear)
+      .sort((a, b) => b - a);
 
-    console.log(`[Server] ✅ Found ${years.length} years for genre ${genre} (from season_rankings): ${years.join(', ')}`);
+    console.log(`[Server] ✅ Found ${years.length} years for genre ${genre} (merged): ${years.join(', ')}`);
 
     return c.json({
       success: true,
       years: years,
-      source: 'season_rankings'
+      source: 'merged'
     });
 
   } catch (error) {
@@ -568,6 +528,10 @@ app.get("/make-server-c1d1bfd8/genre-years", async (c) => {
 // Get available seasons for a specific genre and year
 app.get("/make-server-c1d1bfd8/genre-seasons", async (c) => {
   try {
+    const today = new Date();
+    const { season: currentSeasonObj, year: currentYear } = getEpisodeWeekNumber(today);
+    const currentSeasonStr = currentSeasonObj.toLowerCase();
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
@@ -592,38 +556,15 @@ app.get("/make-server-c1d1bfd8/genre-seasons", async (c) => {
     console.log(`[Server] 🔍 Fetching available seasons for genre: ${genre}, year: ${year}`);
 
     const seasonsSet = new Set<string>();
+    const requestedYear = parseInt(year);
 
-    // Try genre_rankings first
-    const { data: genreData, error: genreError } = await supabase
-      .from('genre_rankings')
-      .select('season')
-      .eq('genre', genre)
-      .eq('year', parseInt(year))
-      .not('season', 'is', null);
-
-    if (!genreError && genreData && genreData.length > 0) {
-      for (const row of genreData) {
-        if (row.season) {
-          seasonsSet.add(row.season.toLowerCase());
-        }
-      }
-      
-      const seasons = Array.from(seasonsSet).sort();
-      console.log(`[Server] ✅ Found ${seasons.length} seasons from genre_rankings: ${seasons.join(', ')}`);
-      
-      return c.json({
-        success: true,
-        seasons: seasons,
-        source: 'genre_rankings'
-      });
-    }
-
-    // Fallback to season_rankings
+    // Get from season_rankings directly via JSON containment without early skip
     const { data: seasonData, error: seasonError } = await supabase
       .from('season_rankings')
-      .select('season, genres')
-      .eq('year', parseInt(year))
-      .neq('status', 'Not yet aired');
+      .select('season')
+      .eq('year', requestedYear)
+      .contains('genres', JSON.stringify([{ name: genre }]))
+      .not('season', 'is', null);
 
     if (seasonError) {
       console.error('❌ Supabase error:', seasonError);
@@ -634,18 +575,26 @@ app.get("/make-server-c1d1bfd8/genre-seasons", async (c) => {
     }
 
     if (seasonData) {
-      for (const anime of seasonData) {
-        if (anime.genres && Array.isArray(anime.genres)) {
-          const hasGenre = anime.genres.some((g: any) => g.name === genre);
-          if (hasGenre && anime.season) {
-            seasonsSet.add(anime.season.toLowerCase());
-          }
-        }
-      }
+      seasonData.forEach(row => {
+        if (row.season) seasonsSet.add(row.season.toLowerCase());
+      });
     }
 
-    const seasons = Array.from(seasonsSet).sort();
-    console.log(`[Server] ✅ Found ${seasons.length} seasons from season_rankings: ${seasons.join(', ')}`);
+    const seasonOrder = ['winter', 'spring', 'summer', 'fall'];
+    let seasonsArray = Array.from(seasonsSet);
+
+    if (requestedYear > currentYear) {
+      seasonsArray = [];
+    } else if (requestedYear === currentYear) {
+      const currentIndex = seasonOrder.indexOf(currentSeasonStr);
+      seasonsArray = seasonsArray.filter(s => {
+        const idx = seasonOrder.indexOf(s.toLowerCase());
+        return idx !== -1 && idx <= currentIndex;
+      });
+    }
+
+    const seasons = seasonsArray.sort((a, b) => seasonOrder.indexOf(a) - seasonOrder.indexOf(b));
+    console.log(`[Server] ✅ Found ${seasons.length} seasons (merged): ${seasons.join(', ')}`);
 
     return c.json({
       success: true,
@@ -667,6 +616,10 @@ app.get("/make-server-c1d1bfd8/genre-rankings", async (c) => {
   const startTime = Date.now();
   
   try {
+    const today = new Date();
+    const { season: rawCurrentSeason, year: currentYear } = getEpisodeWeekNumber(today);
+    const currentSeasonStr = rawCurrentSeason.toLowerCase();
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
@@ -694,101 +647,59 @@ app.get("/make-server-c1d1bfd8/genre-rankings", async (c) => {
 
     console.log(`[Server] 🔍 Fetching genre rankings for ${genre}, ${year}, ${season || 'all seasons'} (offset: ${offset}, limit: ${limit})...`);
 
-    // Try to use genre_rankings table first (optimized)
-    let query = supabase
-      .from('genre_rankings')
-      .select('*', { count: 'exact' })
-      .eq('genre', genre)
-      .eq('year', parseInt(year));
+    const requestedYear = parseInt(year);
 
-    // Add season filter if specified
-    if (season && season !== 'all') {
-      query = query.ilike('season', season);
+    if (requestedYear > currentYear) {
+      return c.json({ success: true, data: [], count: 0, hasMore: false });
     }
 
-    // Sort by score or popularity
+    const seasonOrder = ['winter', 'spring', 'summer', 'fall'];
+    const currentSeasonIndex = seasonOrder.indexOf(currentSeasonStr);
+    
+    // Safety check for specific season logic directly avoiding upcoming calendar events
+    if (requestedYear === currentYear && season && season !== 'all') {
+      const requestedSeasonIdx = seasonOrder.indexOf(season.toLowerCase());
+      if (requestedSeasonIdx > currentSeasonIndex) {
+        return c.json({ success: true, data: [], count: 0, hasMore: false });
+      }
+    }
+
+    let allowedSeasonsCases: string[] = [];
+    if (requestedYear === currentYear && (!season || season === 'all')) {
+      const allowedSeasons = seasonOrder.slice(0, currentSeasonIndex + 1);
+      allowedSeasonsCases = allowedSeasons.flatMap(s => [s, s.charAt(0).toUpperCase() + s.slice(1)]);
+    }
+
+
+
+    // Get from season_rankings natively accelerated by .contains logic
+    const queryStartTime = Date.now();
+
+    let query = supabase
+      .from('season_rankings')
+      .select('*', { count: 'exact' })
+      .eq('year', requestedYear)
+      .contains('genres', JSON.stringify([{ name: genre }])); // Offloaded JSON filter natively to Postgres
+
+    if (season && season !== 'all') {
+      query = query.ilike('season', season);
+    } else if (allowedSeasonsCases.length > 0) {
+      query = query.in('season', allowedSeasonsCases);
+    }
+
+    // Applying sort
     if (sortBy === 'popularity') {
       query = query.order('members', { ascending: false, nullsFirst: false });
     } else {
       query = query.order('anime_score', { ascending: false, nullsFirst: false });
     }
 
-    // Add pagination
     query = query.range(offset, offset + limit - 1);
 
-    const queryStartTime = Date.now();
-    const { data: optimizedData, error: optimizedError, count } = await query;
+    const { data: allAnimes, error, count: fetchedCount } = await query;
     const queryEndTime = Date.now();
-
-    // If genre_rankings table exists and has data, use it
-    if (!optimizedError && optimizedData && optimizedData.length > 0) {
-      console.log(`[Server] ⏱️  Optimized query took ${queryEndTime - queryStartTime}ms`);
-      console.log(`[Server] ✅ Found ${optimizedData.length} animes (total: ${count}) from genre_rankings`);
-
-      const totalTime = Date.now() - startTime;
-      console.log(`[Server] 🚀 Total request time: ${totalTime}ms (OPTIMIZED)`);
-
-      // Map genre_rankings fields to match frontend expectations
-      const mappedData = optimizedData.map((anime: any) => ({
-        anime_id: anime.anime_id,
-        title: anime.title,
-        title_english: anime.title_english,
-        image_url: anime.image_url,
-        type: anime.type,
-        anime_score: anime.anime_score,
-        members: anime.members,
-        demographics: anime.demographics || [],
-        genres: anime.genres || [],
-        themes: anime.themes || [],
-        season: anime.season,
-        year: anime.year,
-        status: anime.status,
-        episodes: anime.episodes,
-        studios: anime.studios || []
-      }));
-
-      return c.json({
-        success: true,
-        data: mappedData,
-        count: count || 0,
-        returned: mappedData.length,
-        offset: offset,
-        limit: limit,
-        hasMore: count ? (offset + mappedData.length) < count : false,
-        genre: genre,
-        year: year === 'all' ? 'all' : parseInt(year),
-        season: season || 'all',
-        sortBy: sortBy,
-        source: 'genre_rankings',
-        performance: {
-          totalTime: totalTime,
-          queryTime: queryEndTime - queryStartTime,
-          isOptimized: true
-        }
-      });
-    }
-
-    // Fallback to old method if genre_rankings doesn't exist or is empty
-    console.log(`[Server] ⚠️ genre_rankings table empty or doesn't exist, falling back to season_rankings...`);
-    console.log(`[Server] 💡 Run POST /populate-genre-rankings to populate the optimized table`);
-
-    // OLD METHOD: Filter from season_rankings (slower)
-    let fallbackQuery = supabase
-      .from('season_rankings')
-      .select('*')
-      .eq('year', parseInt(year))
-      .neq('status', 'Not yet aired');
-
-    if (season && season !== 'all') {
-      fallbackQuery = fallbackQuery.ilike('season', season);
-    }
-
-    const fallbackQueryStartTime = Date.now();
-    const { data: allAnimes, error } = await fallbackQuery;
-    const fallbackQueryEndTime = Date.now();
     
-    console.log(`[Server] ⏱️  Database query took ${fallbackQueryEndTime - fallbackQueryStartTime}ms`);
-    console.log(`[Server] 📊 Retrieved ${allAnimes?.length || 0} animes from database`);
+    console.log(`[Server] ⏱️  Database JSONB query took ${queryEndTime - queryStartTime}ms`);
 
     if (error) {
       console.error("Error fetching genre rankings:", error);
@@ -798,57 +709,27 @@ app.get("/make-server-c1d1bfd8/genre-rankings", async (c) => {
       }, 500);
     }
 
-    // Filter by genre (JSONB field) - this is done in-memory
-    const filterStartTime = Date.now();
-    const filteredAnimes = allAnimes?.filter((anime: any) => {
-      if (!anime.genres || !Array.isArray(anime.genres)) return false;
-      return anime.genres.some((g: any) => g.name === genre);
-    }) || [];
-    const filterEndTime = Date.now();
-    
-    console.log(`[Server] ⏱️  Genre filtering took ${filterEndTime - filterStartTime}ms`);
-    console.log(`[Server] 🎯 Filtered down to ${filteredAnimes.length} animes with genre ${genre}`);
-
-    // Sort by score or popularity
-    const sortStartTime = Date.now();
-    filteredAnimes.sort((a: any, b: any) => {
-      if (sortBy === 'popularity') {
-        return (b.members || 0) - (a.members || 0);
-      } else {
-        return (b.anime_score || 0) - (a.anime_score || 0);
-      }
-    });
-    const sortEndTime = Date.now();
-    
-    console.log(`[Server] ⏱️  Sorting took ${sortEndTime - sortStartTime}ms`);
-
-    // Apply pagination
-    const paginatedAnimes = filteredAnimes.slice(offset, offset + limit);
-
     const totalTime = Date.now() - startTime;
-    console.log(`[Server] ✅ Total request time: ${totalTime}ms (FALLBACK - consider populating genre_rankings)`);
+    console.log(`[Server] ✅ Total request time: ${totalTime}ms (via JSONB Contains)`);
 
     return c.json({
       success: true,
-      data: paginatedAnimes,
-      count: filteredAnimes.length,
-      returned: paginatedAnimes.length,
+      data: allAnimes || [],
+      count: fetchedCount || 0,
+      returned: allAnimes?.length || 0,
       offset: offset,
       limit: limit,
-      hasMore: (offset + paginatedAnimes.length) < filteredAnimes.length,
+      hasMore: fetchedCount ? (offset + (allAnimes?.length || 0)) < fetchedCount : false,
       genre: genre,
-      year: parseInt(year),
+      year: requestedYear,
       season: season || 'all',
       sortBy: sortBy,
       source: 'season_rankings',
       performance: {
         totalTime: totalTime,
-        queryTime: fallbackQueryEndTime - fallbackQueryStartTime,
-        filterTime: filterEndTime - filterStartTime,
-        sortTime: sortEndTime - sortStartTime,
-        retrievedCount: allAnimes?.length || 0,
-        filteredCount: filteredAnimes.length,
-        isOptimized: false
+        queryTime: queryEndTime - queryStartTime,
+        retrievedCount: fetchedCount || 0,
+        isOptimized: true 
       }
     });
 
@@ -899,274 +780,6 @@ app.get("/make-server-c1d1bfd8/anticipated-animes", async (c) => {
 
   } catch (error) {
     console.error("❌ Anticipated animes error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
-});
-
-// ============================================
-// POPULATE GENRE RANKINGS (MANUAL)
-// ============================================
-// Populates genre_rankings table from season_rankings
-// Run this once after creating the table, or whenever you want to refresh the data
-app.post("/make-server-c1d1bfd8/populate-genre-rankings", async (c) => {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return c.json({ 
-        success: false, 
-        error: "Missing Supabase credentials" 
-      }, 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log(`[Populate] 🚀 Starting to populate genre_rankings table...`);
-
-    // Fetch ALL animes from season_rankings (exclude upcoming)
-    const { data: allAnimes, error: fetchError } = await supabase
-      .from('season_rankings')
-      .select('*')
-      .neq('status', 'Not yet aired')
-      .neq('year', 9999);
-
-    if (fetchError) {
-      console.error("[Populate] ❌ Error fetching animes:", fetchError);
-      return c.json({ success: false, error: fetchError.message }, 500);
-    }
-
-    if (!allAnimes || allAnimes.length === 0) {
-      return c.json({ 
-        success: true, 
-        message: "No animes to populate",
-        processed: 0,
-        inserted: 0
-      });
-    }
-
-    console.log(`[Populate] 📊 Found ${allAnimes.length} animes to process`);
-
-    // Explode each anime into multiple rows (one per genre)
-    const genreRows: any[] = [];
-    let processedCount = 0;
-
-    for (const anime of allAnimes) {
-      if (!anime.genres || !Array.isArray(anime.genres) || anime.genres.length === 0) {
-        continue;
-      }
-
-      // Create one row per genre
-      for (const genreObj of anime.genres) {
-        const genreName = typeof genreObj === 'string' ? genreObj : genreObj.name;
-        
-        if (!genreName) continue;
-
-        genreRows.push({
-          anime_id: anime.anime_id,
-          genre: genreName,
-          year: anime.year,
-          season: anime.season,
-          title: anime.title,
-          title_english: anime.title_english,
-          image_url: anime.image_url,
-          anime_score: anime.anime_score,
-          members: anime.members,
-          type: anime.type,
-          status: anime.status,
-          episodes: anime.episodes,
-          genres: anime.genres,
-          themes: anime.themes,
-          demographics: anime.demographics,
-          studios: anime.studios,
-          updated_at: new Date().toISOString()
-        });
-      }
-
-      processedCount++;
-      
-      if (processedCount % 100 === 0) {
-        console.log(`[Populate] 📦 Processed ${processedCount}/${allAnimes.length} animes...`);
-      }
-    }
-
-    console.log(`[Populate] ✅ Created ${genreRows.length} genre rows from ${processedCount} animes`);
-
-    // Batch insert/upsert
-    const BATCH_SIZE = 500;
-    let insertedCount = 0;
-
-    for (let i = 0; i < genreRows.length; i += BATCH_SIZE) {
-      const batch = genreRows.slice(i, i + BATCH_SIZE);
-      console.log(`[Populate] 💾 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(genreRows.length / BATCH_SIZE)}...`);
-      
-      const { error: upsertError } = await supabase
-        .from('genre_rankings')
-        .upsert(batch, {
-          onConflict: 'anime_id,genre,year,season',
-          ignoreDuplicates: false
-        });
-
-      if (upsertError) {
-        console.error(`[Populate] ❌ Error upserting batch:`, upsertError);
-        return c.json({ 
-          success: false, 
-          error: upsertError.message,
-          processedSoFar: insertedCount
-        }, 500);
-      }
-
-      insertedCount += batch.length;
-    }
-
-    console.log(`[Populate] 🎉 Successfully populated genre_rankings table!`);
-    console.log(`[Populate] 📊 Total: ${insertedCount} rows inserted/updated`);
-
-    return c.json({
-      success: true,
-      message: "Genre rankings table populated successfully",
-      processed: processedCount,
-      inserted: insertedCount,
-      totalRows: genreRows.length
-    });
-
-  } catch (error) {
-    console.error("[Populate] ❌ Error:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 500);
-  }
-});
-
-// GET version for easy browser testing
-app.get("/make-server-c1d1bfd8/populate-genre-rankings", async (c) => {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return c.json({ 
-        success: false, 
-        error: "Missing Supabase credentials" 
-      }, 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log(`[Populate] 🚀 Starting to populate genre_rankings table...`);
-
-    // Fetch ALL animes from season_rankings (exclude upcoming)
-    const { data: allAnimes, error: fetchError } = await supabase
-      .from('season_rankings')
-      .select('*')
-      .neq('status', 'Not yet aired')
-      .neq('year', 9999);
-
-    if (fetchError) {
-      console.error("[Populate] ❌ Error fetching animes:", fetchError);
-      return c.json({ success: false, error: fetchError.message }, 500);
-    }
-
-    if (!allAnimes || allAnimes.length === 0) {
-      return c.json({ 
-        success: true, 
-        message: "No animes to populate",
-        processed: 0,
-        inserted: 0
-      });
-    }
-
-    console.log(`[Populate] 📊 Found ${allAnimes.length} animes to process`);
-
-    // Explode each anime into multiple rows (one per genre)
-    const genreRows: any[] = [];
-    let processedCount = 0;
-
-    for (const anime of allAnimes) {
-      if (!anime.genres || !Array.isArray(anime.genres) || anime.genres.length === 0) {
-        continue;
-      }
-
-      // Create one row per genre
-      for (const genreObj of anime.genres) {
-        const genreName = typeof genreObj === 'string' ? genreObj : genreObj.name;
-        
-        if (!genreName) continue;
-
-        genreRows.push({
-          anime_id: anime.anime_id,
-          genre: genreName,
-          year: anime.year,
-          season: anime.season,
-          title: anime.title,
-          title_english: anime.title_english,
-          image_url: anime.image_url,
-          anime_score: anime.anime_score,
-          members: anime.members,
-          type: anime.type,
-          status: anime.status,
-          episodes: anime.episodes,
-          genres: anime.genres,
-          themes: anime.themes,
-          demographics: anime.demographics,
-          studios: anime.studios,
-          updated_at: new Date().toISOString()
-        });
-      }
-
-      processedCount++;
-      
-      if (processedCount % 100 === 0) {
-        console.log(`[Populate] 📦 Processed ${processedCount}/${allAnimes.length} animes...`);
-      }
-    }
-
-    console.log(`[Populate] ✅ Created ${genreRows.length} genre rows from ${processedCount} animes`);
-
-    // Batch insert/upsert
-    const BATCH_SIZE = 500;
-    let insertedCount = 0;
-
-    for (let i = 0; i < genreRows.length; i += BATCH_SIZE) {
-      const batch = genreRows.slice(i, i + BATCH_SIZE);
-      console.log(`[Populate] 💾 Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(genreRows.length / BATCH_SIZE)}...`);
-      
-      const { error: upsertError } = await supabase
-        .from('genre_rankings')
-        .upsert(batch, {
-          onConflict: 'anime_id,genre,year,season',
-          ignoreDuplicates: false
-        });
-
-      if (upsertError) {
-        console.error(`[Populate] ❌ Error upserting batch:`, upsertError);
-        return c.json({ 
-          success: false, 
-          error: upsertError.message,
-          processedSoFar: insertedCount
-        }, 500);
-      }
-
-      insertedCount += batch.length;
-    }
-
-    console.log(`[Populate] 🎉 Successfully populated genre_rankings table!`);
-    console.log(`[Populate] 📊 Total: ${insertedCount} rows inserted/updated`);
-
-    return c.json({
-      success: true,
-      message: "Genre rankings table populated successfully",
-      processed: processedCount,
-      inserted: insertedCount,
-      totalRows: genreRows.length
-    });
-
-  } catch (error) {
-    console.error("[Populate] ❌ Error:", error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

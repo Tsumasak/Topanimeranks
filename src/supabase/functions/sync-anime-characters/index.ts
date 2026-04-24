@@ -119,8 +119,14 @@ serve(async (req) => {
             
             const data = await response.json();
             
-            if (!data || !data.data) {
-                console.log(`⚠️ Nenhum personagem retornado para ${anime.anime_id}`);
+            if (!data || !data.data || data.data.length === 0) {
+                console.log(`⚠️ Nenhum personagem retornado para ${anime.anime_id} (Marcando com Dummy ID -1 para evitar loop)`);
+                // Insert dummy character -1
+                await supabase.from('characters').upsert({ id: -1, name: 'Sem Personagens Listados' }, { onConflict: 'id', ignoreDuplicates: true });
+                // Link dummy char to this anime
+                await supabase.from('anime_characters').upsert({ anime_id: anime.anime_id, character_id: -1, role: 'None' }, { onConflict: 'anime_id,character_id' });
+                
+                itemsCreated++;
                 continue;
             }
 

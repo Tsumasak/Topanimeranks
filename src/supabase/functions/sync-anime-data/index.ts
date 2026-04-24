@@ -722,6 +722,15 @@ async function syncWeeklyEpisodes(supabase: any, weekNumber: number) {
 
         if (existing.data.created_at === existing.data.updated_at) {
           itemsCreated++;
+          // NOVO ANIME DETECTADO: disparar sync de personagens
+          try {
+             console.log(`🤖 Novo anime detectado (${anime.mal_id}). Acionando sync-anime-characters...`);
+             await supabase.functions.invoke('sync-anime-characters', {
+                body: { anime_id: anime.mal_id }
+             });
+          } catch (e) {
+             console.error('❌ Erro ao chamar sync-anime-characters:', e);
+          }
         } else {
           itemsUpdated++;
         }

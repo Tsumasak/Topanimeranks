@@ -13,6 +13,7 @@ import AdminExportRanksPage from "./pages/AdminExportRanksPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminExportAnimePage from "./pages/AdminExportAnimePage";
+import AdminCharactersSyncPage from "./pages/AdminCharactersSyncPage";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
@@ -238,6 +239,7 @@ function AppContent() {
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />
           <Route path="/admin-sync" element={<AdminProtectedRoute><AdminSyncPage /></AdminProtectedRoute>} />
+          <Route path="/admin-characters-sync" element={<AdminProtectedRoute><AdminCharactersSyncPage /></AdminProtectedRoute>} />
           <Route path="/admin-hero-banners" element={<AdminProtectedRoute><AdminHeroBanners /></AdminProtectedRoute>} />
           <Route path="/admin-export-ranks" element={<AdminProtectedRoute><AdminExportRanksPage /></AdminProtectedRoute>} />
           <Route path="/admin-export-anime" element={<AdminProtectedRoute><AdminExportAnimePage /></AdminProtectedRoute>} />

@@ -461,45 +461,7 @@ export default function AdminSyncPage() {
     }
   };
 
-  const [customAnimeId, setCustomAnimeId] = useState('');
 
-  const syncCharacters = async (mode: 'id' | 'season', animeId?: string, season?: string, year?: number) => {
-    const key = mode === 'id' ? `sync_chars_id` : `sync_chars_season`;
-    if (!animeId && mode === 'id') {
-      addLog(`❌ Por favor, digite o ID do Anime`, 'error');
-      return;
-    }
-    
-    setSyncing(prev => ({ ...prev, [key]: true }));
-    addLog(`\n👥 Forçando Fila de Personagens (${mode === 'id' ? `Anime ${animeId}` : `${season} ${year}`})...`, 'info');
-    
-    try {
-      const url = `https://${projectId}.supabase.co/functions/v1/sync-anime-characters`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mode === 'id' ? { anime_id: parseInt(animeId!) } : { season, year })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success || data.animes_processed !== undefined) {
-        addLog(`✅ SUCCESS: Comando de fila aceito! Relacionamentos criados: ${data.items_created || 0}`, 'success');
-        addLog(`⏳ A função sync-characters-full processará as fotos e bio completas depois.`, 'info');
-      } else {
-        addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
-      }
-      
-    } catch (error) {
-      addLog(`❌ FETCH ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-    } finally {
-      setSyncing(prev => ({ ...prev, [key]: false }));
-    }
-  };
 
   // Helper to get season names and previous seasons
   const getSeasonInfo = () => {
@@ -729,44 +691,6 @@ export default function AdminSyncPage() {
                 {syncing.update_metadata ? '⏳ Updating Metadata...' : '🔄 Update 60 Oldest Animes'}
               </button>
             </div>
-          </div>
-        </div>
-        
-        {/* Characters Sync Block */}
-        <div className="mb-7">
-          <h2 className="text-gray-800 dark:text-gray-200 text-[18px] font-semibold mb-3">👥 Sincronizar Personagens</h2>
-          
-          <div className="space-y-4">
-             <div>
-                <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Sincronizar Personagens de um Anime Específico (ID do Jikan)</p>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={customAnimeId}
-                    onChange={(e) => setCustomAnimeId(e.target.value)}
-                    placeholder="Ex: 52991"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                  <button
-                    onClick={() => syncCharacters('id', customAnimeId)}
-                    disabled={syncing.sync_chars_id || !customAnimeId}
-                    className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white border-none py-[10px] px-5 rounded-xl font-semibold cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {syncing.sync_chars_id ? '⏳ Syncing...' : 'Forçar Sync ID'}
-                  </button>
-                </div>
-             </div>
-
-             <div>
-                <p className="text-gray-600 dark:text-gray-400 text-[13px] mb-2">Forçar Fila de Personagens por Season Atual</p>
-                <button
-                   onClick={() => syncCharacters('season', undefined, current.name, current.year)}
-                   disabled={syncing.sync_chars_season}
-                   className="w-full bg-gradient-to-br from-[#10b981] to-[#059669] text-white border-none py-[15px] px-5 rounded-xl text-base font-semibold cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed shadow-[0_4px_15px_rgba(16,185,129,0.4)]"
-                >
-                   {syncing.sync_chars_season ? '⏳ Syncing...' : `Forçar Fila ${current.emoji} ${current.name.toUpperCase()} ${current.year}`}
-                </button>
-             </div>
           </div>
         </div>
 

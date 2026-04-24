@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { CopyPlus, Download, ExternalLink, Image, RefreshCw, LogOut } from "lucide-react";
+import { CopyPlus, Download, ExternalLink, Image, RefreshCw, LogOut, Users } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -37,6 +37,13 @@ export default function AdminDashboardPage() {
       icon: <RefreshCw className="w-8 h-8" />,
       link: "/admin-sync",
       color: "#a855f7"
+    },
+    {
+      title: "Sync Characters",
+      description: "Sincronize biografias, vozes e imagens de personagens por anime ou season.",
+      icon: <Users className="w-8 h-8" />,
+      link: "/admin-characters-sync",
+      color: "#10b981"
     }
   ];
 

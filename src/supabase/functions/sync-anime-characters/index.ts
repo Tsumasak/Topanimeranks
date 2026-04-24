@@ -47,6 +47,7 @@ serve(async (req) => {
     // If a specific anime ID is passed, we check just that one.
     // Otherwise we find candidates.
     let candidates = [];
+    let pendingCount = 0;
 
     if (forcedAnimeId) {
        console.log(`🎯 Sync manual via UUID acionado para anime ${forcedAnimeId}`);
@@ -77,6 +78,7 @@ serve(async (req) => {
 
        // Filtrar apenas quem não foi sincronizado ainda
        const pending = allAnimes.filter(a => !syncedSet.has(a.anime_id));
+       pendingCount = pending.length;
        
        console.log(`📊 Total na base: ${allAnimes.length} | Já sincronizados: ${syncedSet.size} | Pendentes nesta run: ${pending.length}`);
 
@@ -96,7 +98,7 @@ serve(async (req) => {
                           : (a.season === currentSeasonName && a.year === year) ? 2 
                           : 3;
           const bPriority = b.status === 'Not yet aired' ? 1 
-                          : (b.season === currentSeasonName && a.year === year) ? 2 
+                          : (b.season === currentSeasonName && b.year === year) ? 2 
                           : 3;
           return aPriority - bPriority;
        });
@@ -177,7 +179,7 @@ serve(async (req) => {
         await delay(RATE_LIMIT_DELAY);
     }
 
-    return new Response(JSON.stringify({ success: true, animes_processed: candidates.length, items_created: itemsCreated, pending_count: Math.max(0, pending.length - candidates.length) }), {
+    return new Response(JSON.stringify({ success: true, animes_processed: candidates.length, items_created: itemsCreated, pending_count: Math.max(0, pendingCount - candidates.length) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

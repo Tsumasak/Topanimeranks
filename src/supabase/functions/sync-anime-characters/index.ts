@@ -132,51 +132,60 @@ serve(async (req) => {
 
             console.log(`✅ ${data.data.length} persongens encontrados para ${anime.anime_id}`);
 
-            for (const charData of data.data) {
-                const char = charData.character;
-                const role = charData.role;
+                let successCount = 0;
+                for (const charData of data.data) {
+                    const char = charData.character;
+                    const role = charData.role;
 
-                // INSERIR CHAR BÁSICO (O sync full preencherá o resto e cuidará de manter o update)
-                // Se já existir, ignoreDuplicates = true, não mexe no synced_full_at dele
-                const charObj = {
-                    id: char.mal_id,
-                    name: char.name,
-                    url: char.url,
-                    image_url: char.images?.jpg?.image_url,
-                };
+                    const charObj = {
+                        id: char.mal_id,
+                        name: char.name,
+                        url: char.url,
+                        image_url: char.images?.jpg?.image_url,
+                    };
 
-                await supabase.from('characters').upsert(charObj, { onConflict: 'id', ignoreDuplicates: true });
+                    const { error: charErr } = await supabase.from('characters').upsert(charObj, { onConflict: 'id', ignoreDuplicates: true });
+                    if (charErr) { console.error(`❌ DB ERRO em characters (${char.mal_id}):`, charErr); continue; }
 
-                // INSERIR RELAÇÃO
-                const relObj = {
-                    anime_id: anime.anime_id,
-                    character_id: char.mal_id,
-                    role: role
-                };
-                await supabase.from('anime_characters').upsert(relObj, { onConflict: 'anime_id,character_id' });
+                    const relObj = {
+                        anime_id: anime.anime_id,
+                        character_id: char.mal_id,
+                        role: role
+                    };
+                    const { error: relErr } = await supabase.from('anime_characters').upsert(relObj, { onConflict: 'anime_id,character_id' });
+                    if (relErr) { console.error(`❌ DB ERRO em anime_characters (${anime.anime_id} - ${char.mal_id}):`, relErr); continue; }
 
-                // INSERIR VOICE ACTORS SE HOUVER
-                if (charData.voice_actors && charData.voice_actors.length > 0) {
-                     for (const va of charData.voice_actors) {
-                         const lang = va.language;
-                         const person = va.person;
+                    if (charData.voice_actors && charData.voice_actors.length > 0) {
+                         for (const va of charData.voice_actors) {
+                             const lang = va.language;
+                             const person = va.person;
 
-                         await supabase.from('voice_actors').upsert({
-                             id: person.mal_id,
-                             name: person.name,
-                             url: person.url,
-                             image_url: person.images?.jpg?.image_url
-                         }, { onConflict: 'id', ignoreDuplicates: true });
+                             const { error: vaErr } = await supabase.from('voice_actors').upsert({
+                                 id: person.mal_id,
+                                 name: person.name,
+                                 url: person.url,
+                                 image_url: person.images?.jpg?.image_url
+                             }, { onConflict: 'id', ignoreDuplicates: true });
+                             if (vaErr) console.error(`❌ ERRO VA (${person.mal_id}):`, vaErr);
 
-                         await supabase.from('character_voices').upsert({
-                             character_id: char.mal_id,
-                             voice_actor_id: person.mal_id,
-                             language: lang
-                         }, { onConflict: 'character_id,voice_actor_id,language', ignoreDuplicates: true });
-                     }
+                             const { error: cvErr } = await supabase.from('character_voices').upsert({
+                                 character_id: char.mal_id,
+                                 voice_actor_id: person.mal_id,
+                                 language: lang
+                             }, { onConflict: 'character_id,voice_actor_id,language', ignoreDuplicates: true });
+                             if (cvErr) console.error(`❌ ERRO CV (${char.mal_id} - ${person.mal_id}):`, cvErr);
+                         }
+                    }
+                    successCount++;
+                    itemsCreated++;
                 }
-                itemsCreated++;
-            }
+                
+                // Se nenhum personagem for salvo com sucesso por algum motivo db, marca ele como dummy para pular!
+                if (successCount === 0 && data.data.length > 0) {
+                    console.log(`⚠️ Nenhum personagem salvo com sucesso no banco para o anime ${anime.anime_id}. Salvando DUMMY (-1) para contornar.`);
+                    await supabase.from('characters').upsert({ id: -1, name: 'Erro/Não salvos' }, { onConflict: 'id', ignoreDuplicates: true });
+                    await supabase.from('anime_characters').upsert({ anime_id: anime.anime_id, character_id: -1, role: 'None' }, { onConflict: 'anime_id,character_id' });
+                }
             console.log(`💾 Anime ${anime.anime_id} pareado. Relacionamentos criados.`);
         } catch (charFetchErr) {
             console.error(`❌ Erro no fetch personagens de ${anime.anime_id}:`, charFetchErr);

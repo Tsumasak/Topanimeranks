@@ -68,19 +68,33 @@ serve(async (req) => {
        if (animeErr) throw animeErr;
 
        // Achar quais já foram pareados
-       const { data: alreadySynced, error: syncErr } = await supabase
-         .from('anime_characters')
-         .select('anime_id');
+       // Usamos head counts em batch para não estourar o limite de 1000 rows do PostgREST e não puxar toda a tabela para memoria
+       const pending = [];
+       const batchSize = 10;
        
-       if (syncErr) throw syncErr;
-
-       const syncedSet = new Set(alreadySynced.map(a => a.anime_id));
-
-       // Filtrar apenas quem não foi sincronizado ainda
-       const pending = allAnimes.filter(a => !syncedSet.has(a.anime_id));
+       for (let i = 0; i < allAnimes.length; i += batchSize) {
+           const batch = allAnimes.slice(i, i + batchSize);
+           const results = await Promise.all(batch.map(async a => {
+                const { count, error } = await supabase
+                    .from('anime_characters')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('anime_id', a.anime_id);
+                    
+                if (error) console.error(`Error checking count for ${a.anime_id}:`, error);
+                return { anime: a, isSynced: count && count > 0 };
+           }));
+           
+           for (const r of results) {
+               if (!r.isSynced) {
+                   pending.push(r.anime);
+               }
+           }
+       }
+       
+       const alreadySyncedCount = allAnimes.length - pending.length;
        pendingCount = pending.length;
        
-       console.log(`📊 Total na base: ${allAnimes.length} | Já sincronizados: ${syncedSet.size} | Pendentes nesta run: ${pending.length}`);
+       console.log(`📊 Total na base: ${allAnimes.length} | Já sincronizados: ${alreadySyncedCount} | Pendentes nesta run: ${pending.length}`);
 
        if (pending.length === 0) {
          console.log(`🏁 Nenhum anime pendente encontardo. Fila vazia, encerrando magicamente sem gastar recursos.`);

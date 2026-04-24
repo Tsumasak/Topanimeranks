@@ -177,7 +177,7 @@ serve(async (req) => {
         await delay(RATE_LIMIT_DELAY);
     }
 
-    return new Response(JSON.stringify({ success: true, animes_processed: candidates.length, items_created: itemsCreated }), {
+    return new Response(JSON.stringify({ success: true, animes_processed: candidates.length, items_created: itemsCreated, pending_count: Math.max(0, pending.length - candidates.length) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

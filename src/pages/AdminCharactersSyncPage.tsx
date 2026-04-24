@@ -63,25 +63,53 @@ export default function AdminCharactersSyncPage() {
     
     try {
       const url = `https://${projectId}.supabase.co/functions/v1/sync-anime-characters`;
+      let continueSyncing = true;
+      let totalProcessed = 0;
+      let totalCreated = 0;
       
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mode === 'id' ? { anime_id: parseInt(animeId!) } : { season, year })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success || data.animes_processed !== undefined) {
-        addLog(`✅ SUCCESS: Comando de fila aceito!`, 'success');
-        addLog(`📊 Animes processados na fila: ${data.animes_processed || 0}`, 'info');
-        addLog(`📊 Relacionamentos iniciais criados: ${data.items_created || 0}`, 'info');
-        addLog(`⏳ A função automática (CRON) sync-characters-full atuará sobre eles e baixará as biografias.`, 'info');
-      } else {
-        addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+      addLog(`\n👥 Forçando Fila de Personagens (${mode === 'id' ? `Anime ${animeId}` : `${season} ${year}`})...`, 'info');
+
+      while (continueSyncing) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(mode === 'id' ? { anime_id: parseInt(animeId!) } : { season, year })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success || data.animes_processed !== undefined) {
+          totalProcessed += (data.animes_processed || 0);
+          totalCreated += (data.items_created || 0);
+          
+          if (data.animes_processed === 0) {
+            addLog(`✅ Fila esvaziada! Nenhum anime restante.`, 'success');
+            continueSyncing = false;
+          } else {
+             // Only auto-loop if it's processing a season
+             if (mode === 'season') {
+                const pendentes = data.pending_count || 0;
+                addLog(`⚙️ Processados lote de ${data.animes_processed} animes... Restam ${pendentes} pendentes na fila.`, 'warning');
+                if (pendentes > 0) {
+                   await new Promise(r => setTimeout(r, 2000)); // Espera 2 segs antes do próximo trigger
+                } else {
+                   continueSyncing = false;
+                }
+             } else {
+                continueSyncing = false;
+             }
+          }
+        } else {
+          addLog(`❌ ERROR: ${data.error || 'Unknown error'}`, 'error');
+          continueSyncing = false;
+        }
+      }
+
+      if (totalProcessed > 0) {
+         addLog(`🎉 SYNC CONCLUÍDO: ${totalProcessed} animes processados. ${totalCreated} relacionamentos criados iniciais (fotos depois).`, 'success');
       }
       
     } catch (error) {

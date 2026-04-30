@@ -48,8 +48,10 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
         }
 
         if (data) {
+          // Cast to any[] because Supabase can't infer types for relational joins
+          const rows = data as any[];
           // Filter out dummy characters (id -1) and null joins
-          let validCharacters = data.filter(
+          let validCharacters = rows.filter(
             (c) => c.characters && c.characters.id !== -1
           ) as AnimeCharacter[];
 

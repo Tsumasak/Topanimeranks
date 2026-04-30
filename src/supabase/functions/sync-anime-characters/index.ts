@@ -53,72 +53,42 @@ serve(async (req) => {
        console.log(`🎯 Sync manual via UUID acionado para anime ${forcedAnimeId}`);
        candidates.push({ anime_id: forcedAnimeId, title: 'Manual Forced Anime' });
     } else {
-       // Achar animes que AINDA NÃO estão na anime_characters.
-       // E no caso de forceSeason/forceYear, achar apenas dessa season.
-       console.log(`🔍 Buscando candidatos pendentes...`);
-       
-       let query = supabase.from('season_rankings').select('anime_id, title, status, season, year');
+       // Em vez de puxar mil animes e contar manualmente via javascript quebrando limites,
+       // Vamos consultar a inteligência do RPC que varre todo o banco nativamente e encontra o que falta.
+       let rpcParams: any = { p_limit: 2 }; // Background mode pega 2 por run pra n estourar
        
        if (forceSeason && forceYear) {
            console.log(`🎯 Sync manual por Season/Ano: ${forceSeason} ${forceYear}`);
-           query = query.eq('season', forceSeason).eq('year', forceYear);
+           rpcParams = { p_season: forceSeason, p_year: forceYear, p_limit: 10 }; // Painel admin puxa de 10 em 10
+       } else {
+           console.log(`🔍 Buscando candidatos pendentes em todo o histórico de animes...`);
        }
        
-       const { data: allAnimes, error: animeErr } = await query;
-       if (animeErr) throw animeErr;
+       const { data: pending, error: rpcErr } = await supabase.rpc('get_pending_character_syncs', rpcParams);
+       if (rpcErr) throw rpcErr;
+       
+       pendingCount = pending.length; // Aqui reflete se a fila da query inteira esvaziou os 2 ou 10? 
+       // Obs: Para o FrontEnd continuar com a contagem real de pendentes ao invés de apenas os '10' devolvidos,
+       // vamos buscar a contagem total de pendentes reais
+       
+       const { data: totalPendingData, error: totalErr } = await supabase.rpc('get_pending_character_syncs', { 
+           p_season: rpcParams.p_season, 
+           p_year: rpcParams.p_year, 
+           p_limit: 10000 
+       });
+       if (totalErr) throw totalErr;
+       pendingCount = totalPendingData.length;
+       
+       console.log(`📊 Total de Pendentes encontrados pelo Radar: ${pendingCount}`);
 
-       // Achar quais já foram pareados
-       // Usamos head counts em batch para não estourar o limite de 1000 rows do PostgREST e não puxar toda a tabela para memoria
-       const pending = [];
-       const batchSize = 10;
-       
-       for (let i = 0; i < allAnimes.length; i += batchSize) {
-           const batch = allAnimes.slice(i, i + batchSize);
-           const results = await Promise.all(batch.map(async a => {
-                const { count, error } = await supabase
-                    .from('anime_characters')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('anime_id', a.anime_id);
-                    
-                if (error) console.error(`Error checking count for ${a.anime_id}:`, error);
-                return { anime: a, isSynced: count && count > 0 };
-           }));
-           
-           for (const r of results) {
-               if (!r.isSynced) {
-                   pending.push(r.anime);
-               }
-           }
-       }
-       
-       const alreadySyncedCount = allAnimes.length - pending.length;
-       pendingCount = pending.length;
-       
-       console.log(`📊 Total na base: ${allAnimes.length} | Já sincronizados: ${alreadySyncedCount} | Pendentes nesta run: ${pending.length}`);
-
-       if (pending.length === 0) {
-         console.log(`🏁 Nenhum anime pendente encontardo. Fila vazia, encerrando magicamente sem gastar recursos.`);
+       if (pendingCount === 0) {
+         console.log(`🏁 Nenhum anime pendente encontrado. Fila vazia, encerrando magicamente sem gastar recursos.`);
          return new Response(JSON.stringify({ success: true, message: 'All caught up' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
          });
        }
 
-       // PRIORIZAÇÃO
-       // 1. Anticipated (Not yet aired)
-       // 2. Current season
-       // 3. O resto
-       pending.sort((a, b) => {
-          const aPriority = a.status === 'Not yet aired' ? 1 
-                          : (a.season === currentSeasonName && a.year === year) ? 2 
-                          : 3;
-          const bPriority = b.status === 'Not yet aired' ? 1 
-                          : (b.season === currentSeasonName && b.year === year) ? 2 
-                          : 3;
-          return aPriority - bPriority;
-       });
-
-       // Vamos pegar apenas 1 a 3 animes por Run da cron para não quebrar RateLimit (cada anime puxa uma URL)
-       candidates = pending.slice(0, 2); 
+       candidates = pending;
     }
 
     let itemsCreated = 0;

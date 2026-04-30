@@ -6,6 +6,7 @@ import { AnimeHero } from "../components/anime/AnimeHero";
 import { AnimeStats } from "../components/anime/AnimeStats";
 import { AnimeSynopsis } from "../components/anime/AnimeSynopsis";
 import { AnimeInfo } from "../components/anime/AnimeInfo";
+import { AnimeCharacters } from "../components/anime/AnimeCharacters";
 import { AnimeEpisodes } from "../components/anime/AnimeEpisodes";
 import { AnimeVideos } from "../components/anime/AnimeVideos";
 import { RankEvolutionChart } from "../components/anime/RankEvolutionChart";
@@ -433,6 +434,9 @@ export default function AnimeDetailsPage() {
           <div className="space-y-8">
             {anime.synopsis && (
               <AnimeSynopsis synopsis={anime.synopsis} />
+            )}
+            {anime.anime_id && (
+              <AnimeCharacters animeId={anime.anime_id} />
             )}
             <div className="lg:sticky lg:top-[106px] lg:self-start">
               <AnimeInfo anime={anime} />

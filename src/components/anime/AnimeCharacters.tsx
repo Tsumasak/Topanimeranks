@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../utils/supabase/client";
+import { formatName } from "../../utils/character";
 
 interface CharacterData {
   id: number;
@@ -21,7 +22,25 @@ interface AnimeCharactersProps {
 export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
   const [characters, setCharacters] = useState<AnimeCharacter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(9);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 767);
+  const [visibleCount, setVisibleCount] = useState(() => (window.innerWidth <= 767 ? 6 : 9));
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 767);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Sync visibleCount if it was at default value
+  useEffect(() => {
+    setVisibleCount((prev) => {
+      if (prev === 6 && !isMobile) return 9;
+      if (prev === 9 && isMobile) return 6;
+      return prev;
+    });
+  }, [isMobile]);
 
   useEffect(() => {
     async function fetchCharacters() {
@@ -74,20 +93,9 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
     fetchCharacters();
   }, [animeId]);
 
-  // Handle format "Lastname, Firstname" to "Firstname Lastname"
-  const formatName = (name: string) => {
-    if (!name) return "";
-    if (name.includes(",")) {
-      const parts = name.split(",");
-      if (parts.length === 2) {
-        return `${parts[1].trim()} ${parts[0].trim()}`;
-      }
-    }
-    return name;
-  };
 
   const handleViewMore = () => {
-    setVisibleCount((prev) => prev + 9);
+    setVisibleCount((prev) => prev + (isMobile ? 6 : 9));
   };
 
   if (loading) {
@@ -133,15 +141,8 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
         Characters ({totalCharacters})
       </h2>
 
-      {/* 3x3 Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "16px",
-          width: "100%",
-        }}
-      >
+      {/* Grid */}
+      <div className="character-grid">
         {visibleCharacters.map((charData, index) => {
           const char = charData.characters;
           if (!char) return null;
@@ -150,20 +151,7 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
             <Link
               key={`${char.id}-${index}`}
               to={`/character/${char.id}`}
-              style={{
-                background: "var(--background)",
-                borderColor: "var(--card-border)",
-                borderWidth: "1px",
-                borderStyle: "solid",
-                borderRadius: "10px",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                textDecoration: "none",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-                transition: "border-color 0.2s ease, transform 0.2s ease",
-              }}
-              className="character-card-link"
+              className="theme-card rounded-[10px] overflow-hidden flex flex-col shrink-0 no-underline border"
             >
               {/* Character Image - Square */}
               <div
@@ -260,6 +248,7 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
           );
         })}
       </div>
+
 
       {/* View More Button */}
       {hasMore && (

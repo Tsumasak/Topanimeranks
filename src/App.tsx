@@ -14,6 +14,7 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminExportAnimePage from "./pages/AdminExportAnimePage";
 import AdminCharactersSyncPage from "./pages/AdminCharactersSyncPage";
+import CharacterDetailsPage from "./pages/CharacterDetailsPage";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { AdminPanel } from "./components/AdminPanel";
 import { FloatingButtons } from "./components/FloatingButtons";
@@ -235,6 +236,7 @@ function AppContent() {
           <Route path="/most-anticipated-animes" element={<MostAnticipatedPage />} />
           <Route path="/missing-episodes" element={<MissingEpisodesPage />} />
           <Route path="/anime/:id" element={<AnimeDetailsPage />} />
+          <Route path="/character/:id" element={<CharacterDetailsPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />

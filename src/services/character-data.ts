@@ -61,7 +61,7 @@ export async function getCharacterById(
   id: number
 ): Promise<CharacterFullData | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("characters")
       .select(
         "id, name, name_kanji, about, url, image_url, favorites, nicknames, images, all_pictures, animeography"
@@ -97,7 +97,7 @@ export async function getCharacterAnimesPresence(
   if (!malIds || malIds.length === 0) return presenceMap;
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("season_rankings")
       .select("anime_id, type")
       .in("anime_id", malIds);
@@ -151,7 +151,7 @@ export async function logMissingAnimes(
     }));
 
     // Use upsert with onConflict to ignore duplicates
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("missing_animes_log")
       .upsert(rows, { onConflict: "mal_id", ignoreDuplicates: true });
 

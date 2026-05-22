@@ -588,11 +588,18 @@ export default function CharacterDetailsPage() {
 
                 <div
                   ref={bioRef}
-                  className={`biography-text ${bioExpanded ? "" : "clamped"}`}
                   style={{
                     color: "var(--rating-text)",
                     fontSize: "16px",
                     lineHeight: "26px",
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical" as const,
+                    overflow: "hidden",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    ...(bioExpanded ? {} : {
+                      WebkitLineClamp: isMobile ? 15 : 30,
+                    }),
                   }}
                 >
                   {displayBio}
@@ -664,7 +671,14 @@ export default function CharacterDetailsPage() {
                 </h2>
 
                 {/* Anime Cards Row */}
-                <div className="animeography-grid">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(170px, 1fr))",
+                    gap: "16px",
+                    width: "100%",
+                  }}
+                >
                   {visibleAnimes.map(
                     (entry: AnimeographyEntry, index: number) => {
                       const presence = animePresence.get(

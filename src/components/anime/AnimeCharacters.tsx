@@ -142,7 +142,14 @@ export function AnimeCharacters({ animeId }: AnimeCharactersProps) {
       </h2>
 
       {/* Grid */}
-      <div className="character-grid">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+          gap: "16px",
+          width: "100%",
+        }}
+      >
         {visibleCharacters.map((charData, index) => {
           const char = charData.characters;
           if (!char) return null;

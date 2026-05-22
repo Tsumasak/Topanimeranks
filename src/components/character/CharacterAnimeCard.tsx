@@ -142,7 +142,7 @@ export function CharacterAnimeCard({
     return (
       <Link
         to={`/anime/${malId}`}
-        className="theme-card character-anime-card rounded-[10px] overflow-hidden flex flex-col shrink-0 no-underline border"
+        className="theme-card rounded-[10px] overflow-hidden flex flex-col shrink-0 no-underline border"
       >
         {cardContent}
       </Link>
@@ -152,7 +152,7 @@ export function CharacterAnimeCard({
   // Non-clickable card for animes not in our DB
   return (
     <div
-      className="character-anime-card rounded-[10px] overflow-hidden flex flex-col shrink-0 border"
+      className="rounded-[10px] overflow-hidden flex flex-col shrink-0 border"
       style={{
         ...baseCardStyles,
         opacity: 0.4,
